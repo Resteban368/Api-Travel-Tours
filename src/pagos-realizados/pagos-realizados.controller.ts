@@ -1,0 +1,86 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+  Query,
+  Version,
+  Req,
+} from '@nestjs/common';
+import { PagosRealizadosService } from './pagos-realizados.service';
+import { CreatePagoRealizadoDto } from './dto/create-pago-realizado.dto';
+import { UpdatePagoRealizadoDto } from './dto/update-pago-realizado.dto';
+
+@Controller('pagos-realizados')
+export class PagosRealizadosController {
+  constructor(private readonly pagosService: PagosRealizadosService) {}
+
+  // ─── CRUD ─────────────────────────────────────────────────────────────────
+
+  @Version('1')
+  @Post()
+  create(@Body() createDto: CreatePagoRealizadoDto, @Req() req: any) {
+    const realizadoPor = req.user?.nombre || req.user?.email;
+    return this.pagosService.create(createDto, realizadoPor);
+  }
+
+  @Version('1')
+  @Get()
+  findAll(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.pagosService.findAll(startDate, endDate);
+  }
+
+  // ─── AUDITORÍA ────────────────────────────────────────────────────────────
+
+  /**
+   * GET /v1/pagos-realizados/auditoria
+   *
+   * Query params:
+   *   - id_pago   (optional) — filtrar por ID del pago
+   *   - startDate (optional) — fecha inicio (ISO 8601)
+   *   - endDate   (optional) — fecha fin    (ISO 8601)
+   */
+  @Version('1')
+  @Get('auditoria')
+  findAuditoria(
+    @Query('id_pago') idPagoRaw?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const idPago = idPagoRaw ? parseInt(idPagoRaw, 10) : undefined;
+    return this.pagosService.findAuditoria(idPago, startDate, endDate);
+  }
+
+  // ─── GET BY ID ────────────────────────────────────────────────────────────
+
+  @Version('1')
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.pagosService.findOne(id);
+  }
+
+  @Version('1')
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdatePagoRealizadoDto,
+    @Req() req: any,
+  ) {
+    const realizadoPor = req.user?.nombre || req.user?.email;
+    return this.pagosService.update(id, updateDto, realizadoPor);
+  }
+
+  @Version('1')
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    const realizadoPor = req.user?.nombre || req.user?.email;
+    return this.pagosService.remove(id, realizadoPor);
+  }
+}
