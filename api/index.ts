@@ -1,7 +1,7 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import { AppModule } from './app.module';
+import { AppModule } from '../src/app.module';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -12,10 +12,11 @@ let isInitialized = false;
 async function bootstrap() {
   if (isInitialized) return;
 
-  const adapter = new ExpressAdapter(expressServer);
-  const app = await NestFactory.create(AppModule, adapter, {
-    logger: ['error', 'warn'],
-  });
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressServer),
+    { logger: ['error', 'warn'] },
+  );
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -38,21 +39,10 @@ async function bootstrap() {
   isInitialized = true;
 }
 
-// ── Vercel: handler exportado ────────────────────────────────────────────────
 export default async function handler(
   req: IncomingMessage,
   res: ServerResponse,
 ) {
   await bootstrap();
   expressServer(req, res);
-}
-
-// ── Local / Railway / Docker: servidor HTTP estándar ────────────────────────
-if (require.main === module) {
-  bootstrap().then(() => {
-    const port = process.env.PORT ?? 3001;
-    expressServer.listen(port, () => {
-      console.log(`🚀 App running on port ${port}`);
-    });
-  });
 }
