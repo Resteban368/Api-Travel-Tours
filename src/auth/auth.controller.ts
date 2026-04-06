@@ -47,8 +47,10 @@ export class AuthController {
   /** Perfil del usuario autenticado */
   @Version('1')
   @Get('me')
-  me(@Request() req: any) {
-    return req.user;
+  async me(@Request() req: any) {
+    // Al usar el servicio nos aseguramos de que el objeto esté sanitizado 
+    // y contenga todos los campos actualizados (incluyendo el rol).
+    return this.usuariosService.findOne(req.user.id_usuario);
   }
 
   /** Registro permitido a nivel general */

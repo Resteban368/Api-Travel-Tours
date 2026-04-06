@@ -36,8 +36,8 @@ let AuthController = class AuthController {
     logout(req) {
         return this.authService.logout(req.user.id_usuario);
     }
-    me(req) {
-        return req.user;
+    async me(req) {
+        return this.usuariosService.findOne(req.user.id_usuario);
     }
     register(dto) {
         return this.usuariosService.create({
@@ -81,7 +81,7 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "me", null);
 __decorate([
     (0, common_1.Version)('1'),

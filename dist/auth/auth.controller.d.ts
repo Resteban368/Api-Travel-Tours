@@ -22,6 +22,6 @@ export declare class AuthController {
     logout(req: any): Promise<{
         message: string;
     }>;
-    me(req: any): any;
-    register(dto: RegisterUserDto): Promise<Omit<import("../usuarios/entities/usuario.entity").Usuario, "password_hash" | "refresh_token_hash">>;
+    me(req: any): Promise<Omit<import("../usuarios/entities/usuario.entity").Usuario, "refresh_token_hash" | "password_hash">>;
+    register(dto: RegisterUserDto): Promise<Omit<import("../usuarios/entities/usuario.entity").Usuario, "refresh_token_hash" | "password_hash">>;
 }

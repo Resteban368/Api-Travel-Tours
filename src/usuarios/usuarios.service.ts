@@ -2,7 +2,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -20,7 +22,44 @@ export class UsuariosService {
     private readonly usuariosRepository: Repository<Usuario>,
     @InjectRepository(Rol)
     private readonly rolesRepository: Repository<Rol>,
+    private readonly configService: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    await this.seedAdmin();
+  }
+
+  private async seedAdmin() {
+    const adminEmail = this.configService.get<string>('SEED_ADMIN_EMAIL');
+    const adminPassword = this.configService.get<string>('SEED_ADMIN_PASSWORD');
+
+    if (!adminEmail || !adminPassword) return;
+
+    const exists = await this.findByEmail(adminEmail);
+    if (exists) return;
+
+    console.log('Seeding initial admin user...');
+
+    // Asegurar que el rol 'admin' exista
+    let rolAdmin = await this.rolesRepository.findOne({ where: { nombre: 'admin' } });
+    if (!rolAdmin) {
+      rolAdmin = await this.rolesRepository.save(this.rolesRepository.create({ nombre: 'admin' }));
+    }
+
+    const password_hash = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
+
+    const admin = this.usuariosRepository.create({
+      nombre: 'Administrador Sistema',
+      email: adminEmail,
+      password_hash,
+      rol: rolAdmin,
+      rol_nombre: 'admin',
+      activo: true,
+    });
+
+    await this.usuariosRepository.save(admin);
+    console.log('Admin user seeded successfully.');
+  }
 
   // ─── INTERNO: buscar por email (usado por AuthService) ────────────────────
 

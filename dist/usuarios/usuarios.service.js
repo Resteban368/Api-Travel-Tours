@@ -47,6 +47,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsuariosService = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcrypt"));
@@ -56,9 +57,39 @@ const BCRYPT_ROUNDS = 12;
 let UsuariosService = class UsuariosService {
     usuariosRepository;
     rolesRepository;
-    constructor(usuariosRepository, rolesRepository) {
+    configService;
+    constructor(usuariosRepository, rolesRepository, configService) {
         this.usuariosRepository = usuariosRepository;
         this.rolesRepository = rolesRepository;
+        this.configService = configService;
+    }
+    async onModuleInit() {
+        await this.seedAdmin();
+    }
+    async seedAdmin() {
+        const adminEmail = this.configService.get('SEED_ADMIN_EMAIL');
+        const adminPassword = this.configService.get('SEED_ADMIN_PASSWORD');
+        if (!adminEmail || !adminPassword)
+            return;
+        const exists = await this.findByEmail(adminEmail);
+        if (exists)
+            return;
+        console.log('Seeding initial admin user...');
+        let rolAdmin = await this.rolesRepository.findOne({ where: { nombre: 'admin' } });
+        if (!rolAdmin) {
+            rolAdmin = await this.rolesRepository.save(this.rolesRepository.create({ nombre: 'admin' }));
+        }
+        const password_hash = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
+        const admin = this.usuariosRepository.create({
+            nombre: 'Administrador Sistema',
+            email: adminEmail,
+            password_hash,
+            rol: rolAdmin,
+            rol_nombre: 'admin',
+            activo: true,
+        });
+        await this.usuariosRepository.save(admin);
+        console.log('Admin user seeded successfully.');
     }
     async findByEmail(email) {
         return this.usuariosRepository.findOne({ where: { email } });
@@ -147,6 +178,7 @@ exports.UsuariosService = UsuariosService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(usuario_entity_1.Usuario)),
     __param(1, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        config_1.ConfigService])
 ], UsuariosService);
 //# sourceMappingURL=usuarios.service.js.map

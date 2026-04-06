@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Usuario, UserRole } from './entities/usuario.entity';
 import { Rol } from './entities/rol.entity';
@@ -6,7 +7,10 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 export declare class UsuariosService {
     private readonly usuariosRepository;
     private readonly rolesRepository;
-    constructor(usuariosRepository: Repository<Usuario>, rolesRepository: Repository<Rol>);
+    private readonly configService;
+    constructor(usuariosRepository: Repository<Usuario>, rolesRepository: Repository<Rol>, configService: ConfigService);
+    onModuleInit(): Promise<void>;
+    private seedAdmin;
     findByEmail(email: string): Promise<Usuario | null>;
     findById(id: number): Promise<Usuario | null>;
     updateRefreshToken(id: number, tokenHash: string | null): Promise<void>;
