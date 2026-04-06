@@ -1,17 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": ".",
-  "functions": {
-    "dist/main.js": {
-      "memory": 1024,
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["src/**", "tsconfig.json", "tsconfig.build.json"]
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "dist/main.js"
+      "dest": "api/index.ts"
     }
   ]
 }
