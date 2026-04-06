@@ -53,11 +53,21 @@ async function initializeApp() {
 }
 
 export default async (req: any, res: any) => {
+  // Simple health check first
+  if (req.url === '/health') {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    return;
+  }
+
   try {
+    console.log('📨 Request:', req.method, req.url);
     const app = await initializeApp();
+    console.log('✓ App initialized, handling request...');
     app(req, res);
   } catch (error) {
-    console.error('Handler error:', error);
+    console.error('❌ Handler error:', error);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(
@@ -65,6 +75,7 @@ export default async (req: any, res: any) => {
         statusCode: 500,
         message: 'Internal server error',
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       }),
     );
   }
