@@ -1,51 +1,80 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const express = require('express');
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
-import { AppModule } from '../src/app.module';
 
-const app = express();
+// Dynamic import to avoid loading issues
+let AppModule: any;
+let isInitialized = false;
+const expressServer = express();
 
-export default async (req: any, res: any) => {
-  if (!req.app.locals.nestApp) {
-    console.log('🚀 Initializing NestJS app for Vercel...');
-    try {
-      const nestApp = await NestFactory.create(
-        AppModule,
-        new ExpressAdapter(app),
-        { logger: ['error', 'warn', 'log'] },
-      );
-
-      nestApp.enableVersioning({
-        type: VersioningType.URI,
-        defaultVersion: '1',
-      });
-
-      nestApp.useGlobalPipes(
-        new ValidationPipe({
-          whitelist: true,
-          transform: true,
-        }),
-      );
-
-      nestApp.enableCors({
-        origin: true,
-        credentials: true,
-      });
-
-      await nestApp.init();
-      req.app.locals.nestApp = nestApp;
-      console.log('✓ NestJS app initialized');
-    } catch (error) {
-      console.error('❌ Error initializing NestJS:', error);
-      res.status(500).json({
-        statusCode: 500,
-        message: 'Failed to initialize application',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return;
-    }
+async function initializeApp() {
+  if (isInitialized) {
+    return expressServer;
   }
 
-  app(req, res);
+  console.log('🔧 Loading AppModule...');
+  try {
+    // Import AppModule dynamically
+    const appModuleImport = await import('../dist/src/app.module');
+    AppModule = appModuleImport.AppModule;
+
+    if (!AppModule) {
+      throw new Error('AppModule not found in compiled dist/src/app.module');
+    }
+
+    console.log('✓ AppModule loaded');
+    console.log('🚀 Creating NestJS application...');
+
+    const nestApp = await NestFactory.create(
+      AppModule,
+      new ExpressAdapter(expressServer),
+      { logger: ['error', 'warn'] },
+    );
+
+    nestApp.enableVersioning({
+      type: VersioningType.URI,
+      defaultVersion: '1',
+    });
+
+    nestApp.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }),
+    );
+
+    nestApp.enableCors({
+      origin: true,
+      credentials: true,
+    });
+
+    await nestApp.init();
+    isInitialized = true;
+
+    console.log('✓ NestJS application ready');
+    return expressServer;
+  } catch (error) {
+    console.error('❌ Failed to initialize:', error);
+    throw error;
+  }
+}
+
+export default async (req: any, res: any) => {
+  try {
+    const app = await initializeApp();
+    app(req, res);
+  } catch (error) {
+    console.error('Handler error:', error);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(
+      JSON.stringify({
+        statusCode: 500,
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 };
