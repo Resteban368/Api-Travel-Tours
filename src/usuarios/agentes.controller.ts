@@ -1,48 +1,35 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  ParseIntPipe,
-  Patch,
-  Post,
-  Version,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Version } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from './entities/usuario.entity';
 
-/** Gestión de usuarios — Protegido por roles */
-@Controller('usuarios')
+/**
+ * Gestión específica para Agentes
+ * Solo accesible por Admin
+ */
+@Controller('agentes')
 @Roles('admin')
-export class UsuariosController {
+export class AgentesController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Version('1')
   @Post()
   create(@Body() dto: CreateUsuarioDto) {
-    return this.usuariosService.create(dto);
-  }
-
-  @Version('1')
-  @Post('agente')
-  createAgente(@Body() dto: CreateUsuarioDto) {
-    dto.rol = 'agente';
+    dto.rol = 'agente'; // Forzamos el rol a agente
     return this.usuariosService.create(dto);
   }
 
   @Version('1')
   @Get()
   findAll() {
-    return this.usuariosService.findAll();
+    return this.usuariosService.findAllByRole('agente');
   }
 
   @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
+    // Aquí podrías validar que el usuario que retorna es realmente un agente
     return this.usuariosService.findOne(id);
   }
 

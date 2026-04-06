@@ -12,61 +12,51 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UsuariosController = void 0;
+exports.RolesController = void 0;
 const common_1 = require("@nestjs/common");
-const usuarios_service_1 = require("./usuarios.service");
-const create_usuario_dto_1 = require("./dto/create-usuario.dto");
-const update_usuario_dto_1 = require("./dto/update-usuario.dto");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const rol_entity_1 = require("./entities/rol.entity");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
-let UsuariosController = class UsuariosController {
-    usuariosService;
-    constructor(usuariosService) {
-        this.usuariosService = usuariosService;
+let RolesController = class RolesController {
+    rolesRepository;
+    constructor(rolesRepository) {
+        this.rolesRepository = rolesRepository;
     }
     create(dto) {
-        return this.usuariosService.create(dto);
-    }
-    createAgente(dto) {
-        dto.rol = 'agente';
-        return this.usuariosService.create(dto);
+        return this.rolesRepository.save(this.rolesRepository.create(dto));
     }
     findAll() {
-        return this.usuariosService.findAll();
+        return this.rolesRepository.find();
     }
     findOne(id) {
-        return this.usuariosService.findOne(id);
+        return this.rolesRepository.findOne({ where: { id_rol: id } });
     }
-    update(id, dto) {
-        return this.usuariosService.update(id, dto);
+    async update(id, dto) {
+        await this.rolesRepository.update(id, dto);
+        return this.rolesRepository.findOne({ where: { id_rol: id } });
     }
-    remove(id) {
-        return this.usuariosService.remove(id);
+    async remove(id) {
+        await this.rolesRepository.delete(id);
+        return { message: `Rol con ID ${id} eliminado` };
     }
 };
-exports.UsuariosController = UsuariosController;
+exports.RolesController = RolesController;
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_usuario_dto_1.CreateUsuarioDto]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "create", null);
-__decorate([
-    (0, common_1.Version)('1'),
-    (0, common_1.Post)('agente'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_usuario_dto_1.CreateUsuarioDto]),
-    __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "createAgente", null);
+], RolesController.prototype, "create", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "findAll", null);
+], RolesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
@@ -74,27 +64,28 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "findOne", null);
+], RolesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_usuario_dto_1.UpdateUsuarioDto]),
-    __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "update", null);
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "update", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "remove", null);
-exports.UsuariosController = UsuariosController = __decorate([
-    (0, common_1.Controller)('usuarios'),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "remove", null);
+exports.RolesController = RolesController = __decorate([
+    (0, common_1.Controller)('roles'),
     (0, roles_decorator_1.Roles)('admin'),
-    __metadata("design:paramtypes", [usuarios_service_1.UsuariosService])
-], UsuariosController);
-//# sourceMappingURL=usuarios.controller.js.map
+    __param(0, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
+    __metadata("design:paramtypes", [typeorm_2.Repository])
+], RolesController);
+//# sourceMappingURL=roles.controller.js.map

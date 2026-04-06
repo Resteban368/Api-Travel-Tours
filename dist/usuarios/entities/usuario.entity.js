@@ -11,12 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Usuario = void 0;
 const typeorm_1 = require("typeorm");
+const rol_entity_1 = require("./rol.entity");
 let Usuario = class Usuario {
     id_usuario;
     nombre;
     email;
     password_hash;
     rol;
+    rol_nombre;
     activo;
     refresh_token_hash;
     fecha_creacion;
@@ -40,13 +42,14 @@ __decorate([
     __metadata("design:type", String)
 ], Usuario.prototype, "password_hash", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        name: 'rol',
-        type: 'text',
-        default: 'agente',
-    }),
-    __metadata("design:type", String)
+    (0, typeorm_1.ManyToOne)(() => rol_entity_1.Rol, { eager: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'id_rol' }),
+    __metadata("design:type", rol_entity_1.Rol)
 ], Usuario.prototype, "rol", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'rol_nombre', type: 'text', default: 'agente' }),
+    __metadata("design:type", String)
+], Usuario.prototype, "rol_nombre", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'activo', type: 'boolean', default: true }),
     __metadata("design:type", Boolean)

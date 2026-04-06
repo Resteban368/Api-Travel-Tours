@@ -6,7 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Usuario } from './entities/usuario.entity';
+import { Usuario, UserRole } from './entities/usuario.entity';
+import { Rol } from './entities/rol.entity';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 
@@ -17,6 +18,8 @@ export class UsuariosService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuariosRepository: Repository<Usuario>,
+    @InjectRepository(Rol)
+    private readonly rolesRepository: Repository<Rol>,
   ) {}
 
   // ─── INTERNO: buscar por email (usado por AuthService) ────────────────────
@@ -52,11 +55,22 @@ export class UsuariosService {
 
     const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
+    const roleName = dto.rol ?? 'agente';
+    let rol = await this.rolesRepository.findOne({ where: { nombre: roleName } });
+
+    // Si el rol no existe, lo creamos (esto asegura que 'admin' y 'agente' existan)
+    if (!rol) {
+      rol = await this.rolesRepository.save(
+        this.rolesRepository.create({ nombre: roleName }),
+      );
+    }
+
     const usuario = this.usuariosRepository.create({
       nombre: dto.nombre,
       email: dto.email,
       password_hash,
-      rol: dto.rol ?? 'agente',
+      rol,
+      rol_nombre: roleName,
       activo: dto.activo ?? true,
     });
 
@@ -66,6 +80,14 @@ export class UsuariosService {
 
   async findAll(): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>[]> {
     const usuarios = await this.usuariosRepository.find({
+      order: { fecha_creacion: 'DESC' },
+    });
+    return usuarios.map(this.sanitize);
+  }
+
+  async findAllByRole(role: UserRole): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>[]> {
+    const usuarios = await this.usuariosRepository.find({
+      where: { rol_nombre: role },
       order: { fecha_creacion: 'DESC' },
     });
     return usuarios.map(this.sanitize);
@@ -102,6 +124,13 @@ export class UsuariosService {
   private sanitize(usuario: Usuario): Omit<Usuario, 'password_hash' | 'refresh_token_hash'> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, refresh_token_hash, ...rest } = usuario;
+    
+    // Si queremos que en el JSON de respuesta 'rol' sea el nombre en lugar del objeto
+    // (Opcional, dependiendo de lo que espere el frontend)
+    if (rest.rol && typeof rest.rol === 'object') {
+      (rest as any).rol = rest.rol.nombre;
+    }
+    
     return rest;
   }
 }

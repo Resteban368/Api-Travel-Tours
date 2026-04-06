@@ -3,7 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Rol } from './rol.entity';
 
 export type UserRole = 'admin' | 'agente';
 
@@ -21,12 +24,12 @@ export class Usuario {
   @Column({ name: 'password_hash', type: 'text' })
   password_hash: string;
 
-  @Column({
-    name: 'rol',
-    type: 'text',
-    default: 'agente',
-  })
-  rol: UserRole;
+  @ManyToOne(() => Rol, { eager: true })
+  @JoinColumn({ name: 'id_rol' })
+  rol: Rol;
+
+  @Column({ name: 'rol_nombre', type: 'text', default: 'agente' })
+  rol_nombre: UserRole;
 
   @Column({ name: 'activo', type: 'boolean', default: true })
   activo: boolean;

@@ -67,7 +67,7 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Credenciales inválidas');
         }
         await this.usuariosService.updateUltimoAcceso(usuario.id_usuario);
-        return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol);
+        return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol_nombre);
     }
     async refresh(rawRefreshToken) {
         let payload;
@@ -88,7 +88,7 @@ let AuthService = class AuthService {
             await this.usuariosService.updateRefreshToken(usuario.id_usuario, null);
             throw new common_1.UnauthorizedException('Refresh token ya fue utilizado. Inicia sesión nuevamente.');
         }
-        return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol);
+        return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol_nombre);
     }
     async logout(userId) {
         await this.usuariosService.updateRefreshToken(userId, null);

@@ -12,26 +12,23 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UsuariosController = void 0;
+exports.AgentesController = void 0;
 const common_1 = require("@nestjs/common");
 const usuarios_service_1 = require("./usuarios.service");
 const create_usuario_dto_1 = require("./dto/create-usuario.dto");
 const update_usuario_dto_1 = require("./dto/update-usuario.dto");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
-let UsuariosController = class UsuariosController {
+let AgentesController = class AgentesController {
     usuariosService;
     constructor(usuariosService) {
         this.usuariosService = usuariosService;
     }
     create(dto) {
-        return this.usuariosService.create(dto);
-    }
-    createAgente(dto) {
         dto.rol = 'agente';
         return this.usuariosService.create(dto);
     }
     findAll() {
-        return this.usuariosService.findAll();
+        return this.usuariosService.findAllByRole('agente');
     }
     findOne(id) {
         return this.usuariosService.findOne(id);
@@ -43,7 +40,7 @@ let UsuariosController = class UsuariosController {
         return this.usuariosService.remove(id);
     }
 };
-exports.UsuariosController = UsuariosController;
+exports.AgentesController = AgentesController;
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Post)(),
@@ -51,22 +48,14 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_usuario_dto_1.CreateUsuarioDto]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "create", null);
-__decorate([
-    (0, common_1.Version)('1'),
-    (0, common_1.Post)('agente'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_usuario_dto_1.CreateUsuarioDto]),
-    __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "createAgente", null);
+], AgentesController.prototype, "create", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "findAll", null);
+], AgentesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Get)(':id'),
@@ -74,7 +63,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "findOne", null);
+], AgentesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Patch)(':id'),
@@ -83,7 +72,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, update_usuario_dto_1.UpdateUsuarioDto]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "update", null);
+], AgentesController.prototype, "update", null);
 __decorate([
     (0, common_1.Version)('1'),
     (0, common_1.Delete)(':id'),
@@ -91,10 +80,10 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
-], UsuariosController.prototype, "remove", null);
-exports.UsuariosController = UsuariosController = __decorate([
-    (0, common_1.Controller)('usuarios'),
+], AgentesController.prototype, "remove", null);
+exports.AgentesController = AgentesController = __decorate([
+    (0, common_1.Controller)('agentes'),
     (0, roles_decorator_1.Roles)('admin'),
     __metadata("design:paramtypes", [usuarios_service_1.UsuariosService])
-], UsuariosController);
-//# sourceMappingURL=usuarios.controller.js.map
+], AgentesController);
+//# sourceMappingURL=agentes.controller.js.map

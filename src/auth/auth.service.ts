@@ -35,7 +35,7 @@ export class AuthService {
     // Actualizar último acceso
     await this.usuariosService.updateUltimoAcceso(usuario.id_usuario);
 
-    return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol);
+    return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol_nombre);
   }
 
   // ─── REFRESH (rotación) ────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ export class AuthService {
     }
 
     // Rotar: invalidar el anterior y emitir un nuevo par
-    return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol);
+    return this.generateTokenPair(usuario.id_usuario, usuario.email, usuario.rol_nombre);
   }
 
   // ─── LOGOUT ────────────────────────────────────────────────────────────────

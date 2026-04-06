@@ -51,11 +51,14 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = __importStar(require("bcrypt"));
 const usuario_entity_1 = require("./entities/usuario.entity");
+const rol_entity_1 = require("./entities/rol.entity");
 const BCRYPT_ROUNDS = 12;
 let UsuariosService = class UsuariosService {
     usuariosRepository;
-    constructor(usuariosRepository) {
+    rolesRepository;
+    constructor(usuariosRepository, rolesRepository) {
         this.usuariosRepository = usuariosRepository;
+        this.rolesRepository = rolesRepository;
     }
     async findByEmail(email) {
         return this.usuariosRepository.findOne({ where: { email } });
@@ -75,11 +78,17 @@ let UsuariosService = class UsuariosService {
             throw new common_1.ConflictException(`Ya existe un usuario con el email ${dto.email}`);
         }
         const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+        const roleName = dto.rol ?? 'agente';
+        let rol = await this.rolesRepository.findOne({ where: { nombre: roleName } });
+        if (!rol) {
+            rol = await this.rolesRepository.save(this.rolesRepository.create({ nombre: roleName }));
+        }
         const usuario = this.usuariosRepository.create({
             nombre: dto.nombre,
             email: dto.email,
             password_hash,
-            rol: dto.rol ?? 'agente',
+            rol,
+            rol_nombre: roleName,
             activo: dto.activo ?? true,
         });
         const saved = await this.usuariosRepository.save(usuario);
@@ -87,6 +96,13 @@ let UsuariosService = class UsuariosService {
     }
     async findAll() {
         const usuarios = await this.usuariosRepository.find({
+            order: { fecha_creacion: 'DESC' },
+        });
+        return usuarios.map(this.sanitize);
+    }
+    async findAllByRole(role) {
+        const usuarios = await this.usuariosRepository.find({
+            where: { rol_nombre: role },
             order: { fecha_creacion: 'DESC' },
         });
         return usuarios.map(this.sanitize);
@@ -119,6 +135,9 @@ let UsuariosService = class UsuariosService {
     }
     sanitize(usuario) {
         const { password_hash, refresh_token_hash, ...rest } = usuario;
+        if (rest.rol && typeof rest.rol === 'object') {
+            rest.rol = rest.rol.nombre;
+        }
         return rest;
     }
 };
@@ -126,6 +145,8 @@ exports.UsuariosService = UsuariosService;
 exports.UsuariosService = UsuariosService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(usuario_entity_1.Usuario)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], UsuariosService);
 //# sourceMappingURL=usuarios.service.js.map
