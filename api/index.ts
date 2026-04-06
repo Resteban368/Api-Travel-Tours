@@ -3,8 +3,8 @@ const express = require('express');
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { AppModule } from '../src/app.module';
 
-let AppModule: any;
 let isInitialized = false;
 const expressServer = express();
 
@@ -13,17 +13,9 @@ async function initializeApp() {
     return expressServer;
   }
 
-  console.log('🔧 Loading AppModule...');
+  console.log('🔧 Initializing NestJS app...');
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const appModuleModule = require('../dist/src/app.module');
-    AppModule = appModuleModule.AppModule;
-
-    if (!AppModule) {
-      throw new Error('AppModule not found in compiled dist/src/app.module');
-    }
-
-    console.log('✓ AppModule loaded');
+    console.log('✓ AppModule imported');
     console.log('🚀 Creating NestJS application...');
 
     const nestApp = await NestFactory.create(
