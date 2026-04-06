@@ -20,6 +20,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
+import { ReservasModule } from './reservas/reservas.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
     PagosRealizadosModule,
     WhatsAppModule,
     CotizacionesModule,
+    ReservasModule,
   ],
   controllers: [AppController],
   providers: [
