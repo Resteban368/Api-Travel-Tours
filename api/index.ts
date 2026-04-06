@@ -4,7 +4,6 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 
-// Dynamic import to avoid loading issues
 let AppModule: any;
 let isInitialized = false;
 const expressServer = express();
@@ -16,9 +15,9 @@ async function initializeApp() {
 
   console.log('🔧 Loading AppModule...');
   try {
-    // Import AppModule dynamically
-    const appModuleImport = await import('../dist/src/app.module');
-    AppModule = appModuleImport.AppModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const appModuleModule = require('../dist/src/app.module');
+    AppModule = appModuleModule.AppModule;
 
     if (!AppModule) {
       throw new Error('AppModule not found in compiled dist/src/app.module');
