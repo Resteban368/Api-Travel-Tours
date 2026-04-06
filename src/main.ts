@@ -1,11 +1,18 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { IncomingMessage, ServerResponse } from 'http';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const expressServer = require('express')();
 
-  // Habilitar versionamiento de la API
+async function createNestApp() {
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressServer),
+  );
+
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
@@ -14,7 +21,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      transform: true, // Automáticamente convierte payloads a instancias de DTO
+      transform: true,
     }),
   );
 
@@ -23,7 +30,30 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT ?? 3001;
-  await app.listen(port);
+  await app.init();
+  return app;
 }
-bootstrap();
+
+let isInitialized = false;
+
+// Handler exportado para Vercel Serverless Functions
+export default async function handler(
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
+  if (!isInitialized) {
+    await createNestApp();
+    isInitialized = true;
+  }
+  expressServer(req, res);
+}
+
+// Ejecución local estándar (npm run start:dev, Railway, Docker)
+if (require.main === module) {
+  createNestApp().then((app) => {
+    const port = process.env.PORT ?? 3001;
+    app.listen(port, () => {
+      console.log(`🚀 App running on port ${port}`);
+    });
+  });
+}
