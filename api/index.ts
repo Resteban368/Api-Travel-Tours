@@ -12,10 +12,16 @@ let isInitialized = false;
 async function bootstrap() {
   if (isInitialized) return;
 
+  console.log('🔍 Starting bootstrap...');
+  console.log('📍 Environment variables check:');
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Missing');
+  console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? '✓ Set' : '✗ Missing');
+  console.log('  - NODE_ENV:', process.env.NODE_ENV);
+
   const app = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressServer),
-    { logger: ['error', 'warn'] },
+    { logger: ['error', 'warn', 'log'] },
   );
 
   app.enableVersioning({
