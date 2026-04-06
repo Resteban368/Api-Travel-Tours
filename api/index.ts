@@ -43,6 +43,18 @@ export default async function handler(
   req: IncomingMessage,
   res: ServerResponse,
 ) {
-  await bootstrap();
-  expressServer(req, res);
+  try {
+    await bootstrap();
+    expressServer(req, res);
+  } catch (error) {
+    console.error('❌ Handler initialization failed:', error);
+    res.statusCode = 500;
+    res.end(
+      JSON.stringify({
+        statusCode: 500,
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }),
+    );
+  }
 }
