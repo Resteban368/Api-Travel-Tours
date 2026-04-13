@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ToursModule } from './tours/tours.module';
@@ -27,6 +28,13 @@ import { PermisosGuard } from './modulos/guards/permisos.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'global',
+        ttl: 60000,  // ventana de 60 segundos
+        limit: 60,   // máx 60 requests por IP (1 por segundo en promedio)
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -57,6 +65,8 @@ import { PermisosGuard } from './modulos/guards/permisos.guard';
   controllers: [AppController],
   providers: [
     AppService,
+    // Guard global de rate limiting — aplica antes de autenticación
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Guard global de autenticación — aplica a todos los endpoints
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Guard global de roles — aplica después del JWT

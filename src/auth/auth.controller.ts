@@ -2,11 +2,14 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Request,
   Version,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -23,6 +26,7 @@ export class AuthController {
 
   /** Endpoint público — no requiere token */
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 intentos por minuto
   @Version('1')
   @Post('login')
   login(@Body() dto: LoginDto) {
@@ -31,6 +35,7 @@ export class AuthController {
 
   /** Endpoint público — no requiere token */
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 por minuto
   @Version('1')
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
@@ -51,6 +56,17 @@ export class AuthController {
     // Al usar el servicio nos aseguramos de que el objeto esté sanitizado 
     // y contenga todos los campos actualizados (incluyendo el rol).
     return this.usuariosService.findOne(req.user.id_usuario);
+  }
+
+  /** Cambio de contraseña — requiere token válido */
+  @Version('1')
+  @Patch('change-password')
+  changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.usuariosService.changePassword(
+      req.user.id_usuario,
+      dto.current_password,
+      dto.new_password,
+    );
   }
 
   /** Registro permitido a nivel general */

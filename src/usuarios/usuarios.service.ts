@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -172,6 +173,19 @@ export class UsuariosService implements OnModuleInit {
     }
 
     return this.sanitize(saved);
+  }
+
+  async changePassword(id: number, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const usuario = await this.findById(id);
+    if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+
+    const matches = await bcrypt.compare(currentPassword, usuario.password_hash);
+    if (!matches) throw new BadRequestException('La contraseña actual es incorrecta');
+
+    const password_hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.usuariosRepository.update(id, { password_hash, refresh_token_hash: null });
+
+    return { message: 'Contraseña actualizada correctamente' };
   }
 
   async remove(id: number): Promise<{ message: string }> {
