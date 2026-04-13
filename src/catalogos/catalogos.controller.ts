@@ -11,8 +11,10 @@ import {
 import { CatalogosService } from './catalogos.service';
 import { CreateCatalogoDto } from './dto/create-catalogo.dto';
 import { UpdateCatalogoDto } from './dto/update-catalogo.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('catalogos')
+@RequierePermiso('catalogues')
 export class CatalogosController {
   constructor(private readonly catalogosService: CatalogosService) {}
 

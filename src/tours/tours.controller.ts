@@ -15,8 +15,10 @@ import { ToursService } from './tours.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 import { SearchToursDto } from './dto/search-tours.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('tours')
+@RequierePermiso('tours')
 export class ToursController {
   constructor(private readonly toursService: ToursService) {}
 

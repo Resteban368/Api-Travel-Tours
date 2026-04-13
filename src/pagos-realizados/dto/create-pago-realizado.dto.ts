@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsBoolean, IsOptional, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsBoolean, IsOptional, IsUrl, IsInt } from 'class-validator';
 
 export class CreatePagoRealizadoDto {
   @IsString({ message: 'El chat_id debe ser un texto' })
@@ -40,4 +40,8 @@ export class CreatePagoRealizadoDto {
   @IsUrl({}, { message: 'url_imagen debe ser una URL válida' })
   @IsOptional()
   url_imagen?: string;
+
+  @IsInt({ message: 'reserva_id debe ser un número entero' })
+  @IsOptional()
+  reserva_id?: number;
 }

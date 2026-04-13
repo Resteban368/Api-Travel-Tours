@@ -14,8 +14,10 @@ import {
 import { PagosRealizadosService } from './pagos-realizados.service';
 import { CreatePagoRealizadoDto } from './dto/create-pago-realizado.dto';
 import { UpdatePagoRealizadoDto } from './dto/update-pago-realizado.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('pagos-realizados')
+@RequierePermiso('pagosRealizados')
 export class PagosRealizadosController {
   constructor(private readonly pagosService: PagosRealizadosService) {}
 

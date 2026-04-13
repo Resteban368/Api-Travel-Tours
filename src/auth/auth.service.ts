@@ -89,10 +89,10 @@ export class AuthService {
   ) {
     const jwtPayload: JwtPayload = { sub: userId, email, rol };
 
-    // Access token — 15 minutos
+    // Access token — 2 horas
     const accessToken = this.jwtService.sign(jwtPayload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '15m',
+      expiresIn: '2h',
     });
 
     // Refresh token — JWT opaco firmado, expira en 7 días
@@ -112,7 +112,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
-      expires_in: 900, // segundos
+      expires_in: 7200, // segundos (2 horas)
     };
   }
 }

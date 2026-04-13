@@ -10,18 +10,24 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Usuario, UserRole } from './entities/usuario.entity';
 import { Rol } from './entities/rol.entity';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
+import { PermisoAgente, TipoPermiso } from '../modulos/entities/permiso-agente.entity';
+import { Modulo } from '../modulos/entities/modulo.entity';
+import { CreateUsuarioDto, PermisoAgenteDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
-export class UsuariosService {
+export class UsuariosService implements OnModuleInit {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuariosRepository: Repository<Usuario>,
     @InjectRepository(Rol)
     private readonly rolesRepository: Repository<Rol>,
+    @InjectRepository(PermisoAgente)
+    private readonly permisoRepo: Repository<PermisoAgente>,
+    @InjectRepository(Modulo)
+    private readonly moduloRepo: Repository<Modulo>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -40,7 +46,6 @@ export class UsuariosService {
 
     console.log('Seeding initial admin user...');
 
-    // Asegurar que el rol 'admin' exista
     let rolAdmin = await this.rolesRepository.findOne({ where: { nombre: 'admin' } });
     if (!rolAdmin) {
       rolAdmin = await this.rolesRepository.save(this.rolesRepository.create({ nombre: 'admin' }));
@@ -61,7 +66,7 @@ export class UsuariosService {
     console.log('Admin user seeded successfully.');
   }
 
-  // ─── INTERNO: buscar por email (usado por AuthService) ────────────────────
+  // ─── INTERNO ──────────────────────────────────────────────────────────────
 
   async findByEmail(email: string): Promise<Usuario | null> {
     return this.usuariosRepository.findOne({ where: { email } });
@@ -71,12 +76,7 @@ export class UsuariosService {
     return this.usuariosRepository.findOne({ where: { id_usuario: id } });
   }
 
-  // ─── INTERNO: actualizar refresh token hash ────────────────────────────────
-
-  async updateRefreshToken(
-    id: number,
-    tokenHash: string | null,
-  ): Promise<void> {
+  async updateRefreshToken(id: number, tokenHash: string | null): Promise<void> {
     await this.usuariosRepository.update(id, { refresh_token_hash: tokenHash });
   }
 
@@ -96,8 +96,6 @@ export class UsuariosService {
 
     const roleName = dto.rol ?? 'agente';
     let rol = await this.rolesRepository.findOne({ where: { nombre: roleName } });
-
-    // Si el rol no existe, lo creamos (esto asegura que 'admin' y 'agente' existan)
     if (!rol) {
       rol = await this.rolesRepository.save(
         this.rolesRepository.create({ nombre: roleName }),
@@ -114,28 +112,46 @@ export class UsuariosService {
     });
 
     const saved = await this.usuariosRepository.save(usuario);
+
+    if (dto.permisos && dto.permisos.length > 0) {
+      await this.asignarPermisos(saved.id_usuario, dto.permisos);
+    }
+
     return this.sanitize(saved);
   }
 
-  async findAll(): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>[]> {
+  async findAll() {
     const usuarios = await this.usuariosRepository.find({
       order: { fecha_creacion: 'DESC' },
     });
-    return usuarios.map(this.sanitize);
+    return Promise.all(
+      usuarios.map(async (u) => ({
+        ...this.sanitize(u),
+        permisos: await this.obtenerPermisos(u.id_usuario, u.rol_nombre),
+      })),
+    );
   }
 
-  async findAllByRole(role: UserRole): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>[]> {
+  async findAllByRole(role: UserRole) {
     const usuarios = await this.usuariosRepository.find({
       where: { rol_nombre: role },
       order: { fecha_creacion: 'DESC' },
     });
-    return usuarios.map(this.sanitize);
+    return Promise.all(
+      usuarios.map(async (u) => ({
+        ...this.sanitize(u),
+        permisos: await this.obtenerPermisos(u.id_usuario, u.rol_nombre),
+      })),
+    );
   }
 
-  async findOne(id: number): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
+  async findOne(id: number) {
     const usuario = await this.findById(id);
     if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
-    return this.sanitize(usuario);
+    return {
+      ...this.sanitize(usuario),
+      permisos: await this.obtenerPermisos(id, usuario.rol_nombre),
+    };
   }
 
   async update(id: number, dto: UpdateUsuarioDto): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
@@ -147,29 +163,81 @@ export class UsuariosService {
       if (exists) throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
     }
 
-    Object.assign(usuario, dto);
+    const { permisos, ...datosUsuario } = dto;
+    Object.assign(usuario, datosUsuario);
     const saved = await this.usuariosRepository.save(usuario);
+
+    if (permisos !== undefined) {
+      await this.asignarPermisos(id, permisos);
+    }
+
     return this.sanitize(saved);
   }
 
   async remove(id: number): Promise<{ message: string }> {
     const usuario = await this.findById(id);
     if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    await this.permisoRepo.delete({ usuario_id: id });
     await this.usuariosRepository.remove(usuario);
     return { message: `Usuario con ID ${id} eliminado` };
   }
 
-  // Quita campos sensibles de la respuesta
+  // ─── PERMISOS ─────────────────────────────────────────────────────────────
+
+  async asignarPermisos(usuarioId: number, permisos: PermisoAgenteDto[]): Promise<void> {
+    await this.permisoRepo.delete({ usuario_id: usuarioId });
+    if (permisos.length === 0) return;
+    const nuevos = permisos.map((p) =>
+      this.permisoRepo.create({
+        usuario_id: usuarioId,
+        modulo_id: p.modulo_id,
+        tipo_permiso: p.tipo_permiso,
+      }),
+    );
+    await this.permisoRepo.save(nuevos);
+  }
+
+  async obtenerPermisos(usuarioId: number, rol?: string): Promise<Record<string, TipoPermiso>> {
+    if (rol === 'admin') {
+      const modulos = await this.moduloRepo.find({ where: { estado: true } });
+      return Object.fromEntries(modulos.map((m) => [m.nombre, 'completo' as TipoPermiso]));
+    }
+    const permisos = await this.permisoRepo.find({ where: { usuario_id: usuarioId } });
+    return Object.fromEntries(
+      permisos.map((p) => [p.modulo.nombre, p.tipo_permiso]),
+    );
+  }
+
+  // ─── AGENTES (con permisos incluidos) ─────────────────────────────────────
+
+  async findAgenteWithPermisos(id: number) {
+    const usuario = await this.findById(id);
+    if (!usuario) throw new NotFoundException(`Agente con ID ${id} no encontrado`);
+    const permisos = await this.obtenerPermisos(id, usuario.rol_nombre);
+    return { ...this.sanitize(usuario), permisos };
+  }
+
+  async findAllAgentesWithPermisos() {
+    const agentes = await this.usuariosRepository.find({
+      where: { rol_nombre: 'agente' },
+      order: { fecha_creacion: 'DESC' },
+    });
+    return Promise.all(
+      agentes.map(async (a) => {
+        const permisos = await this.obtenerPermisos(a.id_usuario);
+        return { ...this.sanitize(a), permisos };
+      }),
+    );
+  }
+
+  // ─── PRIVADO ──────────────────────────────────────────────────────────────
+
   private sanitize(usuario: Usuario): Omit<Usuario, 'password_hash' | 'refresh_token_hash'> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, refresh_token_hash, ...rest } = usuario;
-    
-    // Si queremos que en el JSON de respuesta 'rol' sea el nombre en lugar del objeto
-    // (Opcional, dependiendo de lo que espere el frontend)
     if (rest.rol && typeof rest.rol === 'object') {
       (rest as any).rol = rest.rol.nombre;
     }
-    
     return rest;
   }
 }

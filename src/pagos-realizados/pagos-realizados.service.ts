@@ -22,6 +22,7 @@ const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
   'fecha_documento',
   'is_validated',
   'url_imagen',
+  'reserva_id',
 ];
 
 @Injectable()
@@ -47,7 +48,12 @@ export class PagosRealizadosService {
       );
     }
 
-    const pago = this.pagosRepository.create(createDto);
+    // Separar la FK de reserva_id para evitar conflicto con el objeto de relación en TypeORM
+    const { reserva_id, ...rest } = createDto;
+    const pago = this.pagosRepository.create(rest);
+    if (reserva_id !== undefined) {
+      pago.reserva_id = reserva_id ?? null;
+    }
     const pagoCreado = await this.pagosRepository.save(pago);
 
     // Auditoría de CREACIÓN
@@ -134,15 +140,32 @@ export class PagosRealizadosService {
       }
     }
 
-    // Aplicar cambios y guardar
-    Object.assign(pago, updateDto);
-    const pagoActualizado = await this.pagosRepository.save(pago);
+    // Construir objeto de actualización sólo con los campos presentes en el DTO
+    // Se usa repository.update() (SQL directo) para evitar que TypeORM sobreescriba
+    // la FK reserva_id a null al hacer save() con la relación no cargada.
+    const updatePayload: Partial<PagoRealizado> = {};
+    const columnasDirectas: (keyof UpdatePagoRealizadoDto)[] = [
+      'chat_id', 'tipo_documento', 'monto', 'proveedor_comercio',
+      'nit', 'metodo_pago', 'referencia', 'fecha_documento',
+      'is_validated', 'url_imagen', 'reserva_id',
+    ];
+    for (const campo of columnasDirectas) {
+      if (campo in updateDto && updateDto[campo] !== undefined) {
+        (updatePayload as any)[campo] = updateDto[campo];
+      }
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      await this.pagosRepository.update({ id_pago: id }, updatePayload);
+    }
 
     // Insertar auditoría (en paralelo, no bloquea la respuesta)
     if (registrosAuditoria.length > 0) {
       await this.auditoriaRepository.insert(registrosAuditoria);
     }
 
+    // Devolver el registro actualizado
+    const pagoActualizado = await this.findOne(id);
     return pagoActualizado;
   }
 

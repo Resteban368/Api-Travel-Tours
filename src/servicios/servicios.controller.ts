@@ -10,8 +10,10 @@ import {
 } from '@nestjs/common';
 import { ServiciosService } from './servicios.service';
 import { CreateServicioDto, UpdateServicioDto } from './dto/servicios.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('servicios')
+@RequierePermiso('services')
 export class ServiciosController {
   constructor(private readonly serviciosService: ServiciosService) {}
 

@@ -12,8 +12,10 @@ import {
 import { SedesService } from './sedes.service';
 import { CreateSedeDto } from './dto/create-sede.dto';
 import { UpdateSedeDto } from './dto/update-sede.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('sedes')
+@RequierePermiso('sedes')
 export class SedesController {
   constructor(private readonly sedesService: SedesService) {}
 

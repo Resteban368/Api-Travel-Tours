@@ -21,6 +21,8 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
 import { ReservasModule } from './reservas/reservas.module';
+import { ModulosModule } from './modulos/modulos.module';
+import { PermisosGuard } from './modulos/guards/permisos.guard';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { ReservasModule } from './reservas/reservas.module';
     WhatsAppModule,
     CotizacionesModule,
     ReservasModule,
+    ModulosModule,
   ],
   controllers: [AppController],
   providers: [
@@ -58,6 +61,8 @@ import { ReservasModule } from './reservas/reservas.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Guard global de roles — aplica después del JWT
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Guard global de permisos de módulos — aplica después del de roles
+    { provide: APP_GUARD, useClass: PermisosGuard },
   ],
 })
 export class AppModule {}

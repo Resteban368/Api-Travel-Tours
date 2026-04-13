@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, IsEmail, IsBoolean } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsEmail, IsBoolean, IsDateString } from 'class-validator';
 
 export class CreateCotizacionDto {
   @IsString()
@@ -15,7 +15,27 @@ export class CreateCotizacionDto {
   detalles_plan: string;
 
   @IsInt()
-  numero_personas: number;
+  numero_pasajeros: number;
+
+  @IsDateString()
+  @IsOptional()
+  fecha_salida?: string;
+
+  @IsDateString()
+  @IsOptional()
+  fecha_regreso?: string;
+
+  @IsString()
+  @IsOptional()
+  origen_destino?: string;
+
+  @IsString()
+  @IsOptional()
+  edades_menores?: string;
+
+  @IsString()
+  @IsOptional()
+  especificaciones?: string;
 
   @IsString()
   @IsOptional()

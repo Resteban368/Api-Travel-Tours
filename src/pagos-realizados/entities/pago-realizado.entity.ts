@@ -3,7 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Reserva } from '../../reservas/entities/reserva.entity';
 
 @Entity('pagos_realizados')
 export class PagoRealizado {
@@ -42,4 +45,11 @@ export class PagoRealizado {
 
   @Column({ name: 'url_imagen', type: 'text', nullable: true })
   url_imagen: string | null;
+
+  @ManyToOne(() => Reserva, { nullable: true, onDelete: 'SET NULL', eager: false })
+  @JoinColumn({ name: 'reserva_id' })
+  reserva: Reserva | null;
+
+  @Column({ name: 'reserva_id', type: 'integer', nullable: true })
+  reserva_id: number | null;
 }

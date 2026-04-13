@@ -2,8 +2,10 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Versio
 import { CotizacionesService } from './cotizaciones.service';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('cotizaciones')
+@RequierePermiso('cotizaciones')
 export class CotizacionesController {
   constructor(private readonly cotizacionesService: CotizacionesService) {}
 

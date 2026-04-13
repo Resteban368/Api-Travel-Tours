@@ -26,6 +26,7 @@ export class ToursService {
       fecha_inicio: dto.fecha_inicio ? new Date(dto.fecha_inicio) : null,
       fecha_fin: dto.fecha_fin ? new Date(dto.fecha_fin) : null,
       precio: dto.precio ?? null,
+      precio_por_pareja: dto.precio_por_pareja ?? false,
       punto_partida: dto.punto_partida ?? null,
       hora_partida: dto.hora_partida ?? null,
       llegada: dto.llegada ?? null,
@@ -103,6 +104,7 @@ export class ToursService {
     if (dto.fecha_fin !== undefined)
       tour.fecha_fin = dto.fecha_fin ? new Date(dto.fecha_fin) : null;
     if (dto.precio !== undefined) tour.precio = dto.precio;
+    if (dto.precio_por_pareja !== undefined) tour.precio_por_pareja = dto.precio_por_pareja ?? null;
     if (dto.punto_partida !== undefined) tour.punto_partida = dto.punto_partida;
     if (dto.hora_partida !== undefined) tour.hora_partida = dto.hora_partida;
     if (dto.llegada !== undefined) tour.llegada = dto.llegada;
@@ -183,9 +185,8 @@ export class ToursService {
   }
 
   async findAll(): Promise<ToursMaestro[]> {
-    return this.toursMaestroRepository.find({
-      order: { id: 'DESC' },
-    });
+    const tours = await this.toursMaestroRepository.find({ order: { id: 'DESC' } });
+    return tours.map((t) => this.normalize(t));
   }
 
   async findOne(id: number): Promise<ToursMaestro> {
@@ -193,6 +194,11 @@ export class ToursService {
     if (!tour) {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
+    return this.normalize(tour);
+  }
+
+  private normalize(tour: ToursMaestro): ToursMaestro {
+    tour.precio_por_pareja = tour.precio_por_pareja ?? false;
     return tour;
   }
 

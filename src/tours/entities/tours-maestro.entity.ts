@@ -37,6 +37,9 @@ export class ToursMaestro {
   })
   precio: number | null;
 
+  @Column({ name: 'precio_por_pareja', type: 'boolean', default: false })
+  precio_por_pareja: boolean;
+
   @Column({ name: 'punto_partida', type: 'text', nullable: true })
   punto_partida: string | null;
 

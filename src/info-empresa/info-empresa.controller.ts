@@ -11,7 +11,9 @@ import {
 } from '@nestjs/common';
 import { InfoEmpresaService } from './info-empresa.service';
 import { CreateInfoEmpresaDto, UpdateInfoEmpresaDto } from './dto/info-empresa.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 @Controller('info-empresa')
+@RequierePermiso('infoEmpresa')
 export class InfoEmpresaController {
   constructor(private readonly infoEmpresaService: InfoEmpresaService) {}
 

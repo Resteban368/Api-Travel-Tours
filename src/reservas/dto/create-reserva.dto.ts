@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -48,4 +49,24 @@ export class CreateReservaDto {
   @Type(() => IntegranteDto)
   @IsOptional()
   integrantes?: IntegranteDto[];
+
+  @IsNumber({}, { message: 'valor_total debe ser un número' })
+  @IsOptional()
+  valor_total?: number;
+
+  @IsString()
+  @IsOptional()
+  responsable_nombre?: string;
+
+  @IsString()
+  @IsOptional()
+  responsable_telefono?: string;
+
+  @IsString()
+  @IsOptional()
+  responsable_fecha_nacimiento?: string;
+
+  @IsString()
+  @IsOptional()
+  responsable_cedula?: string;
 }

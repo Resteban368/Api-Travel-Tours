@@ -6,11 +6,13 @@ import { RolesController } from './roles.controller';
 import { AgentesController } from './agentes.controller';
 import { Usuario } from './entities/usuario.entity';
 import { Rol } from './entities/rol.entity';
+import { PermisoAgente } from '../modulos/entities/permiso-agente.entity';
+import { Modulo } from '../modulos/entities/modulo.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Usuario, Rol])],
+  imports: [TypeOrmModule.forFeature([Usuario, Rol, PermisoAgente, Modulo])],
   controllers: [UsuariosController, RolesController, AgentesController],
   providers: [UsuariosService],
-  exports: [UsuariosService, TypeOrmModule], // TypeOrmModule exported so AuthModule can use the repo
+  exports: [UsuariosService, TypeOrmModule],
 })
 export class UsuariosModule {}

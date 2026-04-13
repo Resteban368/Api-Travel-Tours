@@ -11,7 +11,9 @@ import {
 } from '@nestjs/common';
 import { PoliticasReservaService } from './politicas-reserva.service';
 import { CreatePoliticaReservaDto, UpdatePoliticaReservaDto } from './dto/politicas-reserva.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 @Controller('politicas-reserva')
+@RequierePermiso('politicasReserva')
 export class PoliticasReservaController {
   constructor(private readonly politicasReservaService: PoliticasReservaService) {}
 

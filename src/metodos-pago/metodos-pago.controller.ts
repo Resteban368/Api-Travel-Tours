@@ -12,7 +12,9 @@ import {
 import { MetodosPagoService } from './metodos-pago.service';
 import { CreateMetodoPagoDto } from './dto/create-metodo-pago.dto';
 import { UpdateMetodoPagoDto } from './dto/update-metodo-pago.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 @Controller('metodos-pago')
+@RequierePermiso('paymentMethods')
 export class MetodosPagoController {
   constructor(private readonly metodosPagoService: MetodosPagoService) {}
 

@@ -39,6 +39,10 @@ export class UpdateTourDto {
   @IsOptional()
   precio?: number;
 
+  @IsBoolean({ message: 'El campo precio_por_pareja debe ser un booleano' })
+  @IsOptional()
+  precio_por_pareja?: boolean;
+
   @IsString({ message: 'El punto de partida debe ser un texto' })
   @IsOptional()
   punto_partida?: string;

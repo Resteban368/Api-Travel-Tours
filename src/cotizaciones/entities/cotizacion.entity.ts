@@ -23,7 +23,22 @@ export class Cotizacion {
   detalles_plan: string;
 
   @Column({ type: 'int' })
-  numero_personas: number;
+  numero_pasajeros: number;
+
+  @Column({ type: 'date', nullable: true })
+  fecha_salida: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  fecha_regreso: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  origen_destino: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  edades_menores: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  especificaciones: string | null;
 
   @Column({ type: 'text', default: 'pendiente' })
   estado: string;
