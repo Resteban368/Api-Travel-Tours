@@ -13,6 +13,7 @@ import {
 import { ToursMaestro } from '../../tours/entities/tours-maestro.entity';
 import { Servicio } from '../../servicios/entities/servicio.entity';
 import { IntegranteReserva } from './integrante.entity';
+import { ClienteApp } from '../../clientes/entities/cliente-app.entity';
 
 @Entity('reservas')
 export class Reserva {
@@ -28,26 +29,21 @@ export class Reserva {
   @Column({ type: 'text', default: 'pendiente' })
   estado: string; // 'al dia', 'pendiente', 'cancelado'
 
+  @Column({ type: 'text', nullable: true })
+  notas: string | null;
+
   @Column({ name: 'valor_total', type: 'numeric', precision: 10, scale: 2, default: 0 })
   valor_total: number;
-
-  @Column({ name: 'responsable_nombre', type: 'text', nullable: true })
-  responsable_nombre: string | null;
-
-  @Column({ name: 'responsable_telefono', type: 'text', nullable: true })
-  responsable_telefono: string | null;
-
-  @Column({ name: 'responsable_fecha_nacimiento', type: 'text', nullable: true })
-  responsable_fecha_nacimiento: string | null;
-
-  @Column({ name: 'responsable_cedula', type: 'text', nullable: true })
-  responsable_cedula: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   fecha_creacion: Date;
 
   @UpdateDateColumn({ type: 'timestamptz' })
   fecha_actualizacion: Date;
+
+  @ManyToOne(() => ClienteApp, { eager: true, nullable: true })
+  @JoinColumn({ name: 'id_responsable' })
+  responsable: ClienteApp | null;
 
   @ManyToOne(() => ToursMaestro, { eager: true })
   @JoinColumn({ name: 'id_tours' })

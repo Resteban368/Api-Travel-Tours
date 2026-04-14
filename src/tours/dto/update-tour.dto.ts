@@ -77,10 +77,6 @@ export class UpdateTourDto {
   @IsOptional()
   itinerary?: any[];
 
-  @IsBoolean({ message: 'El campo estado debe ser un booleano' })
-  @IsOptional()
-  estado?: boolean;
-
   @IsBoolean({ message: 'El campo es_promocion debe ser un booleano' })
   @IsOptional()
   es_promocion?: boolean;

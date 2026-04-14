@@ -82,10 +82,6 @@ export class CreateTourDto {
   @IsNotEmpty({ message: 'El campo de itinerario no puede estar vacío' })
   itinerary: any[];
 
-  @IsBoolean({ message: 'El campo estado debe ser un booleano' })
-  @IsOptional()
-  estado?: boolean;
-
   @IsBoolean({ message: 'El campo es_promocion debe ser un booleano' })
   @IsOptional()
   es_promocion?: boolean;

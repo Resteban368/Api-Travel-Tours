@@ -35,13 +35,16 @@ export class ToursService {
       inclusions: dto.inclusions ?? null,
       exclusions: dto.exclusions ?? null,
       itinerary: dto.itinerary ?? null,
-      estado: dto.estado ?? true,
       es_promocion: dto.es_promocion ?? false,
       is_active: dto.is_active ?? true,
       es_borrador: dto.es_borrador ?? false,
       sede_id: dto.sede_id ?? null,
     });
     const saved = await this.toursMaestroRepository.save(tour);
+
+    if (!saved.is_active || saved.es_borrador) {
+      return saved;
+    }
 
     const chunksPayload = this.generateSemanticChunks({
       nombre_tour: dto.nombre_tour,
@@ -113,13 +116,29 @@ export class ToursService {
     if (dto.inclusions !== undefined) tour.inclusions = dto.inclusions;
     if (dto.exclusions !== undefined) tour.exclusions = dto.exclusions;
     if (dto.itinerary !== undefined) tour.itinerary = dto.itinerary;
-    if (dto.estado !== undefined) tour.estado = dto.estado;
     if (dto.es_promocion !== undefined) tour.es_promocion = dto.es_promocion;
-    if (dto.is_active !== undefined) tour.is_active = dto.is_active;
+    if (dto.is_active !== undefined) {
+      tour.is_active = dto.is_active;
+      tour.deleted_at = dto.is_active ? null : new Date();
+    }
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
 
     const saved = await this.toursMaestroRepository.save(tour);
+
+    // Buscar vectores existentes de este tour
+    const existingVectors = await this.n8nVectorsRepository
+      .createQueryBuilder('v')
+      .where("v.metadata->>'id' = :id", { id: String(id) })
+      .getMany();
+
+    // Si el tour se desactiva o pasa a borrador, eliminar sus vectores y no regenerar
+    if (!saved.is_active || saved.es_borrador) {
+      if (existingVectors.length > 0) {
+        await this.n8nVectorsRepository.remove(existingVectors);
+      }
+      return saved;
+    }
 
     const chunksPayload = this.generateSemanticChunks({
       nombre_tour: saved.nombre_tour,
@@ -131,12 +150,6 @@ export class ToursService {
       exclusions: saved.exclusions,
       itinerary: saved.itinerary,
     });
-
-    // Buscar si ya existen vectores de este tour
-    const existingVectors = await this.n8nVectorsRepository
-      .createQueryBuilder('v')
-      .where("v.metadata->>'id' = :id", { id: String(id) })
-      .getMany();
 
     const fetchCreationDate = existingVectors.find(
       (v) => v.metadata?.fecha_creacion,
@@ -153,8 +166,7 @@ export class ToursService {
       fecha_modificacion: new Date().toISOString(),
     };
 
-    // Estrategia más sencilla para actualizar:
-    // 1. Eliminar los vectores anteriores (para evitar duplicados o huérfanos si antes tenía 3 días y ahora 2)
+    // 1. Eliminar vectores anteriores para evitar duplicados
     if (existingVectors.length > 0) {
       await this.n8nVectorsRepository.remove(existingVectors);
     }
@@ -184,8 +196,9 @@ export class ToursService {
     return saved;
   }
 
-  async findAll(): Promise<ToursMaestro[]> {
-    const tours = await this.toursMaestroRepository.find({ order: { id: 'DESC' } });
+  async findAll(soloActivos = true): Promise<ToursMaestro[]> {
+    const where = soloActivos ? { is_active: true } : {};
+    const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
     return tours.map((t) => this.normalize(t));
   }
 

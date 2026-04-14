@@ -35,8 +35,10 @@ export class PagosRealizadosController {
   findAll(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
   ) {
-    return this.pagosService.findAll(startDate, endDate);
+    return this.pagosService.findAll(startDate, endDate, parseInt(page), parseInt(limit));
   }
 
   // ─── AUDITORÍA ────────────────────────────────────────────────────────────

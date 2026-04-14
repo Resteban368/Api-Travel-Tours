@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  Query,
   Version,
   Req,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { ReservasService } from './reservas.service';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { UpdateEstadoReservaDto } from './dto/update-estado-reserva.dto';
 import { UpdateInfoReservaDto } from './dto/update-info-reserva.dto';
+import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('reservas')
@@ -30,14 +32,28 @@ export class ReservasController {
 
   @Version('1')
   @Get()
-  findAll() {
-    return this.reservasService.findAll();
+  findAll(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    return this.reservasService.findAll(parseInt(page), parseInt(limit));
   }
 
   @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reservasService.findOne(id);
+  }
+
+  @Version('1')
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateReservaDto: UpdateReservaDto,
+    @Req() req: Request,
+  ) {
+    const email = (req.user as any)?.email;
+    return this.reservasService.update(id, updateReservaDto, email);
   }
 
   @Version('1')

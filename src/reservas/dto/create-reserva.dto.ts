@@ -3,6 +3,7 @@ import {
   IsArray,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -23,6 +24,14 @@ export class IntegranteDto {
   @IsString()
   @IsOptional()
   fecha_nacimiento?: string;
+
+  @IsIn(['cedula', 'pasaporte'])
+  @IsOptional()
+  tipo_documento?: 'cedula' | 'pasaporte';
+
+  @IsString()
+  @IsOptional()
+  documento?: string;
 }
 
 export class CreateReservaDto {
@@ -37,6 +46,10 @@ export class CreateReservaDto {
   @IsEnum(['al dia', 'pendiente', 'cancelado'])
   @IsOptional()
   estado?: string;
+
+  @IsString()
+  @IsOptional()
+  notas?: string;
 
   // IDs de los servicios adicionales a agregar
   @IsArray()
@@ -54,19 +67,7 @@ export class CreateReservaDto {
   @IsOptional()
   valor_total?: number;
 
-  @IsString()
+  @IsInt()
   @IsOptional()
-  responsable_nombre?: string;
-
-  @IsString()
-  @IsOptional()
-  responsable_telefono?: string;
-
-  @IsString()
-  @IsOptional()
-  responsable_fecha_nacimiento?: string;
-
-  @IsString()
-  @IsOptional()
-  responsable_cedula?: string;
+  id_responsable?: number;
 }

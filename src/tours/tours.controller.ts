@@ -29,13 +29,9 @@ export class ToursController {
   }
 
   @Version('1')
-  /**
-   * Búsqueda por similitud en n8n_vectors.
-   * Body: { "embedding": [3072 números] }, query: ?limit=10
-   */
   @Get()
-  findAll() {
-    return this.toursService.findAll();
+  findAll(@Query('todos') todos?: string) {
+    return this.toursService.findAll(todos !== 'true');
   }
 
   @Version('1')

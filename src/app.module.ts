@@ -23,6 +23,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
 import { ReservasModule } from './reservas/reservas.module';
 import { ModulosModule } from './modulos/modulos.module';
+import { ClientesModule } from './clientes/clientes.module';
 import { PermisosGuard } from './modulos/guards/permisos.guard';
 
 @Module({
@@ -60,6 +61,7 @@ import { PermisosGuard } from './modulos/guards/permisos.guard';
     WhatsAppModule,
     CotizacionesModule,
     ReservasModule,
+    ClientesModule,
     ModulosModule,
   ],
   controllers: [AppController],

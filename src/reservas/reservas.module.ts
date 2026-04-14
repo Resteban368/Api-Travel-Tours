@@ -9,6 +9,7 @@ import { AuditoriaReserva } from './entities/auditoria-reserva.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
 import { Servicio } from '../servicios/entities/servicio.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
+import { ClienteApp } from '../clientes/entities/cliente-app.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entit
       ToursMaestro,
       Servicio,
       PagoRealizado,
+      ClienteApp,
     ]),
   ],
   controllers: [ReservasController],

@@ -64,9 +64,6 @@ export class ToursMaestro {
   @Column({ name: 'itinerary', type: 'jsonb', nullable: true })
   itinerary: any[] | null;
 
-  @Column({ type: 'boolean', default: true })
-  estado: boolean;
-
   @Column({ name: 'es_promocion', type: 'boolean', default: false })
   es_promocion: boolean;
 
@@ -87,4 +84,7 @@ export class ToursMaestro {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true, default: null })
+  deleted_at: Date | null;
 }

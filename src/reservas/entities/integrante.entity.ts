@@ -15,6 +15,12 @@ export class IntegranteReserva {
   @Column({ type: 'date', nullable: true })
   fecha_nacimiento: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  tipo_documento: 'cedula' | 'pasaporte' | null;
+
+  @Column({ type: 'text', nullable: true })
+  documento: string | null;
+
   @ManyToOne(() => Reserva, (reserva) => reserva.integrantes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'reserva_id' })
   reserva: Reserva;

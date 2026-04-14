@@ -68,7 +68,7 @@ export class PagosRealizadosService {
 
   // ─── READ ─────────────────────────────────────────────────────────────────
 
-  async findAll(startDate?: string, endDate?: string): Promise<PagoRealizado[]> {
+  async findAll(startDate?: string, endDate?: string, page = 1, limit = 20) {
     const where: any = {};
 
     if (startDate && endDate) {
@@ -77,10 +77,14 @@ export class PagosRealizadosService {
       where.fecha_creacion = Between(new Date(startDate), new Date());
     }
 
-    return await this.pagosRepository.find({
+    const [data, total] = await this.pagosRepository.findAndCount({
       where,
       order: { fecha_creacion: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number): Promise<PagoRealizado> {
