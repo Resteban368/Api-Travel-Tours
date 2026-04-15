@@ -22,9 +22,8 @@ export class ClienteApp {
   @Column({
     type: 'text',
     nullable: true,
-    enum: ['cedula', 'pasaporte'],
   })
-  tipo_documento: 'cedula' | 'pasaporte' | null;
+  tipo_documento: 'CC' | 'TI' | 'Pasaporte' | 'cedula' | 'pasaporte' | null;
 
   @Column({ type: 'text', nullable: true })
   documento: string | null;

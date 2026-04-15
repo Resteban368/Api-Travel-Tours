@@ -14,6 +14,7 @@ import { ToursMaestro } from '../../tours/entities/tours-maestro.entity';
 import { Servicio } from '../../servicios/entities/servicio.entity';
 import { IntegranteReserva } from './integrante.entity';
 import { ClienteApp } from '../../clientes/entities/cliente-app.entity';
+import { VueloReserva } from './vuelo-reserva.entity';
 
 @Entity('reservas')
 export class Reserva {
@@ -22,6 +23,9 @@ export class Reserva {
 
   @Column({ type: 'text', unique: true })
   id_reserva: string;
+
+  @Column({ name: 'tipo_reserva', type: 'text', default: 'tour' })
+  tipo_reserva: string; // 'tour' | 'vuelos' | extensible
 
   @Column({ type: 'text' })
   correo: string;
@@ -45,9 +49,9 @@ export class Reserva {
   @JoinColumn({ name: 'id_responsable' })
   responsable: ClienteApp | null;
 
-  @ManyToOne(() => ToursMaestro, { eager: true })
+  @ManyToOne(() => ToursMaestro, { eager: true, nullable: true })
   @JoinColumn({ name: 'id_tours' })
-  tour: ToursMaestro;
+  tour: ToursMaestro | null;
 
   @ManyToMany(() => Servicio, { eager: true })
   @JoinTable({
@@ -62,4 +66,10 @@ export class Reserva {
     eager: true,
   })
   integrantes: IntegranteReserva[];
+
+  @OneToMany(() => VueloReserva, (vuelo) => vuelo.reserva, {
+    cascade: true,
+    eager: true,
+  })
+  vuelos: VueloReserva[];
 }

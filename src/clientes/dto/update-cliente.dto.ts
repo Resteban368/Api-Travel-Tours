@@ -13,9 +13,9 @@ export class UpdateClienteDto {
   @IsOptional()
   fecha_nacimiento?: string;
 
-  @IsIn(['cedula', 'pasaporte'])
+  @IsIn(['CC', 'TI', 'Pasaporte', 'cedula', 'pasaporte'])
   @IsOptional()
-  tipo_documento?: 'cedula' | 'pasaporte';
+  tipo_documento?: 'CC' | 'TI' | 'Pasaporte' | 'cedula' | 'pasaporte';
 
   @IsString()
   @IsOptional()

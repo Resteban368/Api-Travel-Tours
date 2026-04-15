@@ -7,3 +7,6 @@ coverage
 .gitignore
 *.md
 .DS_Store
+api/
+tmp/
+test/
