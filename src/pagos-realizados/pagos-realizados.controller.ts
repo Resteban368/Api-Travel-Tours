@@ -10,6 +10,7 @@ import {
   Query,
   Version,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { PagosRealizadosService } from './pagos-realizados.service';
 import { CreatePagoRealizadoDto } from './dto/create-pago-realizado.dto';
@@ -68,6 +69,21 @@ export class PagosRealizadosController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
+  }
+
+  @Version('1')
+  @Patch(':id/estado')
+  cambiarEstado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { accion: 'validar' | 'rechazar'; motivo_rechazo?: string },
+    @Req() req: any,
+  ) {
+    const { accion, motivo_rechazo } = body;
+    if (accion !== 'validar' && accion !== 'rechazar') {
+      throw new BadRequestException('accion debe ser "validar" o "rechazar"');
+    }
+    const realizadoPor = req.user?.nombre || req.user?.email;
+    return this.pagosService.cambiarEstado(id, accion, motivo_rechazo, realizadoPor);
   }
 
   @Version('1')

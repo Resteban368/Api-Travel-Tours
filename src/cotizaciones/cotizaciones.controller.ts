@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Version } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Version, Query } from '@nestjs/common';
 import { CotizacionesService } from './cotizaciones.service';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
@@ -17,8 +17,11 @@ export class CotizacionesController {
 
   @Version('1')
   @Get()
-  findAll() {
-    return this.cotizacionesService.findAll();
+  findAll(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    return this.cotizacionesService.findAll(parseInt(page), parseInt(limit));
   }
 
   @Version('1')

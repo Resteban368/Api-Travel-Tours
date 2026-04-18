@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { Reserva } from './entities/reserva.entity';
 import { Servicio } from '../servicios/entities/servicio.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
@@ -35,9 +35,10 @@ export class ReservasService {
     @InjectRepository(Aerolinea)
     private readonly aerolineaRepository: Repository<Aerolinea>,
     private readonly auditoriaService: AuditoriaReservaService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(dto: CreateReservaDto, realizadoPor?: string) {
+  async create(dto: CreateReservaDto, realizadoPor?: string, creadoPorId?: number) {
     // 1. Validar tour si aplica
     const tipoReserva = dto.tipo_reserva ?? 'tour';
     let tour: ToursMaestro | null = null;
@@ -69,7 +70,8 @@ export class ReservasService {
     const totalPersonas = 1 + (dto.integrantes?.length ?? 0);
     let valorTotalCalculado = dto.valor_total ?? 0;
 
-    if (dto.valor_total === undefined) {
+    // Si no se envió valor_total o llegó en 0/negativo, calcular automáticamente
+    if (!dto.valor_total || dto.valor_total <= 0) {
       if (tipoReserva === 'tour' && tour) {
         const precio = Number(tour.precio ?? 0);
         const precioTour = tour.precio_por_pareja
@@ -82,6 +84,7 @@ export class ReservasService {
       }
     }
 
+
     // 6. Crear la reserva
     const idReservaGenerado = `RES-${uuidv4().substring(0, 8).toUpperCase()}`;
     const reserva = this.reservaRepository.create({
@@ -91,6 +94,7 @@ export class ReservasService {
       estado: dto.estado ?? 'pendiente',
       notas: dto.notas,
       valor_total: valorTotalCalculado,
+      creado_por_id: creadoPorId ?? null,
       responsable,
       tour,
       servicios: serviciosAdicionales,
@@ -98,13 +102,29 @@ export class ReservasService {
       vuelos: vuelosEntidades,
     });
 
+    // Advertencia de cupos (no bloquea, solo informa)
+    let advertencia_cupos: string | null = null;
+    if (tour && tour.cupos !== null) {
+      const cuposUsados = await this.calcularCuposUsados(tour.id);
+      const cuposDisponibles = Math.max(0, tour.cupos - cuposUsados);
+      if (totalPersonas > cuposDisponibles) {
+        advertencia_cupos =
+          cuposDisponibles === 0
+            ? `El tour "${tour.nombre_tour}" no tiene cupos disponibles. Se registró la reserva igualmente.`
+            : `El tour "${tour.nombre_tour}" solo tiene ${cuposDisponibles} cupo(s) disponible(s) pero se solicitaron ${totalPersonas}. Se registró la reserva igualmente.`;
+      }
+    }
+
     const saved = await this.reservaRepository.save(reserva);
     await this.auditoriaService.registrarCreacion(saved, realizadoPor);
-    return this.transformResponse(saved);
+    const response = this.transformResponse(saved);
+    return advertencia_cupos ? { ...response, advertencia_cupos } : response;
   }
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, rol?: string, userId?: number) {
+    const where = rol !== 'admin' && userId ? { creado_por_id: userId } : {};
     const [reservas, total] = await this.reservaRepository.findAndCount({
+      where,
       order: { fecha_creacion: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -125,9 +145,8 @@ export class ReservasService {
 
     let needsValortotalRecalc = false;
 
-    if (dto.tipo_reserva !== undefined) {
-      reserva.tipo_reserva = dto.tipo_reserva;
-    }
+    // ── Validaciones y preparación FUERA de la transacción ──────────────────
+    if (dto.tipo_reserva !== undefined) reserva.tipo_reserva = dto.tipo_reserva;
 
     if (dto.id_tour !== undefined) {
       if (dto.id_tour === null) {
@@ -140,10 +159,9 @@ export class ReservasService {
       }
     }
 
-    if (dto.vuelos !== undefined) {
-      await this.vueloRepository.delete({ reserva: { id } });
-      reserva.vuelos = await this.buildVuelos(dto.vuelos);
-    }
+    const nuevosVuelos = dto.vuelos !== undefined
+      ? await this.buildVuelos(dto.vuelos)
+      : undefined;
 
     if (dto.id_responsable !== undefined) {
       const responsable = await this.clienteRepository.findOne({ where: { id: dto.id_responsable } });
@@ -162,9 +180,12 @@ export class ReservasService {
       needsValortotalRecalc = true;
     }
 
-    if (dto.integrantes !== undefined) {
-      await this.integranteRepository.delete({ reserva: { id } });
-      reserva.integrantes = dto.integrantes.map((i) => this.integranteRepository.create(i));
+    const nuevosIntegrantes = dto.integrantes !== undefined
+      ? dto.integrantes.map((i) => this.integranteRepository.create(i))
+      : undefined;
+
+    if (nuevosIntegrantes !== undefined) {
+      reserva.integrantes = nuevosIntegrantes;
       needsValortotalRecalc = true;
     }
 
@@ -180,11 +201,22 @@ export class ReservasService {
         const costoServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
         reserva.valor_total = precioTour + costoServicios;
       } else if (reserva.tipo_reserva === 'vuelos') {
-        reserva.valor_total = (reserva.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
+        reserva.valor_total = (nuevosVuelos ?? reserva.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
       }
     }
 
-    const saved = await this.reservaRepository.save(reserva);
+    // ── Escrituras atómicas dentro de la transacción ─────────────────────────
+    const saved = await this.dataSource.transaction(async (manager) => {
+      if (dto.vuelos !== undefined) {
+        await manager.delete(VueloReserva, { reserva: { id } });
+        reserva.vuelos = nuevosVuelos!;
+      }
+      if (nuevosIntegrantes !== undefined) {
+        await manager.delete(IntegranteReserva, { reserva: { id } });
+      }
+      return manager.save(Reserva, reserva);
+    });
+
     return this.transformResponseWithSaldo(saved);
   }
 
@@ -227,6 +259,27 @@ export class ReservasService {
 
   // --------------- helpers ---------------
 
+  private async calcularCuposUsados(tourId: number): Promise<number> {
+    const reservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId } },
+    });
+    const activas = reservas.filter((r) => r.estado !== 'cancelado');
+    let cuposUsados = 0;
+    for (const reserva of activas) {
+      const personas = 1 + (reserva.integrantes?.length ?? 0);
+      if (reserva.estado === 'al dia') {
+        cuposUsados += personas;
+        continue;
+      }
+      const tienePageValidado = await this.pagoRepository.findOne({
+        where: { reserva_id: reserva.id, is_validated: true },
+        select: ['id_pago'],
+      });
+      if (tienePageValidado) cuposUsados += personas;
+    }
+    return cuposUsados;
+  }
+
   private async buildVuelos(vuelos: CreateReservaDto['vuelos']): Promise<VueloReserva[]> {
     if (!vuelos || vuelos.length === 0) return [];
 
@@ -254,19 +307,7 @@ export class ReservasService {
   }
 
   private async transformResponseWithSaldo(reserva: Reserva) {
-    const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
-    let valor_total = Number(reserva.valor_total);
-
-    if (reserva.tipo_reserva === 'tour' && reserva.tour) {
-      const precio = Number(reserva.tour.precio ?? 0);
-      const precioTour = reserva.tour.precio_por_pareja
-        ? precio * Math.ceil(totalPersonas / 2)
-        : precio * totalPersonas;
-      const costoServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
-      valor_total = precioTour + costoServicios;
-    } else if (reserva.tipo_reserva === 'vuelos') {
-      valor_total = (reserva.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
-    }
+    const valor_total = Number(reserva.valor_total);
 
     const pagosValidados = await this.pagoRepository.find({
       where: { reserva_id: reserva.id, is_validated: true },
@@ -287,6 +328,7 @@ export class ReservasService {
       estado: reserva.estado,
       notas: reserva.notas,
       valor_total: reserva.valor_total,
+      creado_por_id: reserva.creado_por_id,
       fecha_creacion: reserva.fecha_creacion,
       fecha_actualizacion: reserva.fecha_actualizacion,
       responsable: reserva.responsable

@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -7,7 +8,24 @@ import {
   IsArray,
   IsNotEmpty,
   ArrayMinSize,
+  IsISO8601,
+  IsInt,
+  ValidateNested,
 } from 'class-validator';
+
+export class ItineraryDayDto {
+  @IsInt({ message: 'dia_numero debe ser un número entero' })
+  @IsNotEmpty()
+  dia_numero: number;
+
+  @IsString({ message: 'El título del día debe ser un texto' })
+  @IsNotEmpty({ message: 'El título del día es obligatorio' })
+  titulo: string;
+
+  @IsString({ message: 'La descripción del día debe ser un texto' })
+  @IsNotEmpty({ message: 'La descripción del día es obligatoria' })
+  descripcion: string;
+}
 
 export class CreateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
@@ -25,13 +43,11 @@ export class CreateTourDto {
   @IsOptional()
   agencia?: string;
 
-  @IsString({
-    message: 'La fecha de inicio debe ser una cadena de texto válida',
-  })
+  @IsISO8601({}, { message: 'fecha_inicio debe ser una fecha válida (ISO 8601)' })
   @IsNotEmpty({ message: 'La fecha de inicio es obligatoria' })
   fecha_inicio: string;
 
-  @IsString({ message: 'La fecha de fin debe ser una cadena de texto válida' })
+  @IsISO8601({}, { message: 'fecha_fin debe ser una fecha válida (ISO 8601)' })
   @IsNotEmpty({ message: 'La fecha de fin es obligatoria' })
   fecha_fin: string;
 
@@ -76,11 +92,14 @@ export class CreateTourDto {
   exclusions: string[];
 
   @IsArray({ message: 'El itinerario debe ser un arreglo' })
-  @ArrayMinSize(1, {
-    message: 'El tour debe tener al menos un día de itinerario',
-  })
-  @IsNotEmpty({ message: 'El campo de itinerario no puede estar vacío' })
-  itinerary: any[];
+  @ArrayMinSize(1, { message: 'El tour debe tener al menos un día de itinerario' })
+  @ValidateNested({ each: true })
+  @Type(() => ItineraryDayDto)
+  itinerary: ItineraryDayDto[];
+
+  @IsNumber({}, { message: 'El campo cupos debe ser un número entero' })
+  @IsOptional()
+  cupos?: number;
 
   @IsBoolean({ message: 'El campo es_promocion debe ser un booleano' })
   @IsOptional()

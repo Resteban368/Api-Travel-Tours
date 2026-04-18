@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsEmail, IsIn, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsIn, IsNotEmpty, IsBoolean, IsISO8601 } from 'class-validator';
+import { TIPOS_DOCUMENTO, TipoDocumento } from '../../common/constants/tipo-documento';
 
 export class CreateClienteDto {
   @IsString()
@@ -9,13 +10,13 @@ export class CreateClienteDto {
   @IsOptional()
   telefono?: string;
 
-  @IsString()
+  @IsISO8601({}, { message: 'fecha_nacimiento debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_nacimiento?: string;
 
-  @IsIn(['CC', 'TI', 'Pasaporte', 'cedula', 'pasaporte'])
+  @IsIn(TIPOS_DOCUMENTO, { message: `tipo_documento debe ser uno de: ${TIPOS_DOCUMENTO.join(', ')}` })
   @IsOptional()
-  tipo_documento?: 'CC' | 'TI' | 'Pasaporte' | 'cedula' | 'pasaporte';
+  tipo_documento?: TipoDocumento;
 
   @IsString()
   @IsOptional()
@@ -25,7 +26,7 @@ export class CreateClienteDto {
   @IsOptional()
   correo?: string;
 
-  @IsString()
+  @IsBoolean()
   @IsOptional()
-  estado?: string;
+  estado?: boolean;
 }

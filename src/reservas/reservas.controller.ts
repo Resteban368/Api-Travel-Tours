@@ -26,8 +26,8 @@ export class ReservasController {
   @Version('1')
   @Post()
   create(@Body() createReservaDto: CreateReservaDto, @Req() req: Request) {
-    const email = (req.user as any)?.email;
-    return this.reservasService.create(createReservaDto, email);
+    const user = req.user as any;
+    return this.reservasService.create(createReservaDto, user?.email, user?.id_usuario);
   }
 
   @Version('1')
@@ -35,8 +35,10 @@ export class ReservasController {
   findAll(
     @Query('page') page = '1',
     @Query('limit') limit = '20',
+    @Req() req: Request,
   ) {
-    return this.reservasService.findAll(parseInt(page), parseInt(limit));
+    const user = req.user as any;
+    return this.reservasService.findAll(parseInt(page), parseInt(limit), user?.rol, user?.id_usuario);
   }
 
   @Version('1')

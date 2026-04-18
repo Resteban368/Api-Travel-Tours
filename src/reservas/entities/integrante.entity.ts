@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Reserva } from './reserva.entity';
+import { TipoDocumento } from '../../common/constants/tipo-documento';
 
 @Entity('integrantes_reservas')
 export class IntegranteReserva {
@@ -16,7 +17,7 @@ export class IntegranteReserva {
   fecha_nacimiento: string | null;
 
   @Column({ type: 'text', nullable: true })
-  tipo_documento: 'cedula' | 'pasaporte' | null;
+  tipo_documento: TipoDocumento | null;
 
   @Column({ type: 'text', nullable: true })
   documento: string | null;

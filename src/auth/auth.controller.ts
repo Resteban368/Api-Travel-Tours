@@ -14,7 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { Public } from './decorators/public.decorator';
-
+import { Roles } from './decorators/roles.decorator';
 import { UsuariosService } from '../usuarios/usuarios.service';
 
 @Controller('auth')
@@ -69,7 +69,8 @@ export class AuthController {
     );
   }
 
-  /** Registro permitido a nivel general */
+  /** Solo administradores pueden crear nuevos usuarios */
+  @Roles('admin')
   @Version('1')
   @Post('register')
   register(@Body() dto: RegisterUserDto) {

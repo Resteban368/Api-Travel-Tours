@@ -4,9 +4,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, DataSource } from 'typeorm';
 import { PagoRealizado } from './entities/pago-realizado.entity';
 import { AuditoriaPago } from './entities/auditoria-pago.entity';
+import { Reserva } from '../reservas/entities/reserva.entity';
 import { CreatePagoRealizadoDto } from './dto/create-pago-realizado.dto';
 import { UpdatePagoRealizadoDto } from './dto/update-pago-realizado.dto';
 
@@ -21,6 +22,8 @@ const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
   'referencia',
   'fecha_documento',
   'is_validated',
+  'is_rechazado',
+  'motivo_rechazo',
   'url_imagen',
   'reserva_id',
 ];
@@ -33,6 +36,11 @@ export class PagosRealizadosService {
 
     @InjectRepository(AuditoriaPago)
     private readonly auditoriaRepository: Repository<AuditoriaPago>,
+
+    @InjectRepository(Reserva)
+    private readonly reservaRepository: Repository<Reserva>,
+
+    private readonly dataSource: DataSource,
   ) {}
 
   // ─── CREATE ───────────────────────────────────────────────────────────────
@@ -151,7 +159,7 @@ export class PagosRealizadosService {
     const columnasDirectas: (keyof UpdatePagoRealizadoDto)[] = [
       'chat_id', 'tipo_documento', 'monto', 'proveedor_comercio',
       'nit', 'metodo_pago', 'referencia', 'fecha_documento',
-      'is_validated', 'url_imagen', 'reserva_id',
+      'is_validated', 'is_rechazado', 'motivo_rechazo', 'url_imagen', 'reserva_id',
     ];
     for (const campo of columnasDirectas) {
       if (campo in updateDto && updateDto[campo] !== undefined) {
@@ -173,11 +181,74 @@ export class PagosRealizadosService {
     return pagoActualizado;
   }
 
+  // ─── CAMBIAR ESTADO (validar / rechazar) ──────────────────────────────────
+
+  async cambiarEstado(
+    id: number,
+    accion: 'validar' | 'rechazar',
+    motivoRechazo?: string,
+    realizadoPor?: string,
+  ): Promise<PagoRealizado> {
+    const pago = await this.findOne(id);
+
+    const updatePayload: Partial<PagoRealizado> = {};
+
+    if (accion === 'validar') {
+      updatePayload.is_validated = true;
+      updatePayload.is_rechazado = false;
+      updatePayload.motivo_rechazo = null;
+    } else {
+      updatePayload.is_validated = false;
+      updatePayload.is_rechazado = true;
+      updatePayload.motivo_rechazo = motivoRechazo ?? null;
+    }
+
+    const accionAuditoria = accion === 'validar' ? 'VALIDACION' : 'RECHAZO';
+    const valorAnterior = pago.is_validated ? 'validado' : pago.is_rechazado ? 'rechazado' : 'pendiente';
+    const valorNuevo = accion === 'validar' ? 'validado' : 'rechazado';
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(PagoRealizado, { id_pago: id }, updatePayload);
+
+      await manager.insert(AuditoriaPago, {
+        id_pago: id,
+        accion: accionAuditoria,
+        campo_modificado: 'estado',
+        valor_anterior: valorAnterior,
+        valor_nuevo: valorNuevo,
+        realizado_por: realizadoPor ?? null,
+      });
+
+      if (pago.reserva_id) {
+        const reserva = await manager.findOne(Reserva, { where: { id: pago.reserva_id } });
+        if (reserva && reserva.estado !== 'cancelado') {
+          const pagosValidados = await manager.find(PagoRealizado, {
+            where: { reserva_id: pago.reserva_id, is_validated: accion === 'validar' ? true : true },
+            select: ['monto', 'is_validated'],
+          });
+          // Recalcular con el nuevo estado del pago ya aplicado
+          const totalPagado = pagosValidados
+            .filter((p) => (p.id_pago === id ? accion === 'validar' : p.is_validated))
+            .reduce((sum, p) => sum + Number(p.monto), 0);
+          const nuevoEstado = Number(reserva.valor_total) > 0 && totalPagado >= Number(reserva.valor_total)
+            ? 'al dia'
+            : 'pendiente';
+          if (reserva.estado !== nuevoEstado) {
+            await manager.update(Reserva, { id: pago.reserva_id }, { estado: nuevoEstado });
+          }
+        }
+      }
+    });
+
+    return this.findOne(id);
+  }
+
   // ─── DELETE ───────────────────────────────────────────────────────────────
 
   async remove(id: number, realizadoPor?: string): Promise<{ message: string }> {
     const pago = await this.findOne(id);
-    
+    const reservaId = pago.reserva_id;
+
     // Auditoría de ELIMINACIÓN
     await this.auditoriaRepository.insert({
       id_pago: id,
@@ -186,7 +257,31 @@ export class PagosRealizadosService {
     });
 
     await this.pagosRepository.remove(pago);
+
+    if (reservaId) {
+      await this.syncEstadoReserva(reservaId);
+    }
+
     return { message: `Pago con ID ${id} eliminado correctamente` };
+  }
+
+  // ─── SYNC ESTADO RESERVA ──────────────────────────────────────────────────
+
+  private async syncEstadoReserva(reservaId: number): Promise<void> {
+    const reserva = await this.reservaRepository.findOne({ where: { id: reservaId } });
+    if (!reserva || reserva.estado === 'cancelado') return;
+
+    const pagosValidados = await this.pagosRepository.find({
+      where: { reserva_id: reservaId, is_validated: true },
+      select: ['monto'],
+    });
+    const totalPagado = pagosValidados.reduce((sum, p) => sum + Number(p.monto), 0);
+    const valorTotal = Number(reserva.valor_total);
+
+    const nuevoEstado = valorTotal > 0 && totalPagado >= valorTotal ? 'al dia' : 'pendiente';
+    if (reserva.estado !== nuevoEstado) {
+      await this.reservaRepository.update({ id: reservaId }, { estado: nuevoEstado });
+    }
   }
 
   // ─── AUDITORÍA ────────────────────────────────────────────────────────────

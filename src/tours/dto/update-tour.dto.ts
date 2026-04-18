@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -7,7 +8,10 @@ import {
   IsArray,
   IsNotEmpty,
   ArrayMinSize,
+  IsISO8601,
+  ValidateNested,
 } from 'class-validator';
+import { ItineraryDayDto } from './create-tour.dto';
 
 export class UpdateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
@@ -25,13 +29,11 @@ export class UpdateTourDto {
   @IsOptional()
   agencia?: string;
 
-  @IsString({
-    message: 'La fecha de inicio debe ser una cadena de texto válida',
-  })
+  @IsISO8601({}, { message: 'fecha_inicio debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_inicio?: string;
 
-  @IsString({ message: 'La fecha de fin debe ser una cadena de texto válida' })
+  @IsISO8601({}, { message: 'fecha_fin debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_fin?: string;
 
@@ -74,8 +76,14 @@ export class UpdateTourDto {
   exclusions?: string[];
 
   @IsArray({ message: 'El itinerario debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => ItineraryDayDto)
   @IsOptional()
-  itinerary?: any[];
+  itinerary?: ItineraryDayDto[];
+
+  @IsNumber({}, { message: 'El campo cupos debe ser un número entero' })
+  @IsOptional()
+  cupos?: number;
 
   @IsBoolean({ message: 'El campo es_promocion debe ser un booleano' })
   @IsOptional()

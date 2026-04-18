@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
+import { Reserva } from '../reservas/entities/reserva.entity';
+import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
@@ -15,6 +17,10 @@ export class ToursService {
     private readonly toursMaestroRepository: Repository<ToursMaestro>,
     @InjectRepository(N8nVector)
     private readonly n8nVectorsRepository: Repository<N8nVector>,
+    @InjectRepository(Reserva)
+    private readonly reservaRepository: Repository<Reserva>,
+    @InjectRepository(PagoRealizado)
+    private readonly pagoRepository: Repository<PagoRealizado>,
     private readonly embeddingsService: EmbeddingsService,
   ) {}
 
@@ -35,6 +41,7 @@ export class ToursService {
       inclusions: dto.inclusions ?? null,
       exclusions: dto.exclusions ?? null,
       itinerary: dto.itinerary ?? null,
+      cupos: dto.cupos ?? null,
       es_promocion: dto.es_promocion ?? false,
       is_active: dto.is_active ?? true,
       es_borrador: dto.es_borrador ?? false,
@@ -121,6 +128,7 @@ export class ToursService {
       tour.is_active = dto.is_active;
       tour.deleted_at = dto.is_active ? null : new Date();
     }
+    if (dto.cupos !== undefined) tour.cupos = dto.cupos ?? null;
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
 
@@ -196,18 +204,178 @@ export class ToursService {
     return saved;
   }
 
-  async findAll(soloActivos = true): Promise<ToursMaestro[]> {
+  async findAll(soloActivos = true) {
     const where = soloActivos ? { is_active: true } : {};
     const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
-    return tours.map((t) => this.normalize(t));
+    return Promise.all(tours.map((t) => this.enriquecerConCupos(this.normalize(t))));
   }
 
-  async findOne(id: number): Promise<ToursMaestro> {
+  async findOne(id: number) {
     const tour = await this.toursMaestroRepository.findOne({ where: { id } });
     if (!tour) {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
-    return this.normalize(tour);
+    return this.enriquecerConCupos(this.normalize(tour));
+  }
+
+  async findDetalle(tourId: number) {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+
+    const reservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId } },
+      order: { fecha_creacion: 'DESC' },
+    });
+
+    const cuposUsados = await this.calcularCuposUsados(tourId);
+    const cuposDisponibles = tour.cupos !== null
+      ? Math.max(0, tour.cupos - cuposUsados)
+      : null;
+
+    // Una sola query trae todos los pagos validados de todas las reservas
+    const reservaIds = reservas.map((r) => r.id);
+    const todosPagosValidados = reservaIds.length > 0
+      ? await this.pagoRepository.find({
+          where: { reserva_id: In(reservaIds), is_validated: true },
+          select: ['reserva_id', 'monto'],
+        })
+      : [];
+
+    const montoPorReserva = new Map<number, number>();
+    const reservasConPago = new Set<number>();
+    for (const p of todosPagosValidados) {
+      const rid = p.reserva_id!;
+      montoPorReserva.set(rid, (montoPorReserva.get(rid) ?? 0) + Number(p.monto));
+      reservasConPago.add(rid);
+    }
+
+    const reservasDetalle = reservas.map((r) => {
+        const valor_cancelado = montoPorReserva.get(r.id) ?? 0;
+        const tienePageValidado = reservasConPago.has(r.id);
+        const ocupaCupo = r.estado === 'al dia' || (r.estado !== 'cancelado' && tienePageValidado);
+
+        const valor_total = Number(r.valor_total);
+
+        return {
+          id: r.id,
+          id_reserva: r.id_reserva,
+          estado: r.estado,
+          notas: r.notas,
+          fecha_creacion: r.fecha_creacion,
+          ocupa_cupo: ocupaCupo,
+          valor_total,
+          valor_cancelado,
+          saldo_pendiente: valor_total - valor_cancelado,
+          responsable: r.responsable
+            ? {
+                id: r.responsable.id,
+                nombre: r.responsable.nombre,
+                telefono: r.responsable.telefono,
+                correo: r.responsable.correo,
+                tipo_documento: r.responsable.tipo_documento,
+                documento: r.responsable.documento,
+              }
+            : null,
+          integrantes: (r.integrantes ?? []).map((i) => ({
+            id: i.id,
+            nombre: i.nombre,
+            telefono: i.telefono,
+            fecha_nacimiento: i.fecha_nacimiento,
+            tipo_documento: i.tipo_documento,
+            documento: i.documento,
+          })),
+          total_personas: 1 + (r.integrantes?.length ?? 0),
+        };
+      });
+
+    // Lista plana de todos los pasajeros que ocupan cupo
+    const pasajeros: Array<{
+      nombre: string;
+      tipo_documento: string | null;
+      documento: string | null;
+      telefono: string | null;
+      tipo: 'responsable' | 'integrante';
+      reserva_id: string;
+      estado_reserva: string;
+    }> = [];
+
+    for (const r of reservasDetalle) {
+      if (!r.ocupa_cupo) continue;
+      if (r.responsable) {
+        pasajeros.push({
+          nombre: r.responsable.nombre,
+          tipo_documento: r.responsable.tipo_documento ?? null,
+          documento: r.responsable.documento ?? null,
+          telefono: r.responsable.telefono ?? null,
+          tipo: 'responsable',
+          reserva_id: r.id_reserva,
+          estado_reserva: r.estado,
+        });
+      }
+      for (const i of r.integrantes) {
+        pasajeros.push({
+          nombre: i.nombre,
+          tipo_documento: i.tipo_documento ?? null,
+          documento: i.documento ?? null,
+          telefono: i.telefono ?? null,
+          tipo: 'integrante',
+          reserva_id: r.id_reserva,
+          estado_reserva: r.estado,
+        });
+      }
+    }
+
+    return {
+      tour: {
+        ...this.normalize(tour),
+        cupos_usados: cuposUsados,
+        cupos_disponibles: cuposDisponibles,
+      },
+      reservas: reservasDetalle,
+      pasajeros,
+      total_pasajeros: pasajeros.length,
+    };
+  }
+
+  async calcularCuposUsados(tourId: number): Promise<number> {
+    const reservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId } },
+    });
+
+    const activas = reservas.filter((r) => r.estado !== 'cancelado');
+    if (activas.length === 0) return 0;
+
+    // Una sola query: reservas pendientes que tienen al menos un pago validado
+    const pendientesIds = activas
+      .filter((r) => r.estado !== 'al dia')
+      .map((r) => r.id);
+
+    const reservasConPago = new Set<number>();
+    if (pendientesIds.length > 0) {
+      const pagos = await this.pagoRepository
+        .createQueryBuilder('p')
+        .select('DISTINCT p.reserva_id', 'reserva_id')
+        .where('p.reserva_id IN (:...ids)', { ids: pendientesIds })
+        .andWhere('p.is_validated = true')
+        .getRawMany<{ reserva_id: number }>();
+      pagos.forEach((p) => reservasConPago.add(Number(p.reserva_id)));
+    }
+
+    return activas.reduce((total, r) => {
+      const personas = 1 + (r.integrantes?.length ?? 0);
+      if (r.estado === 'al dia' || reservasConPago.has(r.id)) {
+        return total + personas;
+      }
+      return total;
+    }, 0);
+  }
+
+  private async enriquecerConCupos(tour: ToursMaestro) {
+    if (tour.cupos === null) {
+      return { ...tour, cupos_disponibles: null };
+    }
+    const usados = await this.calcularCuposUsados(tour.id);
+    return { ...tour, cupos_disponibles: Math.max(0, tour.cupos - usados) };
   }
 
   private normalize(tour: ToursMaestro): ToursMaestro {

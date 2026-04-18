@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsBoolean, IsOptional, IsUrl, IsInt } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsBoolean, IsOptional, IsUrl, IsInt, Min, IsISO8601 } from 'class-validator';
 
 export class CreatePagoRealizadoDto {
   @IsString({ message: 'El chat_id debe ser un texto' })
@@ -10,6 +10,7 @@ export class CreatePagoRealizadoDto {
   tipo_documento: string;
 
   @IsNumber({}, { message: 'El monto debe ser un valor numérico' })
+  @Min(0.01, { message: 'El monto debe ser mayor a 0' })
   @IsNotEmpty({ message: 'El monto es obligatorio' })
   monto: number;
 
@@ -29,13 +30,21 @@ export class CreatePagoRealizadoDto {
   @IsNotEmpty({ message: 'La referencia es obligatoria' })
   referencia: string;
 
-  @IsString({ message: 'La fecha_documento debe ser un texto' })
+  @IsISO8601({}, { message: 'fecha_documento debe ser una fecha válida (ISO 8601)' })
   @IsNotEmpty({ message: 'La fecha_documento es obligatoria' })
   fecha_documento: string;
 
   @IsBoolean({ message: 'is_validated debe ser un valor booleano' })
   @IsOptional()
   is_validated?: boolean;
+
+  @IsBoolean({ message: 'is_rechazado debe ser un valor booleano' })
+  @IsOptional()
+  is_rechazado?: boolean;
+
+  @IsString({ message: 'motivo_rechazo debe ser un texto' })
+  @IsOptional()
+  motivo_rechazo?: string;
 
   @IsUrl({}, { message: 'url_imagen debe ser una URL válida' })
   @IsOptional()

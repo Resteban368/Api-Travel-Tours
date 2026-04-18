@@ -36,6 +36,9 @@ export class Reserva {
   @Column({ type: 'text', nullable: true })
   notas: string | null;
 
+  @Column({ name: 'creado_por_id', type: 'integer', nullable: true })
+  creado_por_id: number | null;
+
   @Column({ name: 'valor_total', type: 'numeric', precision: 10, scale: 2, default: 0 })
   valor_total: number;
 

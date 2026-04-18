@@ -53,6 +53,12 @@ export class ToursController {
   }
 
   @Version('1')
+  @Get(':id/detalle')
+  findDetalle(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.findDetalle(id);
+  }
+
+  @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.toursService.findOne(id);

@@ -25,6 +25,7 @@ import { ReservasModule } from './reservas/reservas.module';
 import { AerolineasModule } from './aerolineas/aerolineas.module';
 import { ModulosModule } from './modulos/modulos.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { PermisosGuard } from './modulos/guards/permisos.guard';
 
 @Module({
@@ -64,6 +65,7 @@ import { PermisosGuard } from './modulos/guards/permisos.guard';
     ReservasModule,
     AerolineasModule,
     ClientesModule,
+    UploadsModule,
     ModulosModule,
   ],
   controllers: [AppController],

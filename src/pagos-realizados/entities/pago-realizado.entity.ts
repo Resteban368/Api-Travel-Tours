@@ -43,6 +43,12 @@ export class PagoRealizado {
   @Column({ name: 'is_validated', type: 'boolean', default: false })
   is_validated: boolean;
 
+  @Column({ name: 'is_rechazado', type: 'boolean', default: false })
+  is_rechazado: boolean;
+
+  @Column({ name: 'motivo_rechazo', type: 'text', nullable: true })
+  motivo_rechazo: string | null;
+
   @Column({ name: 'url_imagen', type: 'text', nullable: true })
   url_imagen: string | null;
 

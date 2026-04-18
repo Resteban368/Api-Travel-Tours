@@ -64,6 +64,9 @@ export class ToursMaestro {
   @Column({ name: 'itinerary', type: 'jsonb', nullable: true })
   itinerary: any[] | null;
 
+  @Column({ name: 'cupos', type: 'int', nullable: true, default: null })
+  cupos: number | null;
+
   @Column({ name: 'es_promocion', type: 'boolean', default: false })
   es_promocion: boolean;
 

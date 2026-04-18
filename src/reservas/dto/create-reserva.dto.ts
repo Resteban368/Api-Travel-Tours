@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsISO8601,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -12,6 +13,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { TIPOS_DOCUMENTO, TipoDocumento } from '../../common/constants/tipo-documento';
 
 export class IntegranteDto {
   @IsString()
@@ -22,13 +24,13 @@ export class IntegranteDto {
   @IsOptional()
   telefono?: string;
 
-  @IsString()
+  @IsISO8601({}, { message: 'fecha_nacimiento debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_nacimiento?: string;
 
-  @IsIn(['cedula', 'pasaporte'])
+  @IsIn(TIPOS_DOCUMENTO, { message: `tipo_documento debe ser uno de: ${TIPOS_DOCUMENTO.join(', ')}` })
   @IsOptional()
-  tipo_documento?: 'cedula' | 'pasaporte';
+  tipo_documento?: TipoDocumento;
 
   @IsString()
   @IsOptional()
@@ -52,11 +54,11 @@ export class VueloDto {
   @IsNotEmpty()
   destino: string;
 
-  @IsString()
+  @IsISO8601({}, { message: 'fecha_salida debe ser una fecha válida (ISO 8601)' })
   @IsNotEmpty()
   fecha_salida: string;
 
-  @IsString()
+  @IsISO8601({}, { message: 'fecha_llegada debe ser una fecha válida (ISO 8601)' })
   @IsNotEmpty()
   fecha_llegada: string;
 

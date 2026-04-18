@@ -17,8 +17,13 @@ export class CotizacionesService {
     return this.cotizacionRepository.save(newCotizacion);
   }
 
-  findAll() {
-    return this.cotizacionRepository.find({ order: { created_at: 'DESC' } });
+  async findAll(page = 1, limit = 20) {
+    const [data, total] = await this.cotizacionRepository.findAndCount({
+      order: { created_at: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number) {

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Usuario, UserRole } from './entities/usuario.entity';
 import { Rol } from './entities/rol.entity';
@@ -125,12 +125,7 @@ export class UsuariosService implements OnModuleInit {
     const usuarios = await this.usuariosRepository.find({
       order: { fecha_creacion: 'DESC' },
     });
-    return Promise.all(
-      usuarios.map(async (u) => ({
-        ...this.sanitize(u),
-        permisos: await this.obtenerPermisos(u.id_usuario, u.rol_nombre),
-      })),
-    );
+    return this.attachPermisosToUsuarios(usuarios);
   }
 
   async findAllByRole(role: UserRole) {
@@ -138,12 +133,7 @@ export class UsuariosService implements OnModuleInit {
       where: { rol_nombre: role },
       order: { fecha_creacion: 'DESC' },
     });
-    return Promise.all(
-      usuarios.map(async (u) => ({
-        ...this.sanitize(u),
-        permisos: await this.obtenerPermisos(u.id_usuario, u.rol_nombre),
-      })),
-    );
+    return this.attachPermisosToUsuarios(usuarios);
   }
 
   async findOne(id: number) {
@@ -236,15 +226,48 @@ export class UsuariosService implements OnModuleInit {
       where: { rol_nombre: 'agente' },
       order: { fecha_creacion: 'DESC' },
     });
-    return Promise.all(
-      agentes.map(async (a) => {
-        const permisos = await this.obtenerPermisos(a.id_usuario);
-        return { ...this.sanitize(a), permisos };
-      }),
-    );
+    return this.attachPermisosToUsuarios(agentes);
   }
 
   // ─── PRIVADO ──────────────────────────────────────────────────────────────
+
+  private async attachPermisosToUsuarios(usuarios: Usuario[]) {
+    if (usuarios.length === 0) return [];
+
+    const admins = usuarios.filter((u) => u.rol_nombre === 'admin');
+    const agentes = usuarios.filter((u) => u.rol_nombre !== 'admin');
+
+    // Una query para módulos (compartida por todos los admins)
+    let modulosPermisos: Record<string, TipoPermiso> = {};
+    if (admins.length > 0) {
+      const modulos = await this.moduloRepo.find({ where: { estado: true } });
+      modulosPermisos = Object.fromEntries(
+        modulos.map((m) => [m.nombre, 'completo' as TipoPermiso]),
+      );
+    }
+
+    // Una query para todos los permisos de agentes
+    const permisosPorUsuario = new Map<number, Record<string, TipoPermiso>>();
+    if (agentes.length > 0) {
+      const ids = agentes.map((u) => u.id_usuario);
+      const permisos = await this.permisoRepo.find({
+        where: { usuario_id: In(ids) },
+      });
+      for (const p of permisos) {
+        if (!permisosPorUsuario.has(p.usuario_id)) {
+          permisosPorUsuario.set(p.usuario_id, {});
+        }
+        permisosPorUsuario.get(p.usuario_id)![p.modulo.nombre] = p.tipo_permiso;
+      }
+    }
+
+    return usuarios.map((u) => ({
+      ...this.sanitize(u),
+      permisos: u.rol_nombre === 'admin'
+        ? modulosPermisos
+        : (permisosPorUsuario.get(u.id_usuario) ?? {}),
+    }));
+  }
 
   private sanitize(usuario: Usuario): Omit<Usuario, 'password_hash' | 'refresh_token_hash'> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
 } from 'typeorm';
+import { TipoDocumento } from '../../common/constants/tipo-documento';
 
 @Entity('clientes_app')
 export class ClienteApp {
@@ -23,7 +24,7 @@ export class ClienteApp {
     type: 'text',
     nullable: true,
   })
-  tipo_documento: 'CC' | 'TI' | 'Pasaporte' | 'cedula' | 'pasaporte' | null;
+  tipo_documento: TipoDocumento | null;
 
   @Column({ type: 'text', nullable: true })
   documento: string | null;
@@ -31,8 +32,11 @@ export class ClienteApp {
   @Column({ type: 'text', nullable: true })
   correo: string | null;
 
-  @Column({ type: 'text', default: 'activo' })
-  estado: string;
+  @Column({ type: 'boolean', default: true })
+  estado: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  deleted_at: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   fecha_creacion: Date;
