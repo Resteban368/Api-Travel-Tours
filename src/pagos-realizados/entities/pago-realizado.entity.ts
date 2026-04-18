@@ -28,8 +28,8 @@ export class PagoRealizado {
   @Column({ name: 'proveedor_comercio', type: 'text' })
   proveedor_comercio: string;
 
-  @Column({ name: 'nit', type: 'text' })
-  nit: string;
+  @Column({ name: 'nit', type: 'text', nullable: true })
+  nit: string | null;
 
   @Column({ name: 'metodo_pago', type: 'text' })
   metodo_pago: string;

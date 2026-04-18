@@ -39,7 +39,17 @@ export class Reserva {
   @Column({ name: 'creado_por_id', type: 'integer', nullable: true })
   creado_por_id: number | null;
 
-  @Column({ name: 'valor_total', type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: 'valor_total',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string | number) => (value == null ? 0 : Number(value)),
+    },
+  })
   valor_total: number;
 
   @CreateDateColumn({ type: 'timestamptz' })

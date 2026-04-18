@@ -16,6 +16,7 @@ const MODULOS_SEED: { nombre: string; descripcion: string }[] = [
   { nombre: 'pagosRealizados', descripcion: 'Pagos realizados y validación' },
   { nombre: 'agentes', descripcion: 'Gestión de agentes' },
   { nombre: 'reservas', descripcion: 'Gestión de reservas' },
+  { nombre: 'cotizacion', descripcion: 'Gestión de cotizaciones' },
 ];
 
 @Injectable()

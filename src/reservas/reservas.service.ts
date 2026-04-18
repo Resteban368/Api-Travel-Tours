@@ -144,6 +144,13 @@ export class ReservasService {
     if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
 
     let needsValortotalRecalc = false;
+    let tourChanged = false;
+
+    // Capturamos los valores ANTES de mutar la entidad, para calcular
+    // correctamente el delta y preservar el precio snapshot del tour.
+    const snapshotValorTotal = Number(reserva.valor_total);
+    const originalServicios = reserva.servicios ?? [];
+    const originalIntegrantesCount = reserva.integrantes?.length ?? 0;
 
     // ── Validaciones y preparación FUERA de la transacción ──────────────────
     if (dto.tipo_reserva !== undefined) reserva.tipo_reserva = dto.tipo_reserva;
@@ -151,9 +158,15 @@ export class ReservasService {
     if (dto.id_tour !== undefined) {
       if (dto.id_tour === null) {
         reserva.tour = null;
+        tourChanged = true;
+        needsValortotalRecalc = true;
       } else {
         const tour = await this.tourRepository.findOne({ where: { id: dto.id_tour } });
         if (!tour) throw new NotFoundException(`Tour con ID ${dto.id_tour} no encontrado`);
+        // tourChanged solo es true si el tour realmente cambia a uno diferente.
+        // El Flutter siempre envía id_tour aunque no haya cambiado, por lo que
+        // comparamos con el tour actual antes de marcarlo como cambiado.
+        tourChanged = reserva.tour?.id !== dto.id_tour;
         reserva.tour = tour;
         needsValortotalRecalc = true;
       }
@@ -192,14 +205,43 @@ export class ReservasService {
     if (dto.valor_total !== undefined) {
       reserva.valor_total = dto.valor_total;
     } else if (needsValortotalRecalc) {
-      const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
       if (reserva.tipo_reserva === 'tour' && reserva.tour) {
-        const precio = Number(reserva.tour.precio ?? 0);
-        const precioTour = reserva.tour.precio_por_pareja
-          ? precio * Math.ceil(totalPersonas / 2)
-          : precio * totalPersonas;
-        const costoServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
-        reserva.valor_total = precioTour + costoServicios;
+        const newServiciosCost = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+
+        if (tourChanged) {
+          // El tour cambió: recalcular desde el precio actual del nuevo tour
+          const newPersonas = 1 + (reserva.integrantes?.length ?? 0);
+          const precio = Number(reserva.tour.precio ?? 0);
+          const precioTour = reserva.tour.precio_por_pareja
+            ? precio * Math.ceil(newPersonas / 2)
+            : precio * newPersonas;
+          reserva.valor_total = precioTour + newServiciosCost;
+        } else {
+          // El tour NO cambió: preservar el precio unitario del snapshot para
+          // no aplicar cambios futuros de precio a reservas ya acordadas.
+          const oldServiciosCost = originalServicios.reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+          const tourSubtotalSnapshot = snapshotValorTotal - oldServiciosCost;
+
+          const oldPersonas = 1 + originalIntegrantesCount;
+          const newPersonas = 1 + (reserva.integrantes?.length ?? 0);
+          const precioPorPareja = reserva.tour.precio_por_pareja ?? false;
+          const oldUnits = precioPorPareja ? Math.ceil(oldPersonas / 2) : oldPersonas;
+          const newUnits = precioPorPareja ? Math.ceil(newPersonas / 2) : newPersonas;
+
+          let newTourSubtotal: number;
+          if (oldUnits > 0) {
+            // Derivar precio-por-unidad del snapshot y escalar al nuevo nro de personas
+            const precioUnitSnapshot = tourSubtotalSnapshot / oldUnits;
+            newTourSubtotal = precioUnitSnapshot * newUnits;
+          } else {
+            // Fallback (no debería ocurrir): usar precio actual del tour
+            const precio = Number(reserva.tour.precio ?? 0);
+            newTourSubtotal = precioPorPareja
+              ? precio * Math.ceil(newPersonas / 2)
+              : precio * newPersonas;
+          }
+          reserva.valor_total = newTourSubtotal + newServiciosCost;
+        }
       } else if (reserva.tipo_reserva === 'vuelos') {
         reserva.valor_total = (nuevosVuelos ?? reserva.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
       }
@@ -214,7 +256,13 @@ export class ReservasService {
       if (nuevosIntegrantes !== undefined) {
         await manager.delete(IntegranteReserva, { reserva: { id } });
       }
-      return manager.save(Reserva, reserva);
+      const result = await manager.save(Reserva, reserva);
+      // Forzar persistencia explícita de valor_total: TypeORM con columnas
+      // numeric de PostgreSQL puede omitir el campo en el UPDATE por
+      // comparación string/number en el dirty-check.
+      await manager.update(Reserva, { id }, { valor_total: reserva.valor_total });
+      result.valor_total = reserva.valor_total;
+      return result;
     });
 
     return this.transformResponseWithSaldo(saved);

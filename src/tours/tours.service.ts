@@ -4,9 +4,11 @@ import { Repository, In } from 'typeorm';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
+import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaTourService } from './services/auditoria-tour.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 
@@ -17,11 +19,14 @@ export class ToursService {
     private readonly toursMaestroRepository: Repository<ToursMaestro>,
     @InjectRepository(N8nVector)
     private readonly n8nVectorsRepository: Repository<N8nVector>,
+    @InjectRepository(AuditoriaTour)
+    private readonly auditoriaTourRepository: Repository<AuditoriaTour>,
     @InjectRepository(Reserva)
     private readonly reservaRepository: Repository<Reserva>,
     @InjectRepository(PagoRealizado)
     private readonly pagoRepository: Repository<PagoRealizado>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaTourService: AuditoriaTourService,
   ) {}
 
   async create(dto: CreateTourDto): Promise<ToursMaestro> {
@@ -48,6 +53,7 @@ export class ToursService {
       sede_id: dto.sede_id ?? null,
     });
     const saved = await this.toursMaestroRepository.save(tour);
+    await this.auditoriaTourService.registrarCreacion(saved).catch(() => null);
 
     if (!saved.is_active || saved.es_borrador) {
       return saved;
@@ -106,13 +112,22 @@ export class ToursService {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
 
+    // Campos auditables con sus valores anteriores
+    const camposAuditables: { campo: string; anterior: any; nuevo: any }[] = [];
+    const track = (campo: string, anterior: any, nuevo: any) => {
+      if (nuevo !== undefined && String(anterior ?? '') !== String(nuevo ?? ''))
+        camposAuditables.push({ campo, anterior, nuevo });
+    };
+
     if (dto.id_tour !== undefined) tour.id_tour = dto.id_tour;
+    track('nombre_tour', tour.nombre_tour, dto.nombre_tour);
     if (dto.nombre_tour !== undefined) tour.nombre_tour = dto.nombre_tour;
     if (dto.agencia !== undefined) tour.agencia = dto.agencia;
     if (dto.fecha_inicio !== undefined)
       tour.fecha_inicio = dto.fecha_inicio ? new Date(dto.fecha_inicio) : null;
     if (dto.fecha_fin !== undefined)
       tour.fecha_fin = dto.fecha_fin ? new Date(dto.fecha_fin) : null;
+    track('precio', tour.precio, dto.precio);
     if (dto.precio !== undefined) tour.precio = dto.precio;
     if (dto.precio_por_pareja !== undefined) tour.precio_por_pareja = dto.precio_por_pareja ?? null;
     if (dto.punto_partida !== undefined) tour.punto_partida = dto.punto_partida;
@@ -125,14 +140,31 @@ export class ToursService {
     if (dto.itinerary !== undefined) tour.itinerary = dto.itinerary;
     if (dto.es_promocion !== undefined) tour.es_promocion = dto.es_promocion;
     if (dto.is_active !== undefined) {
+      track('is_active', tour.is_active, dto.is_active);
       tour.is_active = dto.is_active;
       tour.deleted_at = dto.is_active ? null : new Date();
     }
+    track('cupos', tour.cupos, dto.cupos);
     if (dto.cupos !== undefined) tour.cupos = dto.cupos ?? null;
+    track('es_borrador', tour.es_borrador, dto.es_borrador);
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
 
     const saved = await this.toursMaestroRepository.save(tour);
+
+    // Registrar auditoría por cada campo que cambió
+    await Promise.all(
+      camposAuditables.map(({ campo, anterior, nuevo }) => {
+        if (campo === 'is_active' || campo === 'es_borrador') {
+          return this.auditoriaTourService
+            .registrarCambioEstado(saved, campo as any, anterior, nuevo)
+            .catch(() => null);
+        }
+        return this.auditoriaTourService
+          .registrarEdicion(saved, campo, anterior, nuevo)
+          .catch(() => null);
+      }),
+    );
 
     // Buscar vectores existentes de este tour
     const existingVectors = await this.n8nVectorsRepository
@@ -255,6 +287,8 @@ export class ToursService {
         const ocupaCupo = r.estado === 'al dia' || (r.estado !== 'cancelado' && tienePageValidado);
 
         const valor_total = Number(r.valor_total);
+        const costo_servicios = (r.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+        const valor_tour_snapshot = valor_total - costo_servicios;
 
         return {
           id: r.id,
@@ -264,6 +298,8 @@ export class ToursService {
           fecha_creacion: r.fecha_creacion,
           ocupa_cupo: ocupaCupo,
           valor_total,
+          valor_tour_snapshot,
+          costo_servicios,
           valor_cancelado,
           saldo_pendiente: valor_total - valor_cancelado,
           responsable: r.responsable

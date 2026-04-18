@@ -5,7 +5,7 @@ import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('cotizaciones')
-@RequierePermiso('cotizaciones')
+@RequierePermiso('cotizacion')
 export class CotizacionesController {
   constructor(private readonly cotizacionesService: CotizacionesService) {}
 

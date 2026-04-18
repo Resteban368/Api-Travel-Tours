@@ -19,8 +19,8 @@ export class CreatePagoRealizadoDto {
   proveedor_comercio: string;
 
   @IsString({ message: 'El nit debe ser un texto' })
-  @IsNotEmpty({ message: 'El nit es obligatorio' })
-  nit: string;
+  @IsOptional()
+  nit?: string;
 
   @IsString({ message: 'El metodo_pago debe ser un texto' })
   @IsNotEmpty({ message: 'El metodo_pago es obligatorio' })
