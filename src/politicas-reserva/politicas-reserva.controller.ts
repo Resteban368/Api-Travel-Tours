@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { PoliticasReservaService } from './politicas-reserva.service';
 import { CreatePoliticaReservaDto, UpdatePoliticaReservaDto } from './dto/politicas-reserva.dto';
@@ -19,8 +20,8 @@ export class PoliticasReservaController {
 
   @Version('1')
   @Post()
-  create(@Body() createDto: CreatePoliticaReservaDto) {
-    return this.politicasReservaService.create(createDto);
+  create(@Body() createDto: CreatePoliticaReservaDto, @Req() req: any) {
+    return this.politicasReservaService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -40,14 +41,15 @@ export class PoliticasReservaController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdatePoliticaReservaDto,
+    @Req() req: any,
   ) {
-    return this.politicasReservaService.update(id, updateDto);
+    return this.politicasReservaService.update(id, updateDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.politicasReservaService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.politicasReservaService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')

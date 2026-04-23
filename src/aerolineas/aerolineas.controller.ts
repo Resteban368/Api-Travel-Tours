@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { AerolineasService } from './aerolineas.service';
 import { CreateAerolineaDto } from './dto/create-aerolinea.dto';
@@ -20,8 +21,8 @@ export class AerolineasController {
   @Version('1')
   @Post()
   @Roles('admin')
-  create(@Body() dto: CreateAerolineaDto) {
-    return this.aerolineasService.create(dto);
+  create(@Body() dto: CreateAerolineaDto, @Req() req: any) {
+    return this.aerolineasService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -39,7 +40,7 @@ export class AerolineasController {
   @Version('1')
   @Patch(':id')
   @Roles('admin')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAerolineaDto) {
-    return this.aerolineasService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAerolineaDto, @Req() req: any) {
+    return this.aerolineasService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

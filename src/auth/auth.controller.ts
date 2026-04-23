@@ -2,8 +2,11 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Query,
   Request,
   Version,
 } from '@nestjs/common';
@@ -29,8 +32,10 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 intentos por minuto
   @Version('1')
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Request() req: any) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? null;
+    const userAgent = req.headers['user-agent'] ?? null;
+    return this.authService.login(dto, ip, userAgent);
   }
 
   /** Endpoint público — no requiere token */
@@ -80,5 +85,21 @@ export class AuthController {
       password: dto.password,
       rol: dto.rol,
     });
+  }
+
+  /** Historial de sesiones por usuario — solo admin */
+  @Roles('admin')
+  @Version('1')
+  @Get('sesiones/:usuarioId')
+  historialSesiones(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
+    return this.authService.historialSesiones(usuarioId);
+  }
+
+  /** Sesiones de todos los usuarios por día — solo admin */
+  @Roles('admin')
+  @Version('1')
+  @Get('sesiones')
+  sesionesDelDia(@Query('fecha') fecha?: string) {
+    return this.authService.sesionesDelDia(fecha);
   }
 }

@@ -27,6 +27,10 @@ import { ModulosModule } from './modulos/modulos.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PermisosGuard } from './modulos/guards/permisos.guard';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { AnalisisIaModule } from './analisis-ia/analisis-ia.module';
+import { HotelesModule } from './hoteles/hoteles.module';
+import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.module';
 
 @Module({
   imports: [
@@ -67,6 +71,10 @@ import { PermisosGuard } from './modulos/guards/permisos.guard';
     ClientesModule,
     UploadsModule,
     ModulosModule,
+    AnalyticsModule,
+    AnalisisIaModule,
+    HotelesModule,
+    AuditoriaGeneralModule,
   ],
   controllers: [AppController],
   providers: [

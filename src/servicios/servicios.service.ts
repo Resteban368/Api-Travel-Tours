@@ -5,6 +5,7 @@ import { Servicio } from './entities/servicio.entity';
 import { CreateServicioDto, UpdateServicioDto } from './dto/servicios.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 @Injectable()
 export class ServiciosService {
@@ -14,12 +15,21 @@ export class ServiciosService {
     @InjectRepository(N8nVector)
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(createDto: CreateServicioDto): Promise<Servicio> {
+  async create(createDto: CreateServicioDto, usuarioId?: number, usuarioNombre?: string): Promise<Servicio> {
     const servicio = this.servicioRepository.create(createDto);
     const saved = await this.servicioRepository.save(servicio);
     await this.syncAllServiciosToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'servicios',
+      operacion: 'CREAR',
+      documento_id: saved.id_servicio,
+      detalle: { nombre_servicio: saved.nombre_servicio, costo: saved.costo },
+    });
     return saved;
   }
 
@@ -39,18 +49,36 @@ export class ServiciosService {
     return servicio;
   }
 
-  async update(id: number, updateDto: UpdateServicioDto): Promise<Servicio> {
+  async update(id: number, updateDto: UpdateServicioDto, usuarioId?: number, usuarioNombre?: string): Promise<Servicio> {
     const servicio = await this.findOne(id);
+    const antes = { nombre_servicio: servicio.nombre_servicio, costo: servicio.costo, descripcion: servicio.descripcion, activo: servicio.activo };
     Object.assign(servicio, updateDto);
     const saved = await this.servicioRepository.save(servicio);
     await this.syncAllServiciosToVector();
+    const despues = { nombre_servicio: saved.nombre_servicio, costo: saved.costo, descripcion: saved.descripcion, activo: saved.activo };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'servicios',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return saved;
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const servicio = await this.findOne(id);
     await this.servicioRepository.remove(servicio);
     await this.syncAllServiciosToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'servicios',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { nombre_servicio: servicio.nombre_servicio, costo: servicio.costo },
+    });
     return { message: `Servicio con ID ${id} eliminado correctamente` };
   }
 

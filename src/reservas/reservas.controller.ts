@@ -42,6 +42,12 @@ export class ReservasController {
   }
 
   @Version('1')
+  @Get('cliente/:clienteId')
+  historialCliente(@Param('clienteId', ParseIntPipe) clienteId: number) {
+    return this.reservasService.historialCliente(clienteId);
+  }
+
+  @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reservasService.findOne(id);
@@ -54,8 +60,9 @@ export class ReservasController {
     @Body() updateReservaDto: UpdateReservaDto,
     @Req() req: Request,
   ) {
-    const email = (req.user as any)?.email;
-    return this.reservasService.update(id, updateReservaDto, email);
+    const user = req.user as any;
+    const realizadoPor = user?.nombre || user?.email;
+    return this.reservasService.update(id, updateReservaDto, realizadoPor);
   }
 
   @Version('1')

@@ -15,6 +15,7 @@ import { Servicio } from '../../servicios/entities/servicio.entity';
 import { IntegranteReserva } from './integrante.entity';
 import { ClienteApp } from '../../clientes/entities/cliente-app.entity';
 import { VueloReserva } from './vuelo-reserva.entity';
+import { HotelReserva } from './hotel-reserva.entity';
 
 @Entity('reservas')
 export class Reserva {
@@ -40,6 +41,32 @@ export class Reserva {
   creado_por_id: number | null;
 
   @Column({
+    name: 'descuento_por_persona',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string | number) => (value == null ? 0 : Number(value)),
+    },
+  })
+  descuento_por_persona: number;
+
+  @Column({
+    name: 'valor_sin_descuento',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string | number) => (value == null ? 0 : Number(value)),
+    },
+  })
+  valor_sin_descuento: number;
+
+  @Column({
     name: 'valor_total',
     type: 'numeric',
     precision: 10,
@@ -51,6 +78,19 @@ export class Reserva {
     },
   })
   valor_total: number;
+
+  @Column({
+    name: 'utilidad',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | number | null) => (value == null ? null : Number(value)),
+    },
+  })
+  utilidad: number | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   fecha_creacion: Date;
@@ -85,4 +125,10 @@ export class Reserva {
     eager: true,
   })
   vuelos: VueloReserva[];
+
+  @OneToMany(() => HotelReserva, (hotel) => hotel.reserva, {
+    cascade: true,
+    eager: true,
+  })
+  hoteles: HotelReserva[];
 }

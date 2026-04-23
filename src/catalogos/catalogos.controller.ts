@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import { CatalogosService } from './catalogos.service';
 import { CreateCatalogoDto } from './dto/create-catalogo.dto';
@@ -19,8 +20,8 @@ export class CatalogosController {
   constructor(private readonly catalogosService: CatalogosService) {}
 
   @Post()
-  create(@Body() createCatalogoDto: CreateCatalogoDto) {
-    return this.catalogosService.create(createCatalogoDto);
+  create(@Body() createCatalogoDto: CreateCatalogoDto, @Req() req: any) {
+    return this.catalogosService.create(createCatalogoDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Get()
@@ -37,12 +38,13 @@ export class CatalogosController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCatalogoDto: UpdateCatalogoDto,
+    @Req() req: any,
   ) {
-    return this.catalogosService.update(id, updateCatalogoDto);
+    return this.catalogosService.update(id, updateCatalogoDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.catalogosService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.catalogosService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

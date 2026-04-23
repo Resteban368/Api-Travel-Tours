@@ -8,9 +8,10 @@ import { Usuario } from './entities/usuario.entity';
 import { Rol } from './entities/rol.entity';
 import { PermisoAgente } from '../modulos/entities/permiso-agente.entity';
 import { Modulo } from '../modulos/entities/modulo.entity';
+import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Usuario, Rol, PermisoAgente, Modulo])],
+  imports: [TypeOrmModule.forFeature([Usuario, Rol, PermisoAgente, Modulo]), AuditoriaGeneralModule],
   controllers: [UsuariosController, RolesController, AgentesController],
   providers: [UsuariosService],
   exports: [UsuariosService, TypeOrmModule],

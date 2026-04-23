@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import { FaqsService } from './faqs.service';
 import { CreateFaqDto, UpdateFaqDto } from './dto/faqs.dto';
@@ -18,8 +19,8 @@ export class FaqsController {
   constructor(private readonly faqsService: FaqsService) {}
 
   @Post()
-  create(@Body() createDto: CreateFaqDto) {
-    return this.faqsService.create(createDto);
+  create(@Body() createDto: CreateFaqDto, @Req() req: any) {
+    return this.faqsService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Get()
@@ -36,13 +37,14 @@ export class FaqsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateFaqDto,
+    @Req() req: any,
   ) {
-    return this.faqsService.update(id, updateDto);
+    return this.faqsService.update(id, updateDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.faqsService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.faqsService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Post('sync-vectors')

@@ -5,9 +5,10 @@ import { ServiciosController } from './servicios.controller';
 import { Servicio } from './entities/servicio.entity';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsModule } from '../embeddings/embeddings.module';
+import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Servicio, N8nVector]), EmbeddingsModule],
+  imports: [TypeOrmModule.forFeature([Servicio, N8nVector]), EmbeddingsModule, AuditoriaGeneralModule],
   controllers: [ServiciosController],
   providers: [ServiciosService],
 })

@@ -9,6 +9,7 @@ import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { AuditoriaTourService } from './services/auditoria-tour.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 
@@ -27,9 +28,10 @@ export class ToursService {
     private readonly pagoRepository: Repository<PagoRealizado>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly auditoriaTourService: AuditoriaTourService,
+    private readonly auditoriaGeneralService: AuditoriaGeneralService,
   ) {}
 
-  async create(dto: CreateTourDto): Promise<ToursMaestro> {
+  async create(dto: CreateTourDto, usuarioId?: number, usuarioNombre?: string): Promise<ToursMaestro> {
     const tour = this.toursMaestroRepository.create({
       id_tour: dto.id_tour ?? null,
       nombre_tour: dto.nombre_tour,
@@ -54,6 +56,20 @@ export class ToursService {
     });
     const saved = await this.toursMaestroRepository.save(tour);
     await this.auditoriaTourService.registrarCreacion(saved).catch(() => null);
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'tours',
+      operacion: 'CREAR',
+      documento_id: saved.id,
+      detalle: {
+        nombre_tour: saved.nombre_tour,
+        agencia: saved.agencia,
+        precio: saved.precio,
+        cupos: saved.cupos,
+        es_borrador: saved.es_borrador,
+      },
+    });
 
     if (!saved.is_active || saved.es_borrador) {
       return saved;
@@ -106,11 +122,22 @@ export class ToursService {
     return saved;
   }
 
-  async update(id: number, dto: UpdateTourDto): Promise<ToursMaestro> {
+  async update(id: number, dto: UpdateTourDto, usuarioId?: number, usuarioNombre?: string): Promise<ToursMaestro> {
     const tour = await this.toursMaestroRepository.findOne({ where: { id } });
     if (!tour) {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
+
+    const antes = {
+      nombre_tour: tour.nombre_tour,
+      agencia: tour.agencia,
+      precio: tour.precio,
+      cupos: tour.cupos,
+      is_active: tour.is_active,
+      es_borrador: tour.es_borrador,
+      fecha_inicio: tour.fecha_inicio,
+      fecha_fin: tour.fecha_fin,
+    };
 
     // Campos auditables con sus valores anteriores
     const camposAuditables: { campo: string; anterior: any; nuevo: any }[] = [];
@@ -151,6 +178,25 @@ export class ToursService {
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
 
     const saved = await this.toursMaestroRepository.save(tour);
+    const despues = {
+      nombre_tour: saved.nombre_tour,
+      agencia: saved.agencia,
+      precio: saved.precio,
+      cupos: saved.cupos,
+      is_active: saved.is_active,
+      es_borrador: saved.es_borrador,
+      fecha_inicio: saved.fecha_inicio,
+      fecha_fin: saved.fecha_fin,
+    };
+
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'tours',
+      operacion: 'ACTUALIZAR',
+      documento_id: saved.id,
+      detalle: { antes, despues },
+    });
 
     // Registrar auditoría por cada campo que cambió
     await Promise.all(

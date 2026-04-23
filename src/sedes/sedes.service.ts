@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Sede } from './entities/sede.entity';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 import { CreateSedeDto } from './dto/create-sede.dto';
 import { UpdateSedeDto } from './dto/update-sede.dto';
@@ -16,12 +17,21 @@ export class SedesService {
     @InjectRepository(N8nVector)
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(dto: CreateSedeDto): Promise<Sede> {
+  async create(dto: CreateSedeDto, usuarioId?: number, usuarioNombre?: string): Promise<Sede> {
     const sede = this.sedeRepository.create(dto);
     const saved = await this.sedeRepository.save(sede);
     await this.syncAllSedesToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'sedes',
+      operacion: 'CREAR',
+      documento_id: saved.id_sede,
+      detalle: { nombre_sede: saved.nombre_sede, direccion: saved.direccion },
+    });
     return saved;
   }
 
@@ -41,18 +51,36 @@ export class SedesService {
     return sede;
   }
 
-  async update(id: number, dto: UpdateSedeDto): Promise<Sede> {
+  async update(id: number, dto: UpdateSedeDto, usuarioId?: number, usuarioNombre?: string): Promise<Sede> {
     const sede = await this.findOne(id);
+    const antes = { nombre_sede: sede.nombre_sede, direccion: sede.direccion, telefono: sede.telefono, link_map: sede.link_map, is_active: sede.is_active };
     Object.assign(sede, dto);
     const saved = await this.sedeRepository.save(sede);
     await this.syncAllSedesToVector();
+    const despues = { nombre_sede: saved.nombre_sede, direccion: saved.direccion, telefono: saved.telefono, link_map: saved.link_map, is_active: saved.is_active };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'sedes',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return saved;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<void> {
     const sede = await this.findOne(id);
     await this.sedeRepository.remove(sede);
     await this.syncAllSedesToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'sedes',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { nombre_sede: sede.nombre_sede, direccion: sede.direccion },
+    });
   }
 
   /**

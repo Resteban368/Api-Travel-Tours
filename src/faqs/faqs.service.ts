@@ -5,6 +5,7 @@ import { Faq } from './entities/faq.entity';
 import { CreateFaqDto, UpdateFaqDto } from './dto/faqs.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 @Injectable()
 export class FaqsService {
@@ -14,12 +15,21 @@ export class FaqsService {
     @InjectRepository(N8nVector)
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(createDto: CreateFaqDto): Promise<Faq> {
+  async create(createDto: CreateFaqDto, usuarioId?: number, usuarioNombre?: string): Promise<Faq> {
     const faq = this.faqRepository.create(createDto);
     const saved = await this.faqRepository.save(faq);
     await this.syncAllFaqsToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'faqs',
+      operacion: 'CREAR',
+      documento_id: saved.id_faq,
+      detalle: { pregunta: saved.pregunta },
+    });
     return saved;
   }
 
@@ -39,18 +49,36 @@ export class FaqsService {
     return faq;
   }
 
-  async update(id: number, updateDto: UpdateFaqDto): Promise<Faq> {
+  async update(id: number, updateDto: UpdateFaqDto, usuarioId?: number, usuarioNombre?: string): Promise<Faq> {
     const faq = await this.findOne(id);
+    const antes = { pregunta: faq.pregunta, respuesta: faq.respuesta, activo: faq.activo };
     Object.assign(faq, updateDto);
     const saved = await this.faqRepository.save(faq);
     await this.syncAllFaqsToVector();
+    const despues = { pregunta: saved.pregunta, respuesta: saved.respuesta, activo: saved.activo };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'faqs',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return saved;
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const faq = await this.findOne(id);
     await this.faqRepository.remove(faq);
     await this.syncAllFaqsToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'faqs',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { pregunta: faq.pregunta },
+    });
     return { message: `FAQ con ID ${id} eliminado correctamente` };
   }
 

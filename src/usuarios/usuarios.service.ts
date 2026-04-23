@@ -15,6 +15,7 @@ import { PermisoAgente, TipoPermiso } from '../modulos/entities/permiso-agente.e
 import { Modulo } from '../modulos/entities/modulo.entity';
 import { CreateUsuarioDto, PermisoAgenteDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -30,6 +31,7 @@ export class UsuariosService implements OnModuleInit {
     @InjectRepository(Modulo)
     private readonly moduloRepo: Repository<Modulo>,
     private readonly configService: ConfigService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
   async onModuleInit() {
@@ -87,7 +89,7 @@ export class UsuariosService implements OnModuleInit {
 
   // ─── CRUD (solo admin) ────────────────────────────────────────────────────
 
-  async create(dto: CreateUsuarioDto): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
+  async create(dto: CreateUsuarioDto, actorId?: number, actorNombre?: string): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
     const exists = await this.findByEmail(dto.email);
     if (exists) {
       throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
@@ -117,6 +119,14 @@ export class UsuariosService implements OnModuleInit {
     if (dto.permisos && dto.permisos.length > 0) {
       await this.asignarPermisos(saved.id_usuario, dto.permisos);
     }
+    await this.auditoriaService.registrar({
+      usuario_id: actorId ?? null,
+      usuario_nombre: actorNombre ?? null,
+      modulo: 'usuarios',
+      operacion: 'CREAR',
+      documento_id: saved.id_usuario,
+      detalle: { nombre: saved.nombre, email: saved.email, rol: saved.rol_nombre },
+    });
 
     return this.sanitize(saved);
   }
@@ -145,7 +155,7 @@ export class UsuariosService implements OnModuleInit {
     };
   }
 
-  async update(id: number, dto: UpdateUsuarioDto): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
+  async update(id: number, dto: UpdateUsuarioDto, actorId?: number, actorNombre?: string): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
     const usuario = await this.findById(id);
     if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
 
@@ -155,12 +165,22 @@ export class UsuariosService implements OnModuleInit {
     }
 
     const { permisos, ...datosUsuario } = dto;
+    const antes = { nombre: usuario.nombre, email: usuario.email, rol: usuario.rol_nombre, activo: usuario.activo };
     Object.assign(usuario, datosUsuario);
     const saved = await this.usuariosRepository.save(usuario);
 
     if (permisos !== undefined) {
       await this.asignarPermisos(id, permisos);
     }
+    const despues = { nombre: saved.nombre, email: saved.email, rol: saved.rol_nombre, activo: saved.activo };
+    await this.auditoriaService.registrar({
+      usuario_id: actorId ?? null,
+      usuario_nombre: actorNombre ?? null,
+      modulo: 'usuarios',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
 
     return this.sanitize(saved);
   }
@@ -178,11 +198,19 @@ export class UsuariosService implements OnModuleInit {
     return { message: 'Contraseña actualizada correctamente' };
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, actorId?: number, actorNombre?: string): Promise<{ message: string }> {
     const usuario = await this.findById(id);
     if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     await this.permisoRepo.delete({ usuario_id: id });
     await this.usuariosRepository.remove(usuario);
+    await this.auditoriaService.registrar({
+      usuario_id: actorId ?? null,
+      usuario_nombre: actorNombre ?? null,
+      modulo: 'usuarios',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { nombre: usuario.nombre, email: usuario.email, rol: usuario.rol_nombre },
+    });
     return { message: `Usuario con ID ${id} eliminado` };
   }
 

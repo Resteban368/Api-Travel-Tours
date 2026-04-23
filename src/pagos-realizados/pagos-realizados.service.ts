@@ -10,6 +10,7 @@ import { AuditoriaPago } from './entities/auditoria-pago.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { CreatePagoRealizadoDto } from './dto/create-pago-realizado.dto';
 import { UpdatePagoRealizadoDto } from './dto/update-pago-realizado.dto';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 /** Campos que se auditan campo-a-campo en cada PATCH */
 const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
@@ -41,11 +42,12 @@ export class PagosRealizadosService {
     private readonly reservaRepository: Repository<Reserva>,
 
     private readonly dataSource: DataSource,
+    private readonly auditoriaGeneralService: AuditoriaGeneralService,
   ) {}
 
   // ─── CREATE ───────────────────────────────────────────────────────────────
 
-  async create(createDto: CreatePagoRealizadoDto, realizadoPor?: string): Promise<PagoRealizado> {
+  async create(createDto: CreatePagoRealizadoDto, realizadoPor?: string, usuarioId?: number): Promise<PagoRealizado> {
     const existing = await this.pagosRepository.findOne({
       where: { referencia: createDto.referencia },
     });
@@ -69,6 +71,14 @@ export class PagosRealizadosService {
       id_pago: pagoCreado.id_pago,
       accion: 'CREACION',
       realizado_por: realizadoPor ?? null,
+    });
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'pagos-realizados',
+      operacion: 'CREAR',
+      documento_id: pagoCreado.id_pago,
+      detalle: { referencia: pagoCreado.referencia, monto: pagoCreado.monto, metodo_pago: pagoCreado.metodo_pago, reserva_id: pagoCreado.reserva_id },
     });
 
     return pagoCreado;
@@ -111,6 +121,7 @@ export class PagosRealizadosService {
     id: number,
     updateDto: UpdatePagoRealizadoDto,
     realizadoPor?: string,
+    usuarioId?: number,
   ): Promise<PagoRealizado> {
     const pago = await this.findOne(id);
 
@@ -178,6 +189,16 @@ export class PagosRealizadosService {
 
     // Devolver el registro actualizado
     const pagoActualizado = await this.findOne(id);
+    const antes = { referencia: pago.referencia, monto: pago.monto, metodo_pago: pago.metodo_pago, tipo_documento: pago.tipo_documento, is_validated: pago.is_validated, is_rechazado: pago.is_rechazado };
+    const despues = { referencia: pagoActualizado.referencia, monto: pagoActualizado.monto, metodo_pago: pagoActualizado.metodo_pago, tipo_documento: pagoActualizado.tipo_documento, is_validated: pagoActualizado.is_validated, is_rechazado: pagoActualizado.is_rechazado };
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'pagos-realizados',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return pagoActualizado;
   }
 
@@ -223,8 +244,8 @@ export class PagosRealizadosService {
         const reserva = await manager.findOne(Reserva, { where: { id: pago.reserva_id } });
         if (reserva && reserva.estado !== 'cancelado') {
           const pagosValidados = await manager.find(PagoRealizado, {
-            where: { reserva_id: pago.reserva_id, is_validated: accion === 'validar' ? true : true },
-            select: ['monto', 'is_validated'],
+            where: { reserva_id: pago.reserva_id, is_validated: true },
+            select: ['id_pago', 'monto', 'is_validated'],
           });
           // Recalcular con el nuevo estado del pago ya aplicado
           const totalPagado = pagosValidados
@@ -240,12 +261,25 @@ export class PagosRealizadosService {
       }
     });
 
-    return this.findOne(id);
+    const pagoActualizado = await this.findOne(id);
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'pagos-realizados',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: {
+        antes: { id_pago: id, referencia: pago.referencia, estado: valorAnterior },
+        despues: { id_pago: id, referencia: pagoActualizado.referencia, estado: valorNuevo },
+      },
+    });
+
+    return pagoActualizado;
   }
 
   // ─── DELETE ───────────────────────────────────────────────────────────────
 
-  async remove(id: number, realizadoPor?: string): Promise<{ message: string }> {
+  async remove(id: number, realizadoPor?: string, usuarioId?: number): Promise<{ message: string }> {
     const pago = await this.findOne(id);
     const reservaId = pago.reserva_id;
 
@@ -261,6 +295,14 @@ export class PagosRealizadosService {
     if (reservaId) {
       await this.syncEstadoReserva(reservaId);
     }
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'pagos-realizados',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { referencia: pago.referencia, monto: pago.monto, reserva_id: reservaId },
+    });
 
     return { message: `Pago con ID ${id} eliminado correctamente` };
   }

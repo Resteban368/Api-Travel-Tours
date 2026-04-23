@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Version, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Version, Query, Req } from '@nestjs/common';
 import { CotizacionesService } from './cotizaciones.service';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
@@ -11,8 +11,8 @@ export class CotizacionesController {
 
   @Version('1')
   @Post()
-  create(@Body() createCotizacionDto: CreateCotizacionDto) {
-    return this.cotizacionesService.create(createCotizacionDto);
+  create(@Body() createCotizacionDto: CreateCotizacionDto, @Req() req: any) {
+    return this.cotizacionesService.create(createCotizacionDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -32,13 +32,13 @@ export class CotizacionesController {
 
   @Version('1')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateCotizacionDto: UpdateCotizacionDto) {
-    return this.cotizacionesService.update(id, updateCotizacionDto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateCotizacionDto: UpdateCotizacionDto, @Req() req: any) {
+    return this.cotizacionesService.update(id, updateCotizacionDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.cotizacionesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.cotizacionesService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

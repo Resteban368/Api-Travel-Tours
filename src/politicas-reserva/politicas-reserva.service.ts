@@ -5,6 +5,7 @@ import { PoliticaReserva } from './entities/politica-reserva.entity';
 import { CreatePoliticaReservaDto, UpdatePoliticaReservaDto } from './dto/politicas-reserva.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 @Injectable()
 export class PoliticasReservaService {
@@ -14,12 +15,21 @@ export class PoliticasReservaService {
     @InjectRepository(N8nVector)
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(dto: CreatePoliticaReservaDto): Promise<PoliticaReserva> {
+  async create(dto: CreatePoliticaReservaDto, usuarioId?: number, usuarioNombre?: string): Promise<PoliticaReserva> {
     const politica = this.politicaRepository.create(dto);
     const saved = await this.politicaRepository.save(politica);
     await this.syncAllPoliticasToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'politicas-reserva',
+      operacion: 'CREAR',
+      documento_id: saved.id_politica,
+      detalle: { titulo: saved.titulo, tipo_politica: saved.tipo_politica },
+    });
     return saved;
   }
 
@@ -39,18 +49,36 @@ export class PoliticasReservaService {
     return politica;
   }
 
-  async update(id: number, dto: UpdatePoliticaReservaDto): Promise<PoliticaReserva> {
+  async update(id: number, dto: UpdatePoliticaReservaDto, usuarioId?: number, usuarioNombre?: string): Promise<PoliticaReserva> {
     const politica = await this.findOne(id);
+    const antes = { titulo: politica.titulo, descripcion: politica.descripcion, tipo_politica: politica.tipo_politica, activo: politica.activo };
     Object.assign(politica, dto);
     const saved = await this.politicaRepository.save(politica);
     await this.syncAllPoliticasToVector();
+    const despues = { titulo: saved.titulo, descripcion: saved.descripcion, tipo_politica: saved.tipo_politica, activo: saved.activo };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'politicas-reserva',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return saved;
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const politica = await this.findOne(id);
     await this.politicaRepository.remove(politica);
     await this.syncAllPoliticasToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'politicas-reserva',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { titulo: politica.titulo, tipo_politica: politica.tipo_politica },
+    });
     return { message: `Política con ID ${id} eliminada correctamente` };
   }
 

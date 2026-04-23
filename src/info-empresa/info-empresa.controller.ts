@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { InfoEmpresaService } from './info-empresa.service';
 import { CreateInfoEmpresaDto, UpdateInfoEmpresaDto } from './dto/info-empresa.dto';
@@ -19,8 +20,8 @@ export class InfoEmpresaController {
 
   @Version('1')
   @Post()
-  create(@Body() createDto: CreateInfoEmpresaDto) {
-    return this.infoEmpresaService.create(createDto);
+  create(@Body() createDto: CreateInfoEmpresaDto, @Req() req: any) {
+    return this.infoEmpresaService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -40,14 +41,15 @@ export class InfoEmpresaController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateInfoEmpresaDto,
+    @Req() req: any,
   ) {
-    return this.infoEmpresaService.update(id, updateDto);
+    return this.infoEmpresaService.update(id, updateDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.infoEmpresaService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.infoEmpresaService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')

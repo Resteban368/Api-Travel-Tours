@@ -9,6 +9,7 @@ import {
   Query,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
@@ -22,8 +23,8 @@ export class ClientesController {
 
   @Version('1')
   @Post()
-  create(@Body() dto: CreateClienteDto) {
-    return this.clientesService.create(dto);
+  create(@Body() dto: CreateClienteDto, @Req() req: any) {
+    return this.clientesService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -43,13 +44,13 @@ export class ClientesController {
 
   @Version('1')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateClienteDto) {
-    return this.clientesService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateClienteDto, @Req() req: any) {
+    return this.clientesService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.clientesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.clientesService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

@@ -10,6 +10,7 @@ import {
   DefaultValuePipe,
   BadRequestException,
   Version,
+  Req,
 } from '@nestjs/common';
 import { ToursService } from './tours.service';
 import { CreateTourDto } from './dto/create-tour.dto';
@@ -24,8 +25,8 @@ export class ToursController {
 
   @Version('1')
   @Post()
-  create(@Body() dto: CreateTourDto) {
-    return this.toursService.create(dto);
+  create(@Body() dto: CreateTourDto, @Req() req: any) {
+    return this.toursService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -66,7 +67,7 @@ export class ToursController {
 
   @Version('1')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTourDto) {
-    return this.toursService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTourDto, @Req() req: any) {
+    return this.toursService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

@@ -28,7 +28,7 @@ export class PagosRealizadosController {
   @Post()
   create(@Body() createDto: CreatePagoRealizadoDto, @Req() req: any) {
     const realizadoPor = req.user?.nombre || req.user?.email;
-    return this.pagosService.create(createDto, realizadoPor);
+    return this.pagosService.create(createDto, realizadoPor, req.user?.id_usuario);
   }
 
   @Version('1')
@@ -94,13 +94,13 @@ export class PagosRealizadosController {
     @Req() req: any,
   ) {
     const realizadoPor = req.user?.nombre || req.user?.email;
-    return this.pagosService.update(id, updateDto, realizadoPor);
+    return this.pagosService.update(id, updateDto, realizadoPor, req.user?.id_usuario);
   }
 
   @Version('1')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const realizadoPor = req.user?.nombre || req.user?.email;
-    return this.pagosService.remove(id, realizadoPor);
+    return this.pagosService.remove(id, realizadoPor, req.user?.id_usuario);
   }
 }

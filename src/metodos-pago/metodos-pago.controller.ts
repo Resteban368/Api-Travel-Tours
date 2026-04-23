@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { MetodosPagoService } from './metodos-pago.service';
 import { CreateMetodoPagoDto } from './dto/create-metodo-pago.dto';
@@ -20,8 +21,8 @@ export class MetodosPagoController {
 
   @Version('1')
   @Post()
-  create(@Body() createDto: CreateMetodoPagoDto) {
-    return this.metodosPagoService.create(createDto);
+  create(@Body() createDto: CreateMetodoPagoDto, @Req() req: any) {
+    return this.metodosPagoService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -41,14 +42,15 @@ export class MetodosPagoController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateMetodoPagoDto,
+    @Req() req: any,
   ) {
-    return this.metodosPagoService.update(id, updateDto);
+    return this.metodosPagoService.update(id, updateDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.metodosPagoService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.metodosPagoService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')

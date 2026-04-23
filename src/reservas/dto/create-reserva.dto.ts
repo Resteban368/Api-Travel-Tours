@@ -37,6 +37,28 @@ export class IntegranteDto {
   documento?: string;
 }
 
+export class HotelReservaDto {
+  @IsInt()
+  @IsNotEmpty()
+  hotel_id: number;
+
+  @IsString()
+  @IsNotEmpty()
+  numero_reserva: string;
+
+  @IsISO8601({}, { message: 'fecha_checkin debe ser una fecha válida (ISO 8601)' })
+  @IsNotEmpty()
+  fecha_checkin: string;
+
+  @IsISO8601({}, { message: 'fecha_checkout debe ser una fecha válida (ISO 8601)' })
+  @IsNotEmpty()
+  fecha_checkout: string;
+
+  @IsNumber({}, { message: 'valor debe ser un número' })
+  @IsNotEmpty()
+  valor: number;
+}
+
 export class VueloDto {
   @IsInt()
   @IsOptional()
@@ -77,6 +99,14 @@ export class VueloDto {
   @IsNumber({}, { message: 'precio del vuelo debe ser un número' })
   @IsOptional()
   precio?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  reserva_vuelo: string;
+
+  @IsIn(['ida', 'vuelta'], { message: 'tipo_vuelo debe ser "ida" o "vuelta"' })
+  @IsOptional()
+  tipo_vuelo?: 'ida' | 'vuelta';
 }
 
 export class CreateReservaDto {
@@ -123,6 +153,20 @@ export class CreateReservaDto {
   @IsNumber({}, { message: 'valor_total debe ser un número' })
   @IsOptional()
   valor_total?: number;
+
+  @IsNumber({}, { message: 'utilidad debe ser un número' })
+  @IsOptional()
+  utilidad?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HotelReservaDto)
+  @IsOptional()
+  hoteles?: HotelReservaDto[];
+
+  @IsNumber({}, { message: 'descuento_por_persona debe ser un número' })
+  @IsOptional()
+  descuento_por_persona?: number;
 
   @IsInt()
   @IsOptional()

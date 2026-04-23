@@ -4,15 +4,17 @@ import { Repository, IsNull } from 'typeorm';
 import { ClienteApp } from './entities/cliente-app.entity';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 @Injectable()
 export class ClientesService {
   constructor(
     @InjectRepository(ClienteApp)
     private readonly clientesRepository: Repository<ClienteApp>,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(dto: CreateClienteDto): Promise<any> {
+  async create(dto: CreateClienteDto, usuarioId?: number, usuarioNombre?: string): Promise<any> {
     if (dto.documento) {
       const existingCliente = await this.clientesRepository.findOne({
         where: { documento: dto.documento },
@@ -21,6 +23,7 @@ export class ClientesService {
       if (existingCliente) {
         if (existingCliente.deleted_at !== null) {
           // Reactivación
+          const antes = { nombre: existingCliente.nombre, documento: existingCliente.documento, estado: existingCliente.estado, deleted_at: existingCliente.deleted_at };
           existingCliente.nombre = dto.nombre;
           existingCliente.telefono = dto.telefono ?? existingCliente.telefono;
           existingCliente.fecha_nacimiento = dto.fecha_nacimiento ?? existingCliente.fecha_nacimiento;
@@ -30,6 +33,15 @@ export class ClientesService {
           existingCliente.deleted_at = null;
 
           const saved = await this.clientesRepository.save(existingCliente);
+          const despues = { nombre: saved.nombre, documento: saved.documento, estado: saved.estado, deleted_at: saved.deleted_at };
+          await this.auditoriaService.registrar({
+            usuario_id: usuarioId ?? null,
+            usuario_nombre: usuarioNombre ?? null,
+            modulo: 'clientes',
+            operacion: 'ACTUALIZAR',
+            documento_id: saved.id,
+            detalle: { antes, despues, accion: 'reactivacion' },
+          });
           return {
             message: 'Cliente reactivado exitosamente',
             data: saved,
@@ -49,7 +61,16 @@ export class ClientesService {
       correo: dto.correo ?? null,
       estado: dto.estado ?? true,
     });
-    return this.clientesRepository.save(cliente);
+    const saved = await this.clientesRepository.save(cliente);
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'clientes',
+      operacion: 'CREAR',
+      documento_id: saved.id,
+      detalle: { nombre: saved.nombre, documento: saved.documento, correo: saved.correo },
+    });
+    return saved;
   }
 
   async findAll(page = 1, limit = 20) {
@@ -70,8 +91,9 @@ export class ClientesService {
     return cliente;
   }
 
-  async update(id: number, dto: UpdateClienteDto): Promise<ClienteApp> {
+  async update(id: number, dto: UpdateClienteDto, usuarioId?: number, usuarioNombre?: string): Promise<ClienteApp> {
     const cliente = await this.findOne(id);
+    const antes = { nombre: cliente.nombre, telefono: cliente.telefono, fecha_nacimiento: cliente.fecha_nacimiento, tipo_documento: cliente.tipo_documento, documento: cliente.documento, correo: cliente.correo, estado: cliente.estado };
 
     if (dto.nombre !== undefined) cliente.nombre = dto.nombre;
     if (dto.telefono !== undefined) cliente.telefono = dto.telefono;
@@ -81,14 +103,32 @@ export class ClientesService {
     if (dto.correo !== undefined) cliente.correo = dto.correo;
     if (dto.estado !== undefined) cliente.estado = dto.estado;
 
-    return this.clientesRepository.save(cliente);
+    const saved = await this.clientesRepository.save(cliente);
+    const despues = { nombre: saved.nombre, telefono: saved.telefono, fecha_nacimiento: saved.fecha_nacimiento, tipo_documento: saved.tipo_documento, documento: saved.documento, correo: saved.correo, estado: saved.estado };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'clientes',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
+    return saved;
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const cliente = await this.findOne(id);
     cliente.estado = false;
     cliente.deleted_at = new Date();
     await this.clientesRepository.save(cliente);
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'clientes',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { nombre: cliente.nombre, documento: cliente.documento },
+    });
     return { message: `Cliente con ID ${id} eliminado correctamente` };
   }
 }

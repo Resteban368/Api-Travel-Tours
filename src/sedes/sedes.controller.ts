@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { SedesService } from './sedes.service';
 import { CreateSedeDto } from './dto/create-sede.dto';
@@ -15,14 +16,14 @@ import { UpdateSedeDto } from './dto/update-sede.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('sedes')
-@RequierePermiso('sedes')
 export class SedesController {
   constructor(private readonly sedesService: SedesService) {}
 
   @Version('1')
   @Post()
-  create(@Body() dto: CreateSedeDto) {
-    return this.sedesService.create(dto);
+  @RequierePermiso('sedes')
+  create(@Body() dto: CreateSedeDto, @Req() req: any) {
+    return this.sedesService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -39,18 +40,21 @@ export class SedesController {
 
   @Version('1')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSedeDto) {
-    return this.sedesService.update(id, dto);
+  @RequierePermiso('sedes')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSedeDto, @Req() req: any) {
+    return this.sedesService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.sedesService.remove(id);
+  @RequierePermiso('sedes')
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.sedesService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Post('sync-vectors')
+  @RequierePermiso('sedes')
   syncVectors() {
     return this.sedesService.syncAllSedesToVector();
   }

@@ -5,6 +5,7 @@ import { InfoEmpresa } from './entities/info-empresa.entity';
 import { CreateInfoEmpresaDto, UpdateInfoEmpresaDto } from './dto/info-empresa.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 
 @Injectable()
 export class InfoEmpresaService {
@@ -14,9 +15,10 @@ export class InfoEmpresaService {
     @InjectRepository(N8nVector)
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
 
-  async create(dto: CreateInfoEmpresaDto): Promise<InfoEmpresa> {
+  async create(dto: CreateInfoEmpresaDto, usuarioId?: number, usuarioNombre?: string): Promise<InfoEmpresa> {
     const count = await this.infoRepository.count();
     if (count > 0) {
       throw new BadRequestException(
@@ -26,6 +28,14 @@ export class InfoEmpresaService {
     const info = this.infoRepository.create(dto);
     const saved = await this.infoRepository.save(info);
     await this.syncInfoToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'info-empresa',
+      operacion: 'CREAR',
+      documento_id: saved.id_info,
+      detalle: { nombre: saved.nombre },
+    });
     return saved;
   }
 
@@ -43,18 +53,36 @@ export class InfoEmpresaService {
     return info;
   }
 
-  async update(id: number, dto: UpdateInfoEmpresaDto): Promise<InfoEmpresa> {
+  async update(id: number, dto: UpdateInfoEmpresaDto, usuarioId?: number, usuarioNombre?: string): Promise<InfoEmpresa> {
     const info = await this.findOne(id);
+    const antes = { nombre: info.nombre, direccion_sede_principal: info.direccion_sede_principal, telefono: info.telefono, correo: info.correo, pagina_web: info.pagina_web, nombre_gerente: info.nombre_gerente };
     Object.assign(info, dto);
     const saved = await this.infoRepository.save(info);
     await this.syncInfoToVector();
+    const despues = { nombre: saved.nombre, direccion_sede_principal: saved.direccion_sede_principal, telefono: saved.telefono, correo: saved.correo, pagina_web: saved.pagina_web, nombre_gerente: saved.nombre_gerente };
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'info-empresa',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { antes, despues },
+    });
     return saved;
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const info = await this.findOne(id);
     await this.infoRepository.remove(info);
     await this.syncInfoToVector();
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'info-empresa',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { nombre: info.nombre },
+    });
     return { message: `Información con ID ${id} eliminada` };
   }
 

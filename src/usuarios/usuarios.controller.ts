@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Version,
+  Req,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -23,15 +24,15 @@ export class UsuariosController {
 
   @Version('1')
   @Post()
-  create(@Body() dto: CreateUsuarioDto) {
-    return this.usuariosService.create(dto);
+  create(@Body() dto: CreateUsuarioDto, @Req() req: any) {
+    return this.usuariosService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Post('agente')
-  createAgente(@Body() dto: CreateUsuarioDto) {
+  createAgente(@Body() dto: CreateUsuarioDto, @Req() req: any) {
     dto.rol = 'agente';
-    return this.usuariosService.create(dto);
+    return this.usuariosService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
@@ -51,13 +52,14 @@ export class UsuariosController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUsuarioDto,
+    @Req() req: any,
   ) {
-    return this.usuariosService.update(id, dto);
+    return this.usuariosService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   @Version('1')
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usuariosService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.usuariosService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

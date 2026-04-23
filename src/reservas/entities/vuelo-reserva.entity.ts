@@ -48,4 +48,11 @@ export class VueloReserva {
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   precio: number;
+
+  @Column({ name: 'reserva_vuelo', type: 'text', nullable: true })
+  reserva_vuelo: string | null;
+
+  // 'ida' | 'vuelta'
+  @Column({ name: 'tipo_vuelo', type: 'text', default: 'ida' })
+  tipo_vuelo: string;
 }
