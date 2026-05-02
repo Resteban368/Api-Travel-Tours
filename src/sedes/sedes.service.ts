@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Sede } from './entities/sede.entity';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
@@ -8,6 +9,9 @@ import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.
 
 import { CreateSedeDto } from './dto/create-sede.dto';
 import { UpdateSedeDto } from './dto/update-sede.dto';
+
+const CACHE_KEY = 'sedes:all';
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 @Injectable()
 export class SedesService {
@@ -18,11 +22,13 @@ export class SedesService {
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly auditoriaService: AuditoriaGeneralService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(dto: CreateSedeDto, usuarioId?: number, usuarioNombre?: string): Promise<Sede> {
     const sede = this.sedeRepository.create(dto);
     const saved = await this.sedeRepository.save(sede);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllSedesToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
@@ -36,9 +42,11 @@ export class SedesService {
   }
 
   async findAll(): Promise<Sede[]> {
-    return this.sedeRepository.find({
-      order: { id_sede: 'ASC' },
-    });
+    const cached = await this.cacheManager.get<Sede[]>(CACHE_KEY);
+    if (cached) return cached;
+    const result = await this.sedeRepository.find({ order: { id_sede: 'ASC' } });
+    await this.cacheManager.set(CACHE_KEY, result, CACHE_TTL);
+    return result;
   }
 
   async findOne(id: number): Promise<Sede> {
@@ -56,6 +64,7 @@ export class SedesService {
     const antes = { nombre_sede: sede.nombre_sede, direccion: sede.direccion, telefono: sede.telefono, link_map: sede.link_map, is_active: sede.is_active };
     Object.assign(sede, dto);
     const saved = await this.sedeRepository.save(sede);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllSedesToVector();
     const despues = { nombre_sede: saved.nombre_sede, direccion: saved.direccion, telefono: saved.telefono, link_map: saved.link_map, is_active: saved.is_active };
     await this.auditoriaService.registrar({
@@ -72,6 +81,7 @@ export class SedesService {
   async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<void> {
     const sede = await this.findOne(id);
     await this.sedeRepository.remove(sede);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllSedesToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,

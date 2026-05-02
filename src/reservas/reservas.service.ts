@@ -174,10 +174,24 @@ export class ReservasService {
       }, {} as Record<number, Usuario>);
     }
 
+    // 1 query batch: pagos validados de todas las reservas de la página
+    const reservaIds = reservas.map((r) => r.id);
+    const todosPagos = reservaIds.length > 0
+      ? await this.pagoRepository.find({
+          where: { reserva_id: In(reservaIds), is_validated: true },
+          select: ['reserva_id', 'monto'],
+        })
+      : [];
+    const valorCanceladoMap = new Map<number, number>();
+    for (const p of todosPagos) {
+      const rid = p.reserva_id!;
+      valorCanceladoMap.set(rid, (valorCanceladoMap.get(rid) ?? 0) + Number(p.monto));
+    }
+
     const data = await Promise.all(
       reservas.map((r) => {
         const agente = r.creado_por_id ? usuarios[r.creado_por_id] || null : null;
-        return this.transformResponseWithSaldo(r, agente);
+        return this.transformResponseWithSaldo(r, agente, false, valorCanceladoMap);
       }),
     );
 
@@ -359,16 +373,37 @@ export class ReservasService {
     return this.transformResponseWithSaldo(saved);
   }
 
-  async historialCliente(clienteId: number) {
+  async historialCliente(clienteId: number, rol?: string, userId?: number) {
     const cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
     if (!cliente) throw new NotFoundException(`Cliente con ID ${clienteId} no encontrado`);
 
+    const where: any = { responsable: { id: clienteId } };
+    if (rol !== 'admin' && userId) {
+      where.creado_por_id = userId;
+    }
+
     const reservas = await this.reservaRepository.find({
-      where: { responsable: { id: clienteId } },
+      where,
       order: { fecha_creacion: 'DESC' },
     });
 
-    const data = await Promise.all(reservas.map((r) => this.transformResponseWithSaldo(r)));
+    // 1 query batch: pagos validados de todas las reservas del cliente
+    const reservaIds = reservas.map((r) => r.id);
+    const todosPagos = reservaIds.length > 0
+      ? await this.pagoRepository.find({
+          where: { reserva_id: In(reservaIds), is_validated: true },
+          select: ['reserva_id', 'monto'],
+        })
+      : [];
+    const valorCanceladoMap = new Map<number, number>();
+    for (const p of todosPagos) {
+      const rid = p.reserva_id!;
+      valorCanceladoMap.set(rid, (valorCanceladoMap.get(rid) ?? 0) + Number(p.monto));
+    }
+
+    const data = await Promise.all(
+      reservas.map((r) => this.transformResponseWithSaldo(r, null, false, valorCanceladoMap)),
+    );
 
     return {
       cliente: {
@@ -437,20 +472,30 @@ export class ReservasService {
       where: { tour: { id: tourId } },
     });
     const activas = reservas.filter((r) => r.estado !== 'cancelado');
-    let cuposUsados = 0;
-    for (const reserva of activas) {
-      const personas = 1 + (reserva.integrantes?.length ?? 0);
-      if (reserva.estado === 'al dia') {
-        cuposUsados += personas;
-        continue;
-      }
-      const tienePageValidado = await this.pagoRepository.findOne({
-        where: { reserva_id: reserva.id, is_validated: true },
-        select: ['id_pago'],
-      });
-      if (tienePageValidado) cuposUsados += personas;
+    if (activas.length === 0) return 0;
+
+    const pendientesIds = activas
+      .filter((r) => r.estado !== 'al dia')
+      .map((r) => r.id);
+
+    const reservasConPago = new Set<number>();
+    if (pendientesIds.length > 0) {
+      const pagos = await this.pagoRepository
+        .createQueryBuilder('p')
+        .select('DISTINCT p.reserva_id', 'reserva_id')
+        .where('p.reserva_id IN (:...ids)', { ids: pendientesIds })
+        .andWhere('p.is_validated = true')
+        .getRawMany<{ reserva_id: number }>();
+      pagos.forEach((p) => reservasConPago.add(Number(p.reserva_id)));
     }
-    return cuposUsados;
+
+    return activas.reduce((total, r) => {
+      const personas = 1 + (r.integrantes?.length ?? 0);
+      if (r.estado === 'al dia' || reservasConPago.has(r.id)) {
+        return total + personas;
+      }
+      return total;
+    }, 0);
   }
 
   private async buildHoteles(hoteles: CreateReservaDto['hoteles']): Promise<HotelReserva[]> {
@@ -527,17 +572,33 @@ export class ReservasService {
     };
   }
 
-  private async transformResponseWithSaldo(reserva: Reserva, agente: Usuario | null = null, fullTour = false) {
-    const pagosValidados = await this.pagoRepository.find({
-      where: { reserva_id: reserva.id, is_validated: true },
-      order: { fecha_creacion: 'ASC' },
-    });
-    const valor_cancelado = pagosValidados.reduce((sum, p) => sum + Number(p.monto), 0);
+  private async transformResponseWithSaldo(
+    reserva: Reserva,
+    agente: Usuario | null = null,
+    fullTour = false,
+    valorCanceladoMap?: Map<number, number>,
+  ) {
+    let pagosValidados: PagoRealizado[] = [];
+    let valor_cancelado: number;
 
-    // En findOne recalculamos dinámicamente; en findAll usamos el valor almacenado
-    const { valor_sin_descuento, valor_total } = fullTour
-      ? this.calcularValorReal(reserva)
-      : { valor_sin_descuento: Number(reserva.valor_sin_descuento), valor_total: Number(reserva.valor_total) };
+    if (valorCanceladoMap) {
+      // Valor pre-cargado en batch — evita query individual por reserva
+      valor_cancelado = valorCanceladoMap.get(reserva.id) ?? 0;
+    } else {
+      pagosValidados = await this.pagoRepository.find({
+        where: { reserva_id: reserva.id, is_validated: true },
+        order: { fecha_creacion: 'ASC' },
+      });
+      valor_cancelado = pagosValidados.reduce((sum, p) => sum + Number(p.monto), 0);
+    }
+
+    // Para tours en findAll usamos el valor almacenado (precio histórico acordado).
+    // Para vuelos siempre recalculamos desde las relaciones (eager) porque el valor
+    // almacenado puede quedar en 0 por el dirty-check string/number de TypeORM en cascade.
+    const useStored = !fullTour && reserva.tipo_reserva !== 'vuelos';
+    const { valor_sin_descuento, valor_total } = useStored
+      ? { valor_sin_descuento: Number(reserva.valor_sin_descuento), valor_total: Number(reserva.valor_total) }
+      : this.calcularValorReal(reserva);
 
     const saldo_pendiente = valor_total - valor_cancelado;
 

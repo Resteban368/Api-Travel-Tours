@@ -13,10 +13,19 @@ import {
 import { InfoEmpresaService } from './info-empresa.service';
 import { CreateInfoEmpresaDto, UpdateInfoEmpresaDto } from './dto/info-empresa.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+
 @Controller('info-empresa')
 @RequierePermiso('infoEmpresa')
 export class InfoEmpresaController {
   constructor(private readonly infoEmpresaService: InfoEmpresaService) {}
+
+  @Version('1')
+  @Public()
+  @Get('publica')
+  findPublica() {
+    return this.infoEmpresaService.findAll();
+  }
 
   @Version('1')
   @Post()

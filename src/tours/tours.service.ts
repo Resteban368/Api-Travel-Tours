@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
@@ -12,6 +13,10 @@ import { AuditoriaTourService } from './services/auditoria-tour.service';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
+
+const CACHE_KEY_ACTIVOS = 'tours:activos';
+const CACHE_KEY_TODOS = 'tours:todos';
+const CACHE_TTL = 5 * 60 * 1000; // 5 min
 
 @Injectable()
 export class ToursService {
@@ -29,6 +34,7 @@ export class ToursService {
     private readonly embeddingsService: EmbeddingsService,
     private readonly auditoriaTourService: AuditoriaTourService,
     private readonly auditoriaGeneralService: AuditoriaGeneralService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(dto: CreateTourDto, usuarioId?: number, usuarioNombre?: string): Promise<ToursMaestro> {
@@ -97,27 +103,29 @@ export class ToursService {
       fecha_modificacion: new Date().toISOString(),
     };
 
-    // Procesar cada chunk y guardarlo
-    for (const chunk of chunksPayload) {
-      const embedding = await this.embeddingsService.embed(chunk.text);
-
-      const chunkMetadata = {
-        ...metadataBase,
-        chunk_type: chunk.chunk_type,
-        ...(chunk.chunk_index !== undefined
-          ? { chunk_index: chunk.chunk_index }
-          : {}),
-      };
-
-      const vectorRow = this.n8nVectorsRepository.create({
-        text: chunk.text || null,
-        metadata: chunkMetadata,
-        embedding,
-        fileId: null,
-        modifiedTime: new Date(),
-      });
-      await this.n8nVectorsRepository.save(vectorRow);
-    }
+    // Generar todos los embeddings en paralelo y guardarlos
+    const vectorRows = await Promise.all(
+      chunksPayload.map(async (chunk) => {
+        const embedding = await this.embeddingsService.embed(chunk.text);
+        const chunkMetadata = {
+          ...metadataBase,
+          chunk_type: chunk.chunk_type,
+          ...(chunk.chunk_index !== undefined ? { chunk_index: chunk.chunk_index } : {}),
+        };
+        return this.n8nVectorsRepository.create({
+          text: chunk.text || null,
+          metadata: chunkMetadata,
+          embedding,
+          fileId: null,
+          modifiedTime: new Date(),
+        });
+      }),
+    );
+    await this.n8nVectorsRepository.save(vectorRows);
+    await Promise.all([
+      this.cacheManager.del(CACHE_KEY_ACTIVOS),
+      this.cacheManager.del(CACHE_KEY_TODOS),
+    ]);
 
     return saved;
   }
@@ -223,6 +231,10 @@ export class ToursService {
       if (existingVectors.length > 0) {
         await this.n8nVectorsRepository.remove(existingVectors);
       }
+      await Promise.all([
+        this.cacheManager.del(CACHE_KEY_ACTIVOS),
+        this.cacheManager.del(CACHE_KEY_TODOS),
+      ]);
       return saved;
     }
 
@@ -257,35 +269,109 @@ export class ToursService {
       await this.n8nVectorsRepository.remove(existingVectors);
     }
 
-    // 2. Insertar los nuevos chunks actualizados
-    for (const chunk of chunksPayload) {
-      const embedding = await this.embeddingsService.embed(chunk.text);
-
-      const chunkMetadata = {
-        ...metadataBase,
-        chunk_type: chunk.chunk_type,
-        ...(chunk.chunk_index !== undefined
-          ? { chunk_index: chunk.chunk_index }
-          : {}),
-      };
-
-      const vectorRow = this.n8nVectorsRepository.create({
-        text: chunk.text || null,
-        metadata: chunkMetadata,
-        embedding,
-        fileId: null,
-        modifiedTime: new Date(),
-      });
-      await this.n8nVectorsRepository.save(vectorRow);
-    }
+    // 2. Generar todos los embeddings en paralelo e insertar los nuevos chunks
+    const vectorRows = await Promise.all(
+      chunksPayload.map(async (chunk) => {
+        const embedding = await this.embeddingsService.embed(chunk.text);
+        const chunkMetadata = {
+          ...metadataBase,
+          chunk_type: chunk.chunk_type,
+          ...(chunk.chunk_index !== undefined ? { chunk_index: chunk.chunk_index } : {}),
+        };
+        return this.n8nVectorsRepository.create({
+          text: chunk.text || null,
+          metadata: chunkMetadata,
+          embedding,
+          fileId: null,
+          modifiedTime: new Date(),
+        });
+      }),
+    );
+    await this.n8nVectorsRepository.save(vectorRows);
+    await Promise.all([
+      this.cacheManager.del(CACHE_KEY_ACTIVOS),
+      this.cacheManager.del(CACHE_KEY_TODOS),
+    ]);
 
     return saved;
   }
 
   async findAll(soloActivos = true) {
+    const cacheKey = soloActivos ? CACHE_KEY_ACTIVOS : CACHE_KEY_TODOS;
+    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    if (cached) return cached;
+
     const where = soloActivos ? { is_active: true } : {};
     const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
-    return Promise.all(tours.map((t) => this.enriquecerConCupos(this.normalize(t))));
+
+    if (tours.length === 0) {
+      await this.cacheManager.set(cacheKey, [], CACHE_TTL);
+      return [];
+    }
+
+    // Tours sin límite de cupos: cupos_disponibles = null directamente
+    const toursConCupos = tours.filter((t) => t.cupos !== null);
+    const cuposDisponiblesPorTour = new Map<number, number | null>();
+    for (const t of tours) cuposDisponiblesPorTour.set(t.id, null);
+
+    if (toursConCupos.length > 0) {
+      const tourIds = toursConCupos.map((t) => t.id);
+
+      // 1 query: reservas activas con conteo de integrantes agrupadas por tour
+      const rawReservas = await this.reservaRepository
+        .createQueryBuilder('r')
+        .innerJoin('r.tour', 't')
+        .leftJoin('r.integrantes', 'i')
+        .select('r.id', 'id')
+        .addSelect('r.estado', 'estado')
+        .addSelect('t.id', 'tour_id')
+        .addSelect('COUNT(i.id)', 'integrantes_count')
+        .where('t.id IN (:...tourIds)', { tourIds })
+        .andWhere('r.estado != :cancelado', { cancelado: 'cancelado' })
+        .groupBy('r.id')
+        .addGroupBy('r.estado')
+        .addGroupBy('t.id')
+        .getRawMany<{ id: string; estado: string; tour_id: string; integrantes_count: string }>();
+
+      const pendientesIds = rawReservas
+        .filter((r) => r.estado !== 'al dia')
+        .map((r) => Number(r.id));
+
+      const reservasConPago = new Set<number>();
+      if (pendientesIds.length > 0) {
+        // 1 query: pagos validados para todas las reservas pendientes
+        const pagos = await this.pagoRepository
+          .createQueryBuilder('p')
+          .select('DISTINCT p.reserva_id', 'reserva_id')
+          .where('p.reserva_id IN (:...ids)', { ids: pendientesIds })
+          .andWhere('p.is_validated = true')
+          .getRawMany<{ reserva_id: number }>();
+        pagos.forEach((p) => reservasConPago.add(Number(p.reserva_id)));
+      }
+
+      // Calcular cupos usados por tour en memoria
+      const cuposUsadosPorTour = new Map<number, number>();
+      for (const r of rawReservas) {
+        const rid = Number(r.id);
+        if (r.estado === 'al dia' || reservasConPago.has(rid)) {
+          const tourId = Number(r.tour_id);
+          const personas = 1 + Number(r.integrantes_count);
+          cuposUsadosPorTour.set(tourId, (cuposUsadosPorTour.get(tourId) ?? 0) + personas);
+        }
+      }
+
+      for (const t of toursConCupos) {
+        const usados = cuposUsadosPorTour.get(t.id) ?? 0;
+        cuposDisponiblesPorTour.set(t.id, Math.max(0, t.cupos! - usados));
+      }
+    }
+
+    const result = tours.map((t) => ({
+      ...this.normalize(t),
+      cupos_disponibles: cuposDisponiblesPorTour.get(t.id) ?? null,
+    }));
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async findOne(id: number) {

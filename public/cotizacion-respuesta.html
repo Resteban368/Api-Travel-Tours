@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotización de Viaje – Travel Tours Florencia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════════
+       TOKENS
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --ink:        #0F172A;
+      --ink-soft:   #1E293B;
+      --ink-muted:  #475569;
+      --brand:      #1D4ED8;
+      --brand-mid:  #2563EB;
+      --brand-glow: rgba(37,99,235,0.18);
+      --gold:       #F59E0B;
+      --gold-pale:  #FEF3C7;
+      --green:      #059669;
+      --green-pale: #D1FAE5;
+      --bg:         #F1F5F9;
+      --surface:    #FFFFFF;
+      --border:     #E2E8F0;
+      --border-mid: #CBD5E1;
+      --muted:      #64748B;
+      --r-s: 8px; --r-m: 14px; --r-l: 20px; --r-xl: 28px;
+      --sh-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+      --sh-md: 0 4px 16px -2px rgba(15,23,42,.10), 0 2px 4px rgba(15,23,42,.06);
+      --sh-lg: 0 20px 40px -8px rgba(15,23,42,.18);
+      --w: min(92%, 1160px);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { display: block; max-width: 100%; }
+    a { text-decoration: none; }
+
+    /* ═══════════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(24px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .au { animation: fadeUp .55s cubic-bezier(.22,.68,0,1.2) both; }
+    .d1 { animation-delay:.08s; } .d2 { animation-delay:.18s; }
+    .d3 { animation-delay:.28s; } .d4 { animation-delay:.38s; }
+
+    /* ═══════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════ */
+    .wrap { width: var(--w); margin-inline: auto; }
+
+    .page-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 28px;
+      align-items: start;
+      padding-block: 32px 80px;
+    }
+    @media (max-width:1024px) {
+      .page-grid { grid-template-columns: 1fr; }
+      .sidebar { position: static !important; }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       NAVBAR
+    ═══════════════════════════════════════════════════ */
+    .navbar {
+      position: sticky; top: 0; z-index: 200;
+      background: #020617;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .navbar-inner {
+      width: var(--w); margin-inline: auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding-block: 13px;
+    }
+    .navbar-logo {
+      height: 36px; max-width: 140px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+      padding: 4px 10px;
+    }
+    @media (max-width: 480px) {
+      .navbar-logo { height: 30px; max-width: 110px; padding: 3px 8px; }
+      .quote-chip { font-size: 11px; padding: 5px 10px; }
+    }
+    .quote-chip {
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,.5);
+      letter-spacing: .06em;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HERO — imagen de destino como fondo
+    ═══════════════════════════════════════════════════ */
+    .hero {
+      position: relative; overflow: hidden;
+      min-height: 560px;
+      display: flex; align-items: flex-end;
+      background: #020617 center/cover no-repeat;
+    }
+    /* overlay: oscuro arriba (para que el navbar no se pierda)
+       y muy oscuro abajo (donde va el texto) */
+    .hero::before {
+      content:'';
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(2,6,23,.55)  0%,
+        rgba(2,6,23,.25) 35%,
+        rgba(2,6,23,.60) 65%,
+        rgba(2,6,23,.92) 100%
+      );
+      pointer-events: none; z-index: 1;
+    }
+    /* shimmer de color de marca */
+    .hero::after {
+      content:'';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 20% 80%, rgba(37,99,235,.18) 0%, transparent 60%);
+      pointer-events: none; z-index: 1;
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      width: var(--w); margin-inline: auto;
+      padding-block: 56px 60px;
+    }
+    .hero h1 {
+      font-size: clamp(30px, 5.5vw, 58px);
+      font-weight: 900;
+      letter-spacing: -.035em;
+      color: #fff;
+      line-height: 1.05;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 20px rgba(2,6,23,.6);
+    }
+    .hero-dates {
+      font-size: 16px; font-weight: 700;
+      color: rgba(255,255,255,.90);
+      margin-bottom: 10px;
+      letter-spacing: .01em;
+    }
+    .hero-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,.40);
+      margin-top: 4px;
+    }
+    @media (max-width: 640px) {
+      .hero { min-height: 420px; }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SLIDER
+    ═══════════════════════════════════════════════════ */
+    .hero-slides {
+      position: absolute; inset: 0; z-index: 0;
+    }
+    .slide {
+      position: absolute; inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 1.1s ease;
+    }
+    .slide.active { opacity: 1; }
+
+    /* Barra de progreso del slide activo */
+    .slider-dots {
+      display: flex; gap: 8px;
+      margin-top: 28px;
+    }
+    .sdot {
+      height: 4px; border-radius: 100px;
+      background: rgba(255,255,255,.3);
+      border: none; cursor: pointer; padding: 0;
+      transition: background .3s, width .35s cubic-bezier(.4,0,.2,1), flex .35s cubic-bezier(.4,0,.2,1);
+      flex: 1; max-width: 32px;
+      position: relative; overflow: hidden;
+    }
+    .sdot.active {
+      background: rgba(255,255,255,.55);
+      max-width: 64px;
+    }
+    /* progress fill dentro del dot activo */
+    .sdot.active::after {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0;
+      background: #fff;
+      border-radius: 100px;
+      animation: progress var(--slide-duration, 5s) linear forwards;
+    }
+    @keyframes progress { from { width: 0% } to { width: 100% } }
+
+    /* Flechas del slider */
+    .slider-arrows {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      z-index: 3;
+      width: 100%;
+      display: flex; justify-content: space-between;
+      padding-inline: 20px;
+      pointer-events: none;
+    }
+    .sarrow {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 50%;
+      color: #fff; font-size: 18px;
+      cursor: pointer; pointer-events: all;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s;
+      user-select: none;
+    }
+    .sarrow:hover { background: rgba(255,255,255,.22); }
+    @media (max-width:640px) { .sarrow { width: 34px; height: 34px; font-size: 15px; } }
+
+    /* ═══════════════════════════════════════════════════
+       SECTION HEADER
+    ═══════════════════════════════════════════════════ */
+    .sec-head {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .sec-icon {
+      width: 36px; height: 36px;
+      background: var(--brand-glow);
+      color: var(--brand-mid);
+      border-radius: var(--r-s);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .sec-head h2 {
+      font-size: 18px; font-weight: 700;
+      color: var(--ink);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       CARDS
+    ═══════════════════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-l);
+      box-shadow: var(--sh-sm);
+      overflow: hidden;
+    }
+    .card-body { padding: 24px; }
+    section { margin-bottom: 36px; }
+
+    /* ═══════════════════════════════════════════════════
+       INCLUDES
+    ═══════════════════════════════════════════════════ */
+    .includes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+      gap: 12px;
+    }
+    .inc-item {
+      display: flex; align-items: center; gap: 11px;
+      font-size: 14px; font-weight: 500; color: var(--ink);
+    }
+    .inc-dot {
+      width: 22px; height: 22px; flex-shrink: 0;
+      background: var(--green-pale); color: var(--green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       BOARDING PASS
+    ═══════════════════════════════════════════════════ */
+    .bp {
+      background: var(--surface);
+      border-radius: var(--r-l);
+      overflow: hidden;
+      box-shadow: var(--sh-md);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .bp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      color: #fff;
+    }
+    .bp-header.ida    { background: linear-gradient(135deg, #1D4ED8, #2563EB); }
+    .bp-header.vuelta { background: linear-gradient(135deg, #0F172A, #1E3A5F); }
+
+    .bp-type {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: .12em; text-transform: uppercase;
+      opacity: .9;
+    }
+    .bp-airline-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bp-airline-logo {
+      width: 28px; height: 28px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: rgba(255,255,255,.15);
+    }
+    .bp-airline-name { font-size: 13px; font-weight: 600; opacity: .85; }
+    .bp-fn { font-size: 11px; font-weight: 700; opacity: .65; margin-top: 1px; }
+
+    .bp-body {
+      padding: 24px 28px 20px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .bp-city { flex: 1; }
+    .bp-city.right { text-align: right; }
+    .bp-time {
+      font-size: 36px; font-weight: 900;
+      letter-spacing: -.02em; color: var(--ink);
+      line-height: 1;
+    }
+    .bp-code {
+      font-size: 13px; font-weight: 700;
+      color: var(--brand-mid);
+      margin-top: 3px;
+    }
+    .bp-city-name {
+      font-size: 12px; color: var(--muted);
+      margin-top: 2px; line-height: 1.3;
+    }
+
+    .bp-connector {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 5px;
+    }
+    .bp-plane { font-size: 22px; color: var(--ink-muted); }
+    .bp-line {
+      width: 100%; height: 1.5px;
+      background: linear-gradient(90deg, var(--border), var(--brand-mid), var(--border));
+    }
+
+    .bp-foot {
+      display: flex; gap: 0;
+      border-top: 1.5px dashed var(--border);
+    }
+    .bp-foot-item {
+      flex: 1; padding: 12px 20px;
+      border-right: 1px solid var(--border);
+    }
+    .bp-foot-item:last-child { border-right: none; }
+    .bp-lbl {
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); margin-bottom: 3px;
+    }
+    .bp-val { font-size: 13px; font-weight: 700; color: var(--ink); }
+
+    @media (max-width: 520px) {
+      .bp-time { font-size: 22px; }
+      .bp-body { padding: 14px 12px 10px; gap: 8px; }
+      .bp-foot { flex-wrap: wrap; }
+      .bp-foot-item { padding: 8px 10px; min-width: 30%; }
+      .bp-foot-item:last-child { border-right: none; }
+      .bp-airline-name { display: none; }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HOTEL CARD
+    ═══════════════════════════════════════════════════ */
+    .hotel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-l);
+      box-shadow: var(--sh-sm);
+      overflow: hidden;
+      margin-bottom: 20px;
+      transition: box-shadow .25s;
+    }
+    .hotel-card:hover { box-shadow: var(--sh-md); }
+
+    .hotel-photos { display: flex; gap: 3px; height: 200px; overflow: hidden; }
+    @media (max-width: 480px) { .hotel-photos { height: 150px; } }
+    .hotel-photos img { flex:1; object-fit:cover; min-width:0; transition: transform .4s; }
+    .hotel-photos img:hover { transform: scale(1.04); }
+    .hotel-nophoto {
+      height: 200px; width: 100%;
+      background: linear-gradient(135deg, #E2E8F0, #CBD5E1);
+      display: flex; align-items:center; justify-content:center;
+      font-size: 56px; color: var(--muted);
+    }
+
+    .hotel-body { padding: 22px 24px 20px; }
+    .hotel-name { font-size: 20px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .hotel-room { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+    .hotel-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+    .tag {
+      padding: 4px 11px;
+      border-radius: 6px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .tag-gold { background: var(--gold-pale); color: #92400E; }
+    .tag-blue { background: #DBEAFE; color: #1E40AF; }
+
+    .hotel-dates {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--muted);
+      margin-bottom: 18px; padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hotel-dates strong { color: var(--ink); font-weight: 700; }
+    .date-arrow { color: var(--brand-mid); font-weight: 700; }
+
+    .price-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+    .price-cell { padding: 14px 16px; }
+    .price-cell + .price-cell { border-left: 1px solid var(--border); }
+    .price-cell:last-child { background: var(--bg); border-radius: 0 0 var(--r-l) var(--r-l); }
+    .price-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 5px; }
+    .price-val { font-size: 17px; font-weight: 800; color: var(--ink); }
+    .price-val.total { font-size: 20px; color: var(--brand-mid); }
+
+    @media (max-width: 540px) {
+      .price-row { grid-template-columns: 1fr 1fr; }
+      .price-cell:nth-child(3) { grid-column: 1 / -1; border-left: none; border-top: 1px solid var(--border); }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ADICIONALES
+    ═══════════════════════════════════════════════════ */
+    .adc-row {
+      display: flex; justify-content:space-between; align-items:flex-start;
+      flex-wrap: wrap; gap: 8px 16px; padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .adc-info { flex: 1; min-width: 140px; }
+    .adc-row:first-child { padding-top: 0; }
+    .adc-row:last-child  { border-bottom: none; padding-bottom: 0; }
+    .adc-name { font-size: 15px; font-weight: 600; }
+    .adc-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+    .adc-price { font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; }
+
+    /* ═══════════════════════════════════════════════════
+       CONDITIONS
+    ═══════════════════════════════════════════════════ */
+    .cond-box {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: var(--r-m);
+      padding: 20px 24px;
+    }
+    .cond-box p { font-size: 13px; color: #78350F; line-height: 1.8; }
+
+    /* ═══════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════ */
+    .sidebar { position: sticky; top: 80px; }
+
+    .price-summary {
+      background: var(--ink);
+      border-radius: var(--r-l);
+      overflow: hidden;
+      box-shadow: var(--sh-lg);
+    }
+    .ps-header {
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .ps-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 8px; }
+    .ps-from { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 4px; }
+    .ps-price { font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -.03em; line-height: 1; }
+    .ps-price span { font-size: 16px; font-weight: 500; color: rgba(255,255,255,.5); }
+
+    .ps-options { padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .ps-option {
+      display: flex; justify-content:space-between; align-items:center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      gap: 12px;
+    }
+    .ps-option:last-child { border-bottom: none; }
+    .ps-opt-name { font-size: 13px; color: rgba(255,255,255,.75); line-height: 1.3; }
+    .ps-opt-price { font-size: 14px; font-weight: 700; color: rgba(255,255,255,.9); white-space: nowrap; }
+
+    .ps-cta { padding: 20px 28px; display: flex; flex-direction: column; gap: 10px; }
+    .btn-wa {
+      display: flex; align-items:center; justify-content:center; gap: 10px;
+      background: #16A34A; color: #fff;
+      font-size: 15px; font-weight: 700;
+      padding: 15px; border-radius: var(--r-m);
+      transition: background .2s, transform .15s;
+    }
+    .btn-wa:hover { background: #15803D; transform: translateY(-1px); }
+    .btn-wa:active { transform: translateY(0); }
+    .btn-ref {
+      text-align: center;
+      font-size: 12px; color: rgba(255,255,255,.35);
+      padding-top: 4px;
+    }
+
+    /* Mobile CTA bar */
+    .mobile-cta {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 12px 16px 20px; z-index: 300;
+    }
+    @media (max-width:1024px) {
+      .mobile-cta { display: block; }
+      .page-grid { padding-bottom: 100px; }
+    }
+    .mobile-wa {
+      display: flex; align-items:center; justify-content:center; gap: 10px;
+      background: #16A34A; color: #fff;
+      font-size: 15px; font-weight: 700;
+      padding: 16px; border-radius: var(--r-m);
+      width: 100%; max-width: 480px; margin-inline: auto;
+      box-shadow: 0 4px 16px rgba(22,163,74,.35);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       FOOTER — mismo fondo que navbar (#020617)
+    ═══════════════════════════════════════════════════ */
+    .footer {
+      background: #020617;
+      border-top: 1px solid rgba(255,255,255,.07);
+      padding: 52px 0 36px;
+    }
+    .footer-inner {
+      width: var(--w); margin-inline: auto;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 48px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .footer-inner { grid-template-columns: 1fr; text-align: center; gap: 28px; }
+      .footer-social { justify-content: center !important; align-items: center !important; }
+      .footer-logo { margin-inline: auto; }
+      .footer-links a, .footer-links span { justify-content: center; }
+    }
+
+    .footer-brand { display: flex; flex-direction: column; }
+    .footer-logo {
+      height: 52px; max-width: 180px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+      padding: 5px 12px;
+      margin-bottom: 14px;
+    }
+    .footer h3 { font-size: 15px; font-weight: 800; color: rgba(255,255,255,.85); margin-bottom: 4px; }
+    .footer-nit { font-size: 11px; color: rgba(255,255,255,.28); letter-spacing: .06em; margin-top: 4px; }
+
+    .footer-links { display: flex; flex-direction:column; gap: 6px; }
+    .footer-links a, .footer-links span {
+      font-size: 13px; color: rgba(255,255,255,.45);
+      transition: color .2s; line-height: 1.8;
+    }
+    .footer-links a:hover { color: rgba(255,255,255,.85); }
+
+    .footer-social { display: flex; flex-direction:column; gap: 8px; align-items:flex-end; }
+    @media (max-width:768px) { .footer-social { align-items:center; flex-direction:row; flex-wrap:wrap; } }
+    .social-pill {
+      display: flex; align-items:center; gap: 7px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.65);
+      font-size: 13px; font-weight: 600;
+      padding: 8px 16px; border-radius: 100px;
+      transition: background .2s, color .2s;
+    }
+    .social-pill:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+    .footer-bottom {
+      width: var(--w); margin-inline: auto;
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content:space-between; align-items:center;
+      gap: 12px; flex-wrap:wrap;
+    }
+    .footer-copy { font-size: 12px; color: rgba(255,255,255,.2); }
+    .footer-copy-right { font-size: 12px; color: rgba(255,255,255,.2); }
+
+    /* ═══════════════════════════════════════════════════
+       STATES
+    ═══════════════════════════════════════════════════ */
+    .state { min-height: 100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; }
+    .spinner { width:44px; height:44px; border:3px solid var(--border); border-top-color:var(--brand-mid); border-radius:50%; animation:spin .8s linear infinite; margin-bottom:16px; }
+    .state h2 { font-size:22px; font-weight:700; margin-bottom:8px; }
+    .state p { font-size:14px; color:var(--muted); }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div class="state">
+    <div class="spinner"></div>
+    <p>Cargando tu cotización...</p>
+  </div>
+</div>
+
+<script>
+  /* ── Helpers ───────────────────────────────────────── */
+  const COP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
+  const MO  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fd  = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${+d} ${MO[+m-1]} ${y}`; };
+  const code = s => s?.match(/\(([A-Z]{3})\)/)?.[1] || s?.substring(0,3).toUpperCase() || '???';
+  const city = s => s?.split('(')[0]?.trim() || s;
+
+  const SLIDE_DURATION = 5000; // ms
+
+  const token = window.location.pathname.split('/').filter(Boolean).pop();
+
+  /* ── Fetch ─────────────────────────────────────────── */
+  async function load() {
+    try {
+      const [rCot, rEmp] = await Promise.all([
+        fetch(`/v1/p/${token}`),
+        fetch(`/v1/info-empresa/publica`),
+      ]);
+      if (!rCot.ok) throw 0;
+      const data    = await rCot.json();
+      const empArr  = rEmp.ok ? await rEmp.json() : [];
+      const empresa = Array.isArray(empArr) ? empArr[0] : empArr;
+      render(data, empresa || {});
+    } catch {
+      document.getElementById('app').innerHTML = `
+        <div class="state">
+          <div style="font-size:52px;margin-bottom:16px;">✈️</div>
+          <h2>Cotización no encontrada</h2>
+          <p>El enlace puede haber expirado o ser incorrecto.</p>
+        </div>`;
+    }
+  }
+
+  /* ── Boarding Pass ─────────────────────────────────── */
+  function renderBP(v) {
+    const a    = v.aerolinea;
+    const logo = a?.logo_url || (a?.codigo_iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.codigo_iata}.png` : null);
+    const cls  = v.tipo === 'ida' ? 'ida' : 'vuelta';
+    const label= v.tipo === 'ida' ? '✈ Vuelo de Ida' : '↩ Vuelo de Vuelta';
+
+    return `
+      <div class="bp au">
+        <div class="bp-header ${cls}">
+          <div class="bp-type">${label}</div>
+          <div class="bp-airline-row">
+            ${logo ? `<img src="${logo}" class="bp-airline-logo" alt="${a?.nombre}" onerror="this.style.display='none'">` : ''}
+            <div>
+              <div class="bp-airline-name">${a?.nombre || 'Aerolínea'}</div>
+              <div class="bp-fn">${v.numero_vuelo}</div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-body">
+          <div class="bp-city">
+            <div class="bp-time">${v.hora_salida}</div>
+            <div class="bp-code">${code(v.origen)}</div>
+            <div class="bp-city-name">${city(v.origen)}</div>
+          </div>
+          <div class="bp-connector">
+            <div class="bp-plane">✈</div>
+            <div class="bp-line"></div>
+          </div>
+          <div class="bp-city right">
+            <div class="bp-time">${v.hora_llegada}</div>
+            <div class="bp-code">${code(v.destino)}</div>
+            <div class="bp-city-name">${city(v.destino)}</div>
+          </div>
+        </div>
+        <div class="bp-foot">
+          <div class="bp-foot-item">
+            <div class="bp-lbl">Fecha</div>
+            <div class="bp-val">${fd(v.fecha)}</div>
+          </div>
+          <div class="bp-foot-item">
+            <div class="bp-lbl">Sale</div>
+            <div class="bp-val">${v.hora_salida}</div>
+          </div>
+          <div class="bp-foot-item">
+            <div class="bp-lbl">Llega</div>
+            <div class="bp-val">${v.hora_llegada}</div>
+          </div>
+          <div class="bp-foot-item">
+            <div class="bp-lbl">Vuelo</div>
+            <div class="bp-val">${v.numero_vuelo}</div>
+          </div>
+          ${v.numero_pasajeros ? `<div class="bp-foot-item">
+            <div class="bp-lbl">Pasajeros</div>
+            <div class="bp-val">${v.numero_pasajeros}</div>
+          </div>` : ''}
+          ${v.costo != null ? `<div class="bp-foot-item">
+            <div class="bp-lbl">Costo</div>
+            <div class="bp-val" style="color:var(--brand);font-weight:700">${COP(v.costo)}</div>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  /* ── Hotel Card ────────────────────────────────────── */
+  function renderHotel(h, idx) {
+    const fotos = (h.fotos||[]).filter(Boolean);
+    const photosHtml = fotos.length
+      ? `<div class="hotel-photos">${fotos.slice(0,3).map(f=>`<img src="${f}" alt="hotel" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>`
+      : `<div class="hotel-nophoto">🏨</div>`;
+
+    const tags = (h.que_incluye||[]).map(t=>`<span class="tag tag-gold">${t}</span>`).join('');
+
+    return `
+      <div class="hotel-card au" style="animation-delay:${idx*0.08}s">
+        ${photosHtml}
+        <div class="hotel-body">
+          <div class="hotel-name">${h.nombre}</div>
+          <div class="hotel-room">🛏&nbsp; ${h.tipo_habitacion}</div>
+          <div class="hotel-tags">${tags}</div>
+          <div class="hotel-dates">
+            <strong>${fd(h.fecha_entrada)}</strong>
+            <span class="date-arrow">→</span>
+            <strong>${fd(h.fecha_salida)}</strong>
+          </div>
+        </div>
+        <div class="price-row" style="border-top:1px solid var(--border);">
+          <div class="price-cell">
+            <div class="price-lbl">👤 Por adulto</div>
+            <div class="price-val">${COP(h.precio_adulto)}</div>
+          </div>
+          <div class="price-cell">
+            <div class="price-lbl">👶 Por menor</div>
+            <div class="price-val">${COP(h.precio_menor)}</div>
+          </div>
+          <div class="price-cell">
+            <div class="price-lbl">Total paquete</div>
+            <div class="price-val total">${COP(h.precio_total)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ── Main render ───────────────────────────────────── */
+  function render(d, emp) {
+    /* Imágenes de destino → slider si hay más de una */
+    const imgs = d.imagenes_destino || [];
+
+    const slidesHtml = imgs.length > 1
+      ? `<div class="hero-slides">
+           ${imgs.map((u,i)=>`<div class="slide${i===0?' active':''}" style="background-image:url('${u}')"></div>`).join('')}
+         </div>
+         <div class="slider-arrows">
+           <button class="sarrow" id="sa-prev">&#8592;</button>
+           <button class="sarrow" id="sa-next">&#8594;</button>
+         </div>`
+      : imgs[0]
+        ? `<div class="hero-slides"><div class="slide active" style="background-image:url('${imgs[0]}')"></div></div>`
+        : '';
+
+    const dotsHtml = imgs.length > 1
+      ? `<div class="slider-dots">
+           ${imgs.map((_,i)=>`<button class="sdot${i===0?' active':''}" data-i="${i}" style="--slide-duration:${SLIDE_DURATION}ms"></button>`).join('')}
+         </div>`
+      : '';
+
+    const galleryHtml = ''; /* todo va en el slider */
+
+    /* Incluye */
+    const includesHtml = (d.items_incluidos||[]).length ? `
+      <section class="au d1">
+        <div class="sec-head">
+          <div class="sec-icon">✅</div>
+          <h2>¿Qué incluye este viaje?</h2>
+        </div>
+        <div class="card"><div class="card-body">
+          <div class="includes-grid">
+            ${d.items_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot">✓</div><span>${i}</span></div>`).join('')}
+          </div>
+        </div></div>
+      </section>` : '';
+
+    /* No incluye */
+    const noIncludesHtml = (d.items_no_incluidos||[]).length ? `
+      <section class="au d1">
+        <div class="sec-head">
+          <div class="sec-icon">🚫</div>
+          <h2>¿Qué NO incluye?</h2>
+        </div>
+        <div class="card"><div class="card-body">
+          <div class="includes-grid">
+            ${d.items_no_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot" style="color:var(--muted)">✕</div><span style="color:var(--muted)">${i}</span></div>`).join('')}
+          </div>
+        </div></div>
+      </section>` : '';
+
+    /* Vuelos */
+    const vuelosHtml = (d.vuelos||[]).length ? `
+      <section class="au d2">
+        <div class="sec-head">
+          <div class="sec-icon">✈</div>
+          <h2>Itinerario de Vuelos</h2>
+        </div>
+        ${d.vuelos.map(renderBP).join('')}
+      </section>` : '';
+
+    /* Hoteles */
+    const hotelesHtml = (d.opciones_hotel||[]).length ? `
+      <section class="au d3">
+        <div class="sec-head">
+          <div class="sec-icon">🏨</div>
+          <h2>Opciones de Alojamiento</h2>
+        </div>
+        ${d.opciones_hotel.map((h,i)=>renderHotel(h,i)).join('')}
+      </section>` : '';
+
+    /* Adicionales */
+    const adc = (d.adicionales||[]);
+    const adcHtml = adc.length ? `
+      <section class="au d4">
+        <div class="sec-head">
+          <div class="sec-icon">➕</div>
+          <h2>Servicios Adicionales</h2>
+        </div>
+        <div class="card"><div class="card-body">
+          ${adc.map(a=>`
+            <div class="adc-row">
+              <div class="adc-info">
+                <div class="adc-name">${a.nombre}</div>
+                ${a.descripcion?`<div class="adc-desc">${a.descripcion}</div>`:''}
+              </div>
+              <div class="adc-price">${COP(a.precio)}</div>
+            </div>`).join('')}
+        </div></div>
+      </section>` : '';
+
+    /* Condiciones */
+    const condHtml = d.condiciones_generales ? `
+      <section class="au">
+        <div class="sec-head">
+          <div class="sec-icon">📋</div>
+          <h2>Condiciones Generales</h2>
+        </div>
+        <div class="cond-box"><p>${d.condiciones_generales}</p></div>
+      </section>` : '';
+
+    /* Sidebar — precio total calculado */
+    const totalVuelos     = (d.vuelos||[]).reduce((s,v)=>s+(Number(v.costo)||0), 0);
+    const totalHoteles    = (d.opciones_hotel||[]).reduce((s,h)=>s+(Number(h.precio_total)||0), 0);
+    const totalAdicionales= (d.adicionales||[]).reduce((s,a)=>s+(Number(a.precio)||0), 0);
+    const precioTotal     = d.precio_total ?? (totalVuelos + totalHoteles + totalAdicionales);
+
+    const waNumber = (emp.telefono || '').replace(/\D/g,'');
+    const waMsg  = encodeURIComponent(`Hola ${emp.nombre || 'Travel Tours'}! Me interesa reservar: ${d.titulo_viaje}`);
+    const waLink = `https://wa.me/${waNumber}?text=${waMsg}`;
+    const waIcon = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+    const vuelosItems = (d.vuelos||[]).filter(v=>v.costo>0).map(v=>
+      `<div class="ps-option">
+        <div class="ps-opt-name">✈ ${v.origen} → ${v.destino}${v.numero_pasajeros ? ` <span style="opacity:.6;font-size:11px">(${v.numero_pasajeros} pax)</span>` : ''}</div>
+        <div class="ps-opt-price">${COP(v.costo)}</div>
+      </div>`).join('');
+
+    const hotelesItems = (d.opciones_hotel||[]).filter(h=>h.precio_total>0).map(h=>
+      `<div class="ps-option">
+        <div class="ps-opt-name">🏨 ${h.nombre}<br><span style="opacity:.55;font-size:11px">${h.tipo_habitacion}</span></div>
+        <div class="ps-opt-price">${COP(h.precio_total)}</div>
+      </div>`).join('');
+
+    const adicionalesItems = (d.adicionales||[]).filter(a=>a.precio>0).map(a=>
+      `<div class="ps-option">
+        <div class="ps-opt-name">⭐ ${a.nombre}</div>
+        <div class="ps-opt-price">${COP(a.precio)}</div>
+      </div>`).join('');
+
+    const optionsList = [vuelosItems, hotelesItems, adicionalesItems].filter(Boolean).join('');
+
+    const fechaActualizacion = new Date(d.created_at).toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
+
+    // Fechas del viaje: ida desde vuelos, vuelta desde vuelos o hotel
+    const vueloIda    = (d.vuelos||[]).find(v => v.tipo === 'ida');
+    const vueloVuelta = (d.vuelos||[]).find(v => v.tipo === 'vuelta');
+    const hotel       = (d.opciones_hotel||[])[0];
+    const fechaInicio = vueloIda?.fecha    || hotel?.fecha_entrada || null;
+    const fechaFin    = vueloVuelta?.fecha || hotel?.fecha_salida  || null;
+    const fechasViaje = fechaInicio && fechaFin
+      ? `${fd(fechaInicio)} &nbsp;→&nbsp; ${fd(fechaFin)}`
+      : fechaInicio ? fd(fechaInicio) : '';
+
+    document.getElementById('app').innerHTML = `
+      <nav class="navbar">
+        <div class="navbar-inner">
+          <img src="/logo-empresa.png" class="navbar-logo" alt="${emp.nombre || 'Agencia de Viajes'}">
+          <div class="quote-chip">Ref. ${token.substring(0,8).toUpperCase()}</div>
+        </div>
+      </nav>
+
+      <header class="hero">
+        ${slidesHtml}
+        <div class="hero-content">
+          <h1 class="au d1">${d.titulo_viaje}</h1>
+          ${fechasViaje ? `<div class="hero-dates au d2"> ${fechasViaje}</div>` : ''}
+          <p class="hero-sub au d3">Última actualización: ${fechaActualizacion}</p>
+          ${dotsHtml}
+        </div>
+      </header>
+
+      ${galleryHtml}
+
+      <div class="wrap">
+        <div class="page-grid">
+          <main>
+            ${includesHtml}
+            ${noIncludesHtml}
+            ${vuelosHtml}
+            ${hotelesHtml}
+            ${adcHtml}
+            ${condHtml}
+          </main>
+
+          <aside class="sidebar">
+            <div class="price-summary au d2">
+              <div class="ps-header">
+                <div class="ps-label">Total del paquete</div>
+                ${precioTotal ? `<div class="ps-price">${COP(precioTotal)} <span>/ paquete</span></div>` : '<div class="ps-price" style="font-size:18px;color:rgba(255,255,255,.5)">Consultar precio</div>'}
+              </div>
+              ${optionsList ? `<div class="ps-options">
+                ${optionsList}
+                <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:4px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5)">Total</div>
+                  <div style="font-size:16px;font-weight:800;color:#fff">${COP(precioTotal)}</div>
+                </div>
+              </div>` : ''}
+              <div class="ps-cta">
+                <a href="${waLink}" class="btn-wa" target="_blank">
+                  ${waIcon} ¡Reservar Ahora!
+                </a>
+                <div class="btn-ref">Ref: ${token.substring(0,8).toUpperCase()}</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <div class="footer-brand">
+            <img src="/logo-empresa.png" class="footer-logo" alt="${emp.nombre || 'Agencia de Viajes'}">
+            <h3>${emp.nombre || 'Agencia de Viajes'}</h3>
+            ${emp.detalles_empresa ? `<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.4">${emp.detalles_empresa}</div>` : ''}
+          </div>
+          <div class="footer-links">
+            ${emp.direccion_sede_principal ? `<span>📍 ${emp.direccion_sede_principal}</span>` : ''}
+            ${emp.telefono ? `<a href="tel:${emp.telefono}">📞 ${emp.telefono}</a>` : ''}
+            ${emp.correo ? `<a href="mailto:${emp.correo}">✉️ ${emp.correo}</a>` : ''}
+            ${emp.pagina_web ? `<a href="${emp.pagina_web}" target="_blank">🌐 ${emp.pagina_web}</a>` : ''}
+            ${emp.horario_presencial ? `<span>🕐 ${emp.horario_presencial}</span>` : ''}
+          </div>
+          <div class="footer-social">
+            ${(emp.redes_sociales || []).map(r => {
+              const name = (r.name || r.nombre || '').toLowerCase();
+              const svgIG = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`;
+              const svgFB = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+              const svgTW = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+              const icon = name.includes('instagram') ? svgIG : name.includes('facebook') ? svgFB : name.includes('twitter') || name.includes('x') ? svgTW : '🔗';
+              const label = r.name || r.nombre || 'Red social';
+              return `<a href="${r.link || r.url || '#'}" class="social-pill" target="_blank">${icon} ${label}</a>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div class="footer-copy">© ${new Date().getFullYear()} ${emp.nombre || 'Agencia de Viajes'}</div>
+          <div class="footer-copy-right">Todos los derechos reservados</div>
+        </div>
+      </footer>
+
+      <div class="mobile-cta">
+        <a href="${waLink}" class="mobile-wa" target="_blank">
+          ${waIcon} Reservar por WhatsApp
+        </a>
+      </div>`;
+
+    // iniciar slider después de que el DOM esté pintado
+    requestAnimationFrame(initSlider);
+  }
+
+  /* ── Slider logic (se llama desde render) ─────────── */
+  function initSlider() {
+    const slides = document.querySelectorAll('.slide');
+    const dots   = document.querySelectorAll('.sdot');
+    const prev   = document.getElementById('sa-prev');
+    const next   = document.getElementById('sa-next');
+    if (slides.length <= 1) return;
+
+    let cur = 0;
+    let timer;
+
+    function goTo(idx) {
+      slides[cur].classList.remove('active');
+      dots[cur].classList.remove('active');
+      cur = (idx + slides.length) % slides.length;
+      slides[cur].classList.add('active');
+      // reinicia animación CSS del dot
+      const d = dots[cur];
+      d.classList.remove('active');
+      void d.offsetWidth; // reflow
+      d.classList.add('active');
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(() => goTo(cur + 1), SLIDE_DURATION);
+    }
+
+    dots.forEach(d => d.addEventListener('click', () => { goTo(+d.dataset.i); startTimer(); }));
+    prev?.addEventListener('click', () => { goTo(cur - 1); startTimer(); });
+    next?.addEventListener('click', () => { goTo(cur + 1); startTimer(); });
+
+    // Pausa al hover sobre el hero
+    document.querySelector('.hero')?.addEventListener('mouseenter', () => clearInterval(timer));
+    document.querySelector('.hero')?.addEventListener('mouseleave', startTimer);
+
+    startTimer();
+  }
+
+  load();
+</script>
+</body>
+</html>

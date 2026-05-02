@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Catalogo } from './entities/catalogo.entity';
 import { CreateCatalogoDto } from './dto/create-catalogo.dto';
 import { UpdateCatalogoDto } from './dto/update-catalogo.dto';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
+
+const CACHE_KEY = 'catalogos:all';
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 @Injectable()
 export class CatalogosService {
@@ -12,6 +16,7 @@ export class CatalogosService {
     @InjectRepository(Catalogo)
     private readonly catalogosRepository: Repository<Catalogo>,
     private readonly auditoriaService: AuditoriaGeneralService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(createCatalogoDto: CreateCatalogoDto, usuarioId?: number, usuarioNombre?: string): Promise<Catalogo> {
@@ -22,6 +27,7 @@ export class CatalogosService {
       activo: createCatalogoDto.activo ?? true,
     });
     const saved = await this.catalogosRepository.save(catalogo);
+    await this.cacheManager.del(CACHE_KEY);
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,
@@ -34,9 +40,11 @@ export class CatalogosService {
   }
 
   async findAll(): Promise<Catalogo[]> {
-    return await this.catalogosRepository.find({
-      order: { id_catalogo: 'DESC' },
-    });
+    const cached = await this.cacheManager.get<Catalogo[]>(CACHE_KEY);
+    if (cached) return cached;
+    const result = await this.catalogosRepository.find({ order: { id_catalogo: 'DESC' } });
+    await this.cacheManager.set(CACHE_KEY, result, CACHE_TTL);
+    return result;
   }
 
   async findOne(id: number): Promise<Catalogo> {
@@ -68,6 +76,7 @@ export class CatalogosService {
       catalogo.activo = updateCatalogoDto.activo;
 
     const saved = await this.catalogosRepository.save(catalogo);
+    await this.cacheManager.del(CACHE_KEY);
     const despues = { nombre_catalogo: saved.nombre_catalogo, id_sede: saved.id_sede, url_archivo: saved.url_archivo, activo: saved.activo };
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
@@ -83,6 +92,7 @@ export class CatalogosService {
   async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const catalogo = await this.findOne(id);
     await this.catalogosRepository.remove(catalogo);
+    await this.cacheManager.del(CACHE_KEY);
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,

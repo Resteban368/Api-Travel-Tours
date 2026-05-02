@@ -28,12 +28,26 @@ export class CotizacionesService {
     return saved;
   }
 
-  async findAll(page = 1, limit = 20) {
-    const [data, total] = await this.cotizacionRepository.findAndCount({
-      order: { created_at: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findAll(page = 1, limit = 20, estado?: string, estadoNot?: string) {
+    let whereClause: any = {};
+    if (estado) {
+      whereClause.estado = estado;
+    } else if (estadoNot) {
+      // Import Not dynamically or use a simple query builder to avoid import issues
+    }
+
+    const qb = this.cotizacionRepository.createQueryBuilder('cotizacion')
+      .orderBy('cotizacion.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (estado) {
+      qb.andWhere('cotizacion.estado = :estado', { estado });
+    } else if (estadoNot) {
+      qb.andWhere('cotizacion.estado != :estadoNot', { estadoNot });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
@@ -47,10 +61,10 @@ export class CotizacionesService {
 
   async update(id: number, updateCotizacionDto: UpdateCotizacionDto, usuarioId?: number, usuarioNombre?: string) {
     const cotizacion = await this.findOne(id);
-    const antes = { nombre_completo: cotizacion.nombre_completo, estado: cotizacion.estado, numero_pasajeros: cotizacion.numero_pasajeros, origen_destino: cotizacion.origen_destino, fecha_salida: cotizacion.fecha_salida, fecha_regreso: cotizacion.fecha_regreso, is_read: cotizacion.is_read };
+    const antes = { nombre_completo: cotizacion.nombre_completo, numero_pasajeros: cotizacion.numero_pasajeros, origen: cotizacion.origen, destino: cotizacion.destino, fecha_salida: cotizacion.fecha_salida, fecha_regreso: cotizacion.fecha_regreso };
     const updatedCotizacion = this.cotizacionRepository.merge(cotizacion, updateCotizacionDto);
     const saved = await this.cotizacionRepository.save(updatedCotizacion);
-    const despues = { nombre_completo: saved.nombre_completo, estado: saved.estado, numero_pasajeros: saved.numero_pasajeros, origen_destino: saved.origen_destino, fecha_salida: saved.fecha_salida, fecha_regreso: saved.fecha_regreso, is_read: saved.is_read };
+    const despues = { nombre_completo: saved.nombre_completo, numero_pasajeros: saved.numero_pasajeros, origen: saved.origen, destino: saved.destino, fecha_salida: saved.fecha_salida, fecha_regreso: saved.fecha_regreso };
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,

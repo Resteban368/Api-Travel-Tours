@@ -39,7 +39,9 @@ export class PagosRealizadosController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
   ) {
-    return this.pagosService.findAll(startDate, endDate, parseInt(page), parseInt(limit));
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const safeLimit = Math.min(Math.max(1, parseInt(limit) || 20), 100);
+    return this.pagosService.findAll(startDate, endDate, safePage, safeLimit);
   }
 
   // ─── AUDITORÍA ────────────────────────────────────────────────────────────

@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { MetodoPago } from './entities/metodo-pago.entity';
 import { CreateMetodoPagoDto } from './dto/create-metodo-pago.dto';
 import { UpdateMetodoPagoDto } from './dto/update-metodo-pago.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
+
+const CACHE_KEY = 'metodos_pago:all';
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 @Injectable()
 export class MetodosPagoService {
@@ -17,11 +21,13 @@ export class MetodosPagoService {
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly auditoriaService: AuditoriaGeneralService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(createDto: CreateMetodoPagoDto, usuarioId?: number, usuarioNombre?: string): Promise<MetodoPago> {
     const metodo = this.metodosPagoRepository.create(createDto);
     const saved = await this.metodosPagoRepository.save(metodo);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllPaymentMethodsToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
@@ -35,9 +41,11 @@ export class MetodosPagoService {
   }
 
   async findAll(): Promise<MetodoPago[]> {
-    return await this.metodosPagoRepository.find({
-      order: { id_metodo_pago: 'DESC' },
-    });
+    const cached = await this.cacheManager.get<MetodoPago[]>(CACHE_KEY);
+    if (cached) return cached;
+    const result = await this.metodosPagoRepository.find({ order: { id_metodo_pago: 'DESC' } });
+    await this.cacheManager.set(CACHE_KEY, result, CACHE_TTL);
+    return result;
   }
 
   async findOne(id: number): Promise<MetodoPago> {
@@ -60,6 +68,7 @@ export class MetodosPagoService {
     const antes = { nombre_metodo: metodo.nombre_metodo, tipo_pago: metodo.tipo_pago, tipo_cuenta: metodo.tipo_cuenta, numero_metodo: metodo.numero_metodo, titular_cuenta: metodo.titular_cuenta, activo: metodo.activo };
     Object.assign(metodo, updateDto);
     const saved = await this.metodosPagoRepository.save(metodo);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllPaymentMethodsToVector();
     const despues = { nombre_metodo: saved.nombre_metodo, tipo_pago: saved.tipo_pago, tipo_cuenta: saved.tipo_cuenta, numero_metodo: saved.numero_metodo, titular_cuenta: saved.titular_cuenta, activo: saved.activo };
     await this.auditoriaService.registrar({
@@ -76,6 +85,7 @@ export class MetodosPagoService {
   async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const metodo = await this.findOne(id);
     await this.metodosPagoRepository.remove(metodo);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncAllPaymentMethodsToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,

@@ -20,8 +20,10 @@ export class CotizacionesController {
   findAll(
     @Query('page') page = '1',
     @Query('limit') limit = '20',
+    @Query('estado') estado?: string,
+    @Query('estadoNot') estadoNot?: string,
   ) {
-    return this.cotizacionesService.findAll(parseInt(page), parseInt(limit));
+    return this.cotizacionesService.findAll(parseInt(page), parseInt(limit), estado, estadoNot);
   }
 
   @Version('1')

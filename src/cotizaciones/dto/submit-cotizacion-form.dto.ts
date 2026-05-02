@@ -1,10 +1,18 @@
-import { IsString, IsInt, IsOptional, IsEmail, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  IsInt,
+  IsPositive,
+  IsDateString,
+  MaxLength,
+} from 'class-validator';
 
-export class CreateCotizacionDto {
+export class SubmitCotizacionFormDto {
   @IsString()
-  chat_id: string;
-
-  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
   nombre_completo: string;
 
   @IsEmail()
@@ -13,12 +21,16 @@ export class CreateCotizacionDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(30)
   telefono?: string;
 
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
   detalles_plan: string;
 
   @IsInt()
+  @IsPositive()
   numero_pasajeros: number;
 
   @IsDateString()
@@ -31,18 +43,21 @@ export class CreateCotizacionDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   origen?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   destino?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   edades_menores?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   especificaciones?: string;
-
 }

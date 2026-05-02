@@ -1,11 +1,11 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, IsPositive } from 'class-validator';
 
 export class SendMessageDto {
-  @IsString()
-  @IsNotEmpty()
-  to: string;
+  @IsInt()
+  @IsPositive()
+  conversationId: number;
 
   @IsString()
   @IsNotEmpty()
-  body: string;
+  content: string;
 }

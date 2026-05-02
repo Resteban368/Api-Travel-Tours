@@ -43,8 +43,12 @@ export class ReservasController {
 
   @Version('1')
   @Get('cliente/:clienteId')
-  historialCliente(@Param('clienteId', ParseIntPipe) clienteId: number) {
-    return this.reservasService.historialCliente(clienteId);
+  historialCliente(
+    @Param('clienteId', ParseIntPipe) clienteId: number,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    return this.reservasService.historialCliente(clienteId, user?.rol, user?.id_usuario);
   }
 
   @Version('1')

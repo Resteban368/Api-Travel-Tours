@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Reserva } from '../../reservas/entities/reserva.entity';
 
@@ -40,6 +41,7 @@ export class PagoRealizado {
   @Column({ name: 'fecha_documento', type: 'text' })
   fecha_documento: string;
 
+  @Index()
   @Column({ name: 'is_validated', type: 'boolean', default: false })
   is_validated: boolean;
 
@@ -56,6 +58,7 @@ export class PagoRealizado {
   @JoinColumn({ name: 'reserva_id' })
   reserva: Reserva | null;
 
+  @Index()
   @Column({ name: 'reserva_id', type: 'integer', nullable: true })
   reserva_id: number | null;
 }

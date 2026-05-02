@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Sede } from '../../sedes/entities/sede.entity';
 
@@ -70,6 +71,7 @@ export class ToursMaestro {
   @Column({ name: 'es_promocion', type: 'boolean', default: false })
   es_promocion: boolean;
 
+  @Index()
   @Column({ name: 'is_active', type: 'boolean', default: true })
   is_active: boolean;
 

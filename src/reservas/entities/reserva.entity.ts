@@ -9,6 +9,7 @@ import {
   JoinTable,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { ToursMaestro } from '../../tours/entities/tours-maestro.entity';
 import { Servicio } from '../../servicios/entities/servicio.entity';
@@ -31,12 +32,14 @@ export class Reserva {
   @Column({ type: 'text' })
   correo: string;
 
+  @Index()
   @Column({ type: 'text', default: 'pendiente' })
   estado: string; // 'al dia', 'pendiente', 'cancelado'
 
   @Column({ type: 'text', nullable: true })
   notas: string | null;
 
+  @Index()
   @Column({ name: 'creado_por_id', type: 'integer', nullable: true })
   creado_por_id: number | null;
 

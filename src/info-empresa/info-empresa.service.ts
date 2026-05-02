@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { InfoEmpresa } from './entities/info-empresa.entity';
 import { CreateInfoEmpresaDto, UpdateInfoEmpresaDto } from './dto/info-empresa.dto';
 import { N8nVector } from '../tours/entities/n8n-vector.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
+
+const CACHE_KEY = 'info_empresa:all';
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 @Injectable()
 export class InfoEmpresaService {
@@ -16,6 +20,7 @@ export class InfoEmpresaService {
     private readonly n8nVectorRepository: Repository<N8nVector>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly auditoriaService: AuditoriaGeneralService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(dto: CreateInfoEmpresaDto, usuarioId?: number, usuarioNombre?: string): Promise<InfoEmpresa> {
@@ -27,6 +32,7 @@ export class InfoEmpresaService {
     }
     const info = this.infoRepository.create(dto);
     const saved = await this.infoRepository.save(info);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncInfoToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
@@ -40,7 +46,11 @@ export class InfoEmpresaService {
   }
 
   async findAll(): Promise<InfoEmpresa[]> {
-    return await this.infoRepository.find();
+    const cached = await this.cacheManager.get<InfoEmpresa[]>(CACHE_KEY);
+    if (cached) return cached;
+    const result = await this.infoRepository.find();
+    await this.cacheManager.set(CACHE_KEY, result, CACHE_TTL);
+    return result;
   }
 
   async findOne(id: number): Promise<InfoEmpresa> {
@@ -58,6 +68,7 @@ export class InfoEmpresaService {
     const antes = { nombre: info.nombre, direccion_sede_principal: info.direccion_sede_principal, telefono: info.telefono, correo: info.correo, pagina_web: info.pagina_web, nombre_gerente: info.nombre_gerente };
     Object.assign(info, dto);
     const saved = await this.infoRepository.save(info);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncInfoToVector();
     const despues = { nombre: saved.nombre, direccion_sede_principal: saved.direccion_sede_principal, telefono: saved.telefono, correo: saved.correo, pagina_web: saved.pagina_web, nombre_gerente: saved.nombre_gerente };
     await this.auditoriaService.registrar({
@@ -74,6 +85,7 @@ export class InfoEmpresaService {
   async remove(id: number, usuarioId?: number, usuarioNombre?: string): Promise<{ message: string }> {
     const info = await this.findOne(id);
     await this.infoRepository.remove(info);
+    await this.cacheManager.del(CACHE_KEY);
     await this.syncInfoToVector();
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,

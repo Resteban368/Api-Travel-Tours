@@ -6,43 +6,39 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
-  private readonly apiUrl = 'https://api.ycloud.com/v2/whatsapp/messages/sendDirectly';
-
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
-  async sendMessage(to: string, body: string) {
-    const apiKey = this.configService.get<string>('YCLOUD_API_KEY');
-    const from = this.configService.get<string>('YCLOUD_WHATSAPP_FROM');
+  async sendMessage(conversationId: number, content: string) {
+    const apiToken = this.configService.get<string>('CHATWOOT_API_TOKEN');
+    const baseUrl = this.configService.get<string>('CHATWOOT_BASE_URL');
+    const accountId = this.configService.get<string>('CHATWOOT_ACCOUNT_ID');
+    const url = `${baseUrl}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`;
 
     const payload = {
-      type: 'text',
-      text: {
-        body,
-      },
-      from,
-      to,
+      content,
+      message_type: 'outgoing',
+      private: false,
     };
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(this.apiUrl, payload, {
+        this.httpService.post(url, payload, {
           headers: {
-            'X-API-Key': apiKey,
-            'accept': 'application/json',
+            'api_access_token': apiToken,
             'Content-Type': 'application/json',
           },
         }),
       );
 
-      this.logger.log(`Message sent successfully to ${to}`);
+      this.logger.log(`Message sent successfully to conversation ${conversationId}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`Error sending message to ${to}: ${error.message}`);
+      this.logger.error(`Error sending message to conversation ${conversationId}: ${error.message}`);
       if (error.response) {
-        this.logger.error(`YCloud Error details: ${JSON.stringify(error.response.data)}`);
+        this.logger.error(`Chatwoot error details: ${JSON.stringify(error.response.data)}`);
         throw error.response.data;
       }
       throw error;

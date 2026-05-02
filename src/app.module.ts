@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ToursModule } from './tours/tours.module';
@@ -35,6 +37,16 @@ import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.mo
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        transport: process.env.NODE_ENV !== 'production'
+          ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
+          : undefined,
+        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+        redact: ['req.headers.authorization'],  // oculta el JWT en los logs
+      },
+    }),
+    CacheModule.register({ isGlobal: true, max: 200 }),
     ThrottlerModule.forRoot([
       {
         name: 'global',
@@ -48,7 +60,12 @@ import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.mo
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        extra: {
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+        },
       }),
       inject: [ConfigService],
     }),
