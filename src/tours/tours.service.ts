@@ -4,6 +4,7 @@ import { Repository, In } from 'typeorm';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
+import { TourPrecio } from './entities/tour-precio.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
@@ -23,6 +24,8 @@ export class ToursService {
   constructor(
     @InjectRepository(ToursMaestro)
     private readonly toursMaestroRepository: Repository<ToursMaestro>,
+    @InjectRepository(TourPrecio)
+    private readonly tourPrecioRepository: Repository<TourPrecio>,
     @InjectRepository(N8nVector)
     private readonly n8nVectorsRepository: Repository<N8nVector>,
     @InjectRepository(AuditoriaTour)
@@ -61,6 +64,24 @@ export class ToursService {
       sede_id: dto.sede_id ?? null,
     });
     const saved = await this.toursMaestroRepository.save(tour);
+
+    // Guardar precios si se enviaron
+    let savedPrecios: TourPrecio[] = [];
+    if (dto.precios && dto.precios.length > 0) {
+      const preciosEntidades = dto.precios.map((p) =>
+        this.tourPrecioRepository.create({
+          tour: saved,
+          descripcion: p.descripcion,
+          edad_min: p.edad_min ?? null,
+          edad_max: p.edad_max ?? null,
+          punto_partida: p.punto_partida ?? null,
+          precio: p.precio,
+          activo: p.activo ?? true,
+        }),
+      );
+      savedPrecios = await this.tourPrecioRepository.save(preciosEntidades);
+    }
+
     await this.auditoriaTourService.registrarCreacion(saved).catch(() => null);
     await this.auditoriaGeneralService.registrar({
       usuario_id: usuarioId ?? null,
@@ -72,6 +93,7 @@ export class ToursService {
         nombre_tour: saved.nombre_tour,
         agencia: saved.agencia,
         precio: saved.precio,
+        precios: savedPrecios.length,
         cupos: saved.cupos,
         es_borrador: saved.es_borrador,
       },
@@ -85,6 +107,7 @@ export class ToursService {
       nombre_tour: dto.nombre_tour,
       agencia: dto.agencia,
       precio: dto.precio,
+      precios: savedPrecios,
       punto_partida: dto.punto_partida,
       llegada: dto.llegada,
       inclusions: dto.inclusions,
@@ -186,10 +209,36 @@ export class ToursService {
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
 
     const saved = await this.toursMaestroRepository.save(tour);
+
+    // Reemplazar precios si se enviaron en el DTO
+    if (dto.precios !== undefined) {
+      await this.tourPrecioRepository.delete({ tour: { id: saved.id } });
+      if (dto.precios.length > 0) {
+        const preciosEntidades = dto.precios.map((p) =>
+          this.tourPrecioRepository.create({
+            tour: saved,
+            descripcion: p.descripcion,
+            edad_min: p.edad_min ?? null,
+            edad_max: p.edad_max ?? null,
+            punto_partida: p.punto_partida ?? null,
+            precio: p.precio,
+            activo: p.activo ?? true,
+          }),
+        );
+        await this.tourPrecioRepository.save(preciosEntidades);
+      }
+    }
+
+    // Cargar precios actuales para los chunks (incluyendo los recién guardados)
+    const preciosActuales = await this.tourPrecioRepository.find({
+      where: { tour: { id: saved.id } },
+    });
+
     const despues = {
       nombre_tour: saved.nombre_tour,
       agencia: saved.agencia,
       precio: saved.precio,
+      precios: preciosActuales.length,
       cupos: saved.cupos,
       is_active: saved.is_active,
       es_borrador: saved.es_borrador,
@@ -242,6 +291,7 @@ export class ToursService {
       nombre_tour: saved.nombre_tour,
       agencia: saved.agencia,
       precio: saved.precio,
+      precios: preciosActuales,
       punto_partida: saved.punto_partida,
       llegada: saved.llegada,
       inclusions: saved.inclusions,
@@ -562,6 +612,7 @@ export class ToursService {
     nombre_tour: string;
     agencia?: string | null;
     precio?: number | null;
+    precios?: TourPrecio[] | null;
     punto_partida?: string | null;
     llegada?: string | null;
     inclusions?: string[] | null;
@@ -578,11 +629,29 @@ export class ToursService {
       chunk_index?: number;
     }> = [];
 
+    // Construir texto de precios (precio base + precios por categoría, ambos siempre incluidos)
+    const preciosLineas: string[] = [];
+    if (data.precio != null) {
+      preciosLineas.push(`- Precio base: $${Number(data.precio).toLocaleString('es-CO')}`);
+    }
+    const preciosActivos = (data.precios ?? []).filter((p) => p.activo);
+    for (const p of preciosActivos) {
+      let linea = `- ${p.descripcion}`;
+      if (p.edad_min != null && p.edad_max != null)
+        linea += ` (${p.edad_min}-${p.edad_max} años)`;
+      else if (p.edad_min != null) linea += ` (desde ${p.edad_min} años)`;
+      else if (p.edad_max != null) linea += ` (hasta ${p.edad_max} años)`;
+      if (p.punto_partida) linea += ` desde ${p.punto_partida}`;
+      linea += `: $${Number(p.precio).toLocaleString('es-CO')}`;
+      preciosLineas.push(linea);
+    }
+    const preciosText = preciosLineas.length > 0 ? `PRECIOS:\n${preciosLineas.join('\n')}` : '';
+
     // 1. Resumen Ejecutivo
     const resumenParts = [
       `TOUR RESUMEN: ${data.nombre_tour}`,
       data.agencia ? `Agencia: ${data.agencia}` : '',
-      data.precio ? `Precio base: $${data.precio}` : '',
+      preciosText,
       data.punto_partida ? `Punto de Partida: ${data.punto_partida}` : '',
       data.llegada ? `Destino/Llegada: ${data.llegada}` : '',
     ];

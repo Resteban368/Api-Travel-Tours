@@ -35,6 +35,15 @@ export class IntegranteDto {
   @IsString()
   @IsOptional()
   documento?: string;
+
+  // Precio de categoría seleccionado para este integrante
+  @IsInt()
+  @IsOptional()
+  tour_precio_id?: number;
+
+  @IsNumber({}, { message: 'precio_aplicado debe ser un número' })
+  @IsOptional()
+  precio_aplicado?: number;
 }
 
 export class HotelReservaDto {
@@ -171,4 +180,13 @@ export class CreateReservaDto {
   @IsInt()
   @IsOptional()
   id_responsable?: number;
+
+  // Precio de categoría del responsable
+  @IsInt()
+  @IsOptional()
+  precio_responsable_id?: number;
+
+  @IsNumber({}, { message: 'precio_responsable_aplicado debe ser un número' })
+  @IsOptional()
+  precio_responsable_aplicado?: number;
 }

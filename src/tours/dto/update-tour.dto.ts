@@ -11,7 +11,7 @@ import {
   IsISO8601,
   ValidateNested,
 } from 'class-validator';
-import { ItineraryDayDto } from './create-tour.dto';
+import { ItineraryDayDto, TourPrecioDto } from './create-tour.dto';
 
 export class UpdateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
@@ -100,4 +100,10 @@ export class UpdateTourDto {
   @IsString({ message: 'El ID de la sede debe ser un texto' })
   @IsOptional()
   sede_id?: string;
+
+  @IsArray({ message: 'precios debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => TourPrecioDto)
+  @IsOptional()
+  precios?: TourPrecioDto[];
 }

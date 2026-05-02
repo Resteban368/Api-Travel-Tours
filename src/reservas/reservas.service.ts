@@ -85,13 +85,41 @@ export class ReservasService {
     let valorTotalCalculado = dto.valor_total ?? 0;
 
     if (tipoReserva === 'tour' && tour) {
-      const precio = Number(tour.precio ?? 0);
-      const unidades = tour.precio_por_pareja ? Math.ceil(totalPersonas / 2) : totalPersonas;
       const costoServicios = serviciosAdicionales.reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
-      valorSinDescuento = precio * unidades + costoServicios;
-      // Si no se envió valor_total o llegó en 0/negativo, calcular automáticamente
-      if (!dto.valor_total || dto.valor_total <= 0) {
-        valorTotalCalculado = valorSinDescuento - descuentoPorPersona * unidades;
+      const usaPreciosCategorias =
+        dto.precio_responsable_aplicado != null ||
+        (dto.integrantes ?? []).some((i) => i.precio_aplicado != null);
+
+      if (usaPreciosCategorias) {
+        const precioResp = dto.precio_responsable_aplicado ?? 0;
+        const ints = dto.integrantes ?? [];
+        let precioTotal: number;
+        let unidades: number;
+
+        if (tour.precio_por_pareja) {
+          // Responsable + integrante[0] = pareja 1 → precio_responsable_aplicado
+          // integrante[1] + integrante[2] = pareja 2 → integrante[1].precio_aplicado, etc.
+          unidades = Math.ceil(totalPersonas / 2);
+          precioTotal = precioResp;
+          for (let i = 1; i < ints.length; i += 2) {
+            precioTotal += ints[i].precio_aplicado ?? 0;
+          }
+        } else {
+          unidades = totalPersonas;
+          precioTotal = precioResp + ints.reduce((sum, i) => sum + (i.precio_aplicado ?? 0), 0);
+        }
+
+        valorSinDescuento = precioTotal + costoServicios;
+        if (!dto.valor_total || dto.valor_total <= 0) {
+          valorTotalCalculado = valorSinDescuento - descuentoPorPersona * unidades;
+        }
+      } else {
+        const precio = Number(tour.precio ?? 0);
+        const unidades = tour.precio_por_pareja ? Math.ceil(totalPersonas / 2) : totalPersonas;
+        valorSinDescuento = precio * unidades + costoServicios;
+        if (!dto.valor_total || dto.valor_total <= 0) {
+          valorTotalCalculado = valorSinDescuento - descuentoPorPersona * unidades;
+        }
       }
     } else if (tipoReserva === 'vuelos') {
       const totalVuelos = vuelosEntidades.reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
@@ -117,6 +145,8 @@ export class ReservasService {
       valor_total: valorTotalCalculado,
       creado_por_id: creadoPorId ?? null,
       utilidad: dto.utilidad ?? null,
+      precio_responsable_id: dto.precio_responsable_id ?? null,
+      precio_responsable_aplicado: dto.precio_responsable_aplicado ?? null,
       responsable,
       tour,
       servicios: serviciosAdicionales,
@@ -546,13 +576,40 @@ export class ReservasService {
 
   private calcularValorReal(reserva: Reserva): { valor_sin_descuento: number; valor_total: number } {
     if (reserva.tipo_reserva === 'tour' && reserva.tour) {
+      const costoServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+      const descuento = Number(reserva.descuento_por_persona ?? 0);
       const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+
+      const usaPreciosCategorias =
+        reserva.precio_responsable_aplicado != null ||
+        (reserva.integrantes ?? []).some((i) => i.precio_aplicado != null);
+
+      if (usaPreciosCategorias) {
+        const precioResp = Number(reserva.precio_responsable_aplicado ?? 0);
+        const ints = reserva.integrantes ?? [];
+        let precioTotal: number;
+        let unidades: number;
+
+        if (reserva.tour.precio_por_pareja) {
+          unidades = Math.ceil(totalPersonas / 2);
+          precioTotal = precioResp;
+          for (let i = 1; i < ints.length; i += 2) {
+            precioTotal += Number(ints[i].precio_aplicado ?? 0);
+          }
+        } else {
+          unidades = totalPersonas;
+          precioTotal = precioResp + ints.reduce((sum, i) => sum + Number(i.precio_aplicado ?? 0), 0);
+        }
+
+        const valor_sin_descuento = precioTotal + costoServicios;
+        const valor_total = valor_sin_descuento - descuento * unidades;
+        return { valor_sin_descuento, valor_total };
+      }
+
       const unidades = reserva.tour.precio_por_pareja
         ? Math.ceil(totalPersonas / 2)
         : totalPersonas;
       const precio = Number(reserva.tour.precio ?? 0);
-      const costoServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
-      const descuento = Number(reserva.descuento_por_persona ?? 0);
       const valor_sin_descuento = precio * unidades + costoServicios;
       const valor_total = valor_sin_descuento - descuento * unidades;
       return { valor_sin_descuento, valor_total };
@@ -592,10 +649,13 @@ export class ReservasService {
       valor_cancelado = pagosValidados.reduce((sum, p) => sum + Number(p.monto), 0);
     }
 
-    // Para tours en findAll usamos el valor almacenado (precio histórico acordado).
-    // Para vuelos siempre recalculamos desde las relaciones (eager) porque el valor
-    // almacenado puede quedar en 0 por el dirty-check string/number de TypeORM en cascade.
-    const useStored = !fullTour && reserva.tipo_reserva !== 'vuelos';
+    // Para tours sin categorías de precio usamos el valor almacenado (precio histórico acordado).
+    // Para vuelos y tours con precios por categoría siempre recalculamos desde las relaciones
+    // (eager) porque el valor almacenado puede quedar en 0 por el dirty-check de TypeORM.
+    const usaPreciosCategorias =
+      reserva.precio_responsable_aplicado != null ||
+      (reserva.integrantes ?? []).some((i) => i.precio_aplicado != null);
+    const useStored = !fullTour && reserva.tipo_reserva !== 'vuelos' && !usaPreciosCategorias;
     const { valor_sin_descuento, valor_total } = useStored
       ? { valor_sin_descuento: Number(reserva.valor_sin_descuento), valor_total: Number(reserva.valor_total) }
       : this.calcularValorReal(reserva);
@@ -653,6 +713,8 @@ export class ReservasService {
       valor_sin_descuento: reserva.valor_sin_descuento,
       valor_total: reserva.valor_total,
       utilidad: reserva.utilidad,
+      precio_responsable_id: reserva.precio_responsable_id,
+      precio_responsable_aplicado: reserva.precio_responsable_aplicado,
       creado_por_id: reserva.creado_por_id,
       agente: agente
         ? {
@@ -697,6 +759,15 @@ export class ReservasService {
               itinerary: reserva.tour.itinerary,
               cupos: reserva.tour.cupos,
               es_promocion: reserva.tour.es_promocion,
+              precios: (reserva.tour.precios ?? []).map((p) => ({
+                id: p.id,
+                descripcion: p.descripcion,
+                precio: p.precio,
+                edad_min: p.edad_min,
+                edad_max: p.edad_max,
+                punto_partida: p.punto_partida,
+                activo: p.activo,
+              })),
             }
           : {
               id: reserva.tour.id,
@@ -743,6 +814,8 @@ export class ReservasService {
         fecha_nacimiento: i.fecha_nacimiento,
         tipo_documento: i.tipo_documento,
         documento: i.documento,
+        tour_precio_id: i.tour_precio_id,
+        precio_aplicado: i.precio_aplicado,
       })),
       hoteles: (reserva.hoteles ?? []).map((h) => ({
         id: h.id,

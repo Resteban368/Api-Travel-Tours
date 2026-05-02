@@ -95,6 +95,23 @@ export class Reserva {
   })
   utilidad: number | null;
 
+  // Precio de categoría del responsable (snapshot al momento de reservar)
+  @Column({ name: 'precio_responsable_id', type: 'int', nullable: true })
+  precio_responsable_id: number | null;
+
+  @Column({
+    name: 'precio_responsable_aplicado',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | number | null) => (v == null ? null : Number(v)),
+    },
+  })
+  precio_responsable_aplicado: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   fecha_creacion: Date;
 

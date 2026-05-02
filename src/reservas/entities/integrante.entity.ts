@@ -22,6 +22,23 @@ export class IntegranteReserva {
   @Column({ type: 'text', nullable: true })
   documento: string | null;
 
+  // Precio de categoría seleccionado al crear la reserva (snapshot)
+  @Column({ name: 'tour_precio_id', type: 'int', nullable: true })
+  tour_precio_id: number | null;
+
+  @Column({
+    name: 'precio_aplicado',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | number | null) => (v == null ? null : Number(v)),
+    },
+  })
+  precio_aplicado: number | null;
+
   @ManyToOne(() => Reserva, (reserva) => reserva.integrantes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'reserva_id' })
   reserva: Reserva;

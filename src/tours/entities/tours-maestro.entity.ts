@@ -4,10 +4,12 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Sede } from '../../sedes/entities/sede.entity';
+import { TourPrecio } from './tour-precio.entity';
 
 @Entity('tours_maestro')
 export class ToursMaestro {
@@ -92,4 +94,7 @@ export class ToursMaestro {
 
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true, default: null })
   deleted_at: Date | null;
+
+  @OneToMany(() => TourPrecio, (precio) => precio.tour, { eager: true, cascade: true })
+  precios: TourPrecio[];
 }

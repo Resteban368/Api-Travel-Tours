@@ -10,8 +10,37 @@ import {
   ArrayMinSize,
   IsISO8601,
   IsInt,
+  Min,
   ValidateNested,
 } from 'class-validator';
+
+export class TourPrecioDto {
+  @IsString({ message: 'La descripción del precio debe ser un texto' })
+  @IsNotEmpty({ message: 'La descripción del precio es obligatoria' })
+  descripcion: string;
+
+  @IsInt({ message: 'edad_min debe ser un entero' })
+  @Min(0)
+  @IsOptional()
+  edad_min?: number;
+
+  @IsInt({ message: 'edad_max debe ser un entero' })
+  @Min(0)
+  @IsOptional()
+  edad_max?: number;
+
+  @IsString({ message: 'punto_partida debe ser un texto' })
+  @IsOptional()
+  punto_partida?: string;
+
+  @IsNumber({}, { message: 'El precio debe ser un número' })
+  @IsNotEmpty({ message: 'El precio es obligatorio' })
+  precio: number;
+
+  @IsBoolean()
+  @IsOptional()
+  activo?: boolean;
+}
 
 export class ItineraryDayDto {
   @IsInt({ message: 'dia_numero debe ser un número entero' })
@@ -116,4 +145,10 @@ export class CreateTourDto {
   @IsString({ message: 'El ID de la sede debe ser un texto' })
   @IsNotEmpty({ message: 'La sede es obligatoria' })
   sede_id: string;
+
+  @IsArray({ message: 'precios debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => TourPrecioDto)
+  @IsOptional()
+  precios?: TourPrecioDto[];
 }
