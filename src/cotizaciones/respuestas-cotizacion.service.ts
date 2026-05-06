@@ -52,6 +52,8 @@ export class RespuestasCotizacionService {
       token,
       link,
       cotizacion_id: dto.cotizacion_id ?? null,
+      nombre_cliente: dto.nombre_cliente,
+      telefono_cliente: dto.telefono_cliente,
       titulo_viaje: dto.titulo_viaje,
       imagenes_destino: dto.imagenes_destino ?? [],
       items_incluidos: dto.items_incluidos ?? [],
@@ -60,6 +62,8 @@ export class RespuestasCotizacionService {
       opciones_hotel: dto.opciones_hotel,
       adicionales: dto.adicionales ?? [],
       condiciones_generales: dto.condiciones_generales ?? null,
+      creado_por_id: usuarioId ?? null,
+      creado_por_nombre: usuarioNombre ?? null,
     });
     const saved = await this.respuestaRepo.save(respuesta);
 
@@ -82,19 +86,18 @@ export class RespuestasCotizacionService {
     return this.withPrecioTotal(saved);
   }
 
-  async findAll(isSinCotizacion?: boolean) {
-    const where: any = {};
-    if (isSinCotizacion) {
-      import('typeorm').then(typeorm => {
-        // Can't use IsNull directly easily without importing. I will use queryBuilder.
-      });
-    }
-
+  async findAll(isSinCotizacion?: boolean, usuarioId?: number, rol?: string) {
     const qb = this.respuestaRepo.createQueryBuilder('respuesta')
-      .orderBy('respuesta.created_at', 'DESC');
+      .orderBy('respuesta.anclada', 'DESC')
+      .addOrderBy('respuesta.created_at', 'DESC');
 
     if (isSinCotizacion) {
       qb.andWhere('respuesta.cotizacion_id IS NULL');
+    }
+
+    // Agentes ven las suyas + las públicas; admin ve todas
+    if (rol !== 'admin' && usuarioId) {
+      qb.andWhere('(respuesta.creado_por_id = :usuarioId OR respuesta.es_publica = true)', { usuarioId });
     }
 
     const rows = await qb.getMany();
@@ -124,6 +127,10 @@ export class RespuestasCotizacionService {
     }
 
     const fields: Partial<RespuestaCotizacion> = {};
+    if (dto.anclada !== undefined)             fields.anclada             = dto.anclada;
+    if (dto.es_publica !== undefined)          fields.es_publica          = dto.es_publica;
+    if (dto.nombre_cliente !== undefined)      fields.nombre_cliente      = dto.nombre_cliente;
+    if (dto.telefono_cliente !== undefined)    fields.telefono_cliente    = dto.telefono_cliente;
     if (dto.titulo_viaje !== undefined)        fields.titulo_viaje        = dto.titulo_viaje;
     if (dto.imagenes_destino !== undefined)    fields.imagenes_destino    = dto.imagenes_destino;
     if (dto.items_incluidos !== undefined)     fields.items_incluidos     = dto.items_incluidos;
@@ -147,6 +154,41 @@ export class RespuestasCotizacionService {
     });
 
     return this.withPrecioTotal(updated!);
+  }
+
+  async toggleAnclada(id: number, usuarioId?: number, usuarioNombre?: string) {
+    const respuesta = await this.respuestaRepo.findOne({ where: { id } });
+    if (!respuesta) {
+      throw new NotFoundException(`Respuesta de cotización con id ${id} no encontrada`);
+    }
+    const nuevoEstado = !respuesta.anclada;
+    await this.respuestaRepo.update(id, { anclada: nuevoEstado });
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'respuestas-cotizacion',
+      operacion: 'ACTUALIZAR',
+      documento_id: id,
+      detalle: { anclada: nuevoEstado, titulo_viaje: respuesta.titulo_viaje },
+    });
+    return { id, anclada: nuevoEstado };
+  }
+
+  async remove(id: number, usuarioId?: number, usuarioNombre?: string) {
+    const respuesta = await this.respuestaRepo.findOne({ where: { id } });
+    if (!respuesta) {
+      throw new NotFoundException(`Respuesta de cotización con id ${id} no encontrada`);
+    }
+    await this.respuestaRepo.delete(id);
+    await this.auditoriaService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'respuestas-cotizacion',
+      operacion: 'ELIMINAR',
+      documento_id: id,
+      detalle: { titulo_viaje: respuesta.titulo_viaje, token: respuesta.token },
+    });
+    return { ok: true };
   }
 
   createPreview(dto: CreateRespuestaCotizacionDto) {

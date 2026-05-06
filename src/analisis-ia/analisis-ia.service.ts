@@ -140,16 +140,7 @@ export class AnalisisIaService {
   }
 
   private validarCamposRequeridos(datos: DocumentoExtraido): void {
-    const requeridos: (keyof DocumentoExtraido)[] = [
-      'monto',
-      'metodo_pago',
-      'referencia',
-      'fecha_documento',
-    ];
-
-    const faltantes = requeridos.filter((campo) => datos[campo] === null || datos[campo] === undefined);
-
-    if (faltantes.length > 0) {
+    if (datos.monto === null || datos.monto === undefined) {
       throw new BadRequestException(
         'No se pudieron extraer los datos de la imagen o documento.',
       );

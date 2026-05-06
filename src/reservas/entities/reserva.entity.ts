@@ -29,8 +29,8 @@ export class Reserva {
   @Column({ name: 'tipo_reserva', type: 'text', default: 'tour' })
   tipo_reserva: string; // 'tour' | 'vuelos' | extensible
 
-  @Column({ type: 'text' })
-  correo: string;
+  @Column({ type: 'text', nullable: true })
+  correo: string | null;
 
   @Index()
   @Column({ type: 'text', default: 'pendiente' })

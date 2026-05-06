@@ -18,8 +18,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.useStaticAssets(join(process.cwd(), 'public'));
+  app.useStaticAssets(join(process.cwd(), 'assets'), { prefix: '/assets' });
 
   app.use(compression({ threshold: 1024 }));
+  app.useBodyParser('json', { limit: '10mb' });
+  app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
 
   app.use(helmet({
     contentSecurityPolicy: false,   // no aplica para API REST

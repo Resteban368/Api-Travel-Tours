@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, ParseIntPipe, Version, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Version, Query, Req } from '@nestjs/common';
 import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
 import { CreateRespuestaCotizacionDto, UpdateRespuestaCotizacionDto } from './dto/create-respuesta-cotizacion.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
@@ -24,9 +24,10 @@ export class RespuestasCotizacionController {
   @Get()
   findAll(
     @Query('sinCotizacion') sinCotizacion?: string,
+    @Req() req?: any,
   ) {
     const isSinCotizacion = sinCotizacion === 'true';
-    return this.service.findAll(isSinCotizacion);
+    return this.service.findAll(isSinCotizacion, req.user?.id_usuario, req.user?.rol);
   }
 
   @Version('1')
@@ -49,5 +50,17 @@ export class RespuestasCotizacionController {
     @Req() req: any,
   ) {
     return this.service.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @Version('1')
+  @Patch(':id/anclar')
+  toggleAnclada(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.service.toggleAnclada(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @Version('1')
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.service.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 }

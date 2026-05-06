@@ -136,9 +136,9 @@ export class CreateReservaDto {
   @IsOptional()
   vuelos?: VueloDto[];
 
+  @ValidateIf(o => o.correo != null && o.correo !== '')
   @IsEmail()
-  @IsNotEmpty()
-  correo: string;
+  correo?: string;
 
   @IsEnum(['al dia', 'pendiente', 'cancelado'])
   @IsOptional()

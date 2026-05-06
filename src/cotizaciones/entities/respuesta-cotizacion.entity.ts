@@ -50,6 +50,24 @@ export class RespuestaCotizacion {
   @Column({ type: 'text', nullable: true })
   condiciones_generales: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  anclada: boolean;
+
+  @Column({ name: 'es_publica', type: 'boolean', default: false })
+  es_publica: boolean;
+
+  @Column({ name: 'nombre_cliente', type: 'text' })
+  nombre_cliente: string;
+
+  @Column({ name: 'telefono_cliente', type: 'text' })
+  telefono_cliente: string;
+
+  @Column({ name: 'creado_por_id', type: 'int', nullable: true })
+  creado_por_id: number | null;
+
+  @Column({ name: 'creado_por_nombre', type: 'text', nullable: true })
+  creado_por_nombre: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 }

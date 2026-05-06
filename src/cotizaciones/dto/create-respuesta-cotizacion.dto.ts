@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsEnum,
   IsInt,
+  IsBoolean,
   ValidateNested,
   Min,
 } from 'class-validator';
@@ -20,8 +21,8 @@ export class VueloDto {
   aerolinea_id: number;
 
   @IsString()
-  @IsNotEmpty()
-  numero_vuelo: string;
+  @IsOptional()
+  numero_vuelo?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -73,7 +74,15 @@ export class OpcionHotelDto {
 
   @IsString()
   @IsNotEmpty()
+  hora_entrada: string;
+
+  @IsString()
+  @IsNotEmpty()
   fecha_salida: string;
+
+  @IsString()
+  @IsNotEmpty()
+  hora_salida: string;
 
   @IsNumber()
   @Min(0)
@@ -105,12 +114,24 @@ export class AdicionalDto {
   @IsNumber()
   @Min(0)
   precio: number;
+
+  @IsBoolean()
+  @IsOptional()
+  es_seleccionable?: boolean;
 }
 
 export class CreateRespuestaCotizacionDto {
   @IsInt()
   @IsOptional()
   cotizacion_id?: number | null;
+
+  @IsString()
+  @IsNotEmpty()
+  nombre_cliente: string;
+
+  @IsString()
+  @IsNotEmpty()
+  telefono_cliente: string;
 
   @IsString()
   @IsNotEmpty()
@@ -152,4 +173,12 @@ export class CreateRespuestaCotizacionDto {
   condiciones_generales?: string;
 }
 
-export class UpdateRespuestaCotizacionDto extends PartialType(CreateRespuestaCotizacionDto) {}
+export class UpdateRespuestaCotizacionDto extends PartialType(CreateRespuestaCotizacionDto) {
+  @IsBoolean()
+  @IsOptional()
+  anclada?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  es_publica?: boolean;
+}

@@ -25,9 +25,9 @@ export class SubmitCotizacionFormDto {
   telefono?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(1000)
-  detalles_plan: string;
+  detalles_plan?: string;
 
   @IsInt()
   @IsPositive()
