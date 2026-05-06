@@ -33,6 +33,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AnalisisIaModule } from './analisis-ia/analisis-ia.module';
 import { HotelesModule } from './hoteles/hoteles.module';
 import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.module';
+import { BusLayoutsModule } from './bus-layouts/bus-layouts.module';
+import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos.module';
 
 @Module({
   imports: [
@@ -92,6 +94,8 @@ import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.mo
     AnalisisIaModule,
     HotelesModule,
     AuditoriaGeneralModule,
+    BusLayoutsModule,
+    SeleccionAsientosModule,
   ],
   controllers: [AppController],
   providers: [

@@ -99,6 +99,9 @@ export class Reserva {
   @Column({ name: 'precio_responsable_id', type: 'int', nullable: true })
   precio_responsable_id: number | null;
 
+  @Column({ name: 'bus_layout_id', type: 'integer', nullable: true })
+  bus_layout_id: number | null;
+
   @Column({
     name: 'precio_responsable_aplicado',
     type: 'numeric',

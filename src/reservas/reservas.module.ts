@@ -16,6 +16,7 @@ import { Aerolinea } from '../aerolineas/entities/aerolinea.entity';
 import { Hotel } from '../hoteles/entities/hotel.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
+import { SeleccionAsientosModule } from '../seleccion-asientos/seleccion-asientos.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.m
       Usuario,
     ]),
     AuditoriaGeneralModule,
+    SeleccionAsientosModule,
   ],
   controllers: [ReservasController],
   providers: [ReservasService, AuditoriaReservaService],

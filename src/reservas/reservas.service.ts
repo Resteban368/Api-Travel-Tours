@@ -17,6 +17,7 @@ import { UpdateInfoReservaDto } from './dto/update-info-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { AuditoriaReservaService } from './services/auditoria-reserva.service';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
+import { SeleccionAsientosService } from '../seleccion-asientos/seleccion-asientos.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -46,6 +47,7 @@ export class ReservasService {
     private readonly usuarioRepository: Repository<Usuario>,
     private readonly auditoriaService: AuditoriaReservaService,
     private readonly auditoriaGeneralService: AuditoriaGeneralService,
+    private readonly seleccionAsientosService: SeleccionAsientosService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -147,6 +149,7 @@ export class ReservasService {
       utilidad: dto.utilidad ?? null,
       precio_responsable_id: dto.precio_responsable_id ?? null,
       precio_responsable_aplicado: dto.precio_responsable_aplicado ?? null,
+      bus_layout_id: dto.bus_layout_id ?? null,
       responsable,
       tour,
       servicios: serviciosAdicionales,
@@ -178,8 +181,17 @@ export class ReservasService {
       documento_id: saved.id_reserva,
       detalle: { id_reserva: saved.id_reserva, tipo_reserva: saved.tipo_reserva, estado: saved.estado, valor_total: saved.valor_total },
     });
+
+    // Generar link de selección de asientos si hay bus_layout_id
+    let seleccion_link: string | null = null;
+    if (saved.bus_layout_id) {
+      const tokenRecord = await this.seleccionAsientosService.generarToken(saved.id);
+      seleccion_link = tokenRecord.link;
+    }
+
     const response = this.transformResponse(saved);
-    return advertencia_cupos ? { ...response, advertencia_cupos } : response;
+    const full = seleccion_link ? { ...response, seleccion_link } : response;
+    return advertencia_cupos ? { ...full, advertencia_cupos } : full;
   }
 
   async findAll(page = 1, limit = 20, rol?: string, userId?: number) {
@@ -715,6 +727,7 @@ export class ReservasService {
       utilidad: reserva.utilidad,
       precio_responsable_id: reserva.precio_responsable_id,
       precio_responsable_aplicado: reserva.precio_responsable_aplicado,
+      bus_layout_id: reserva.bus_layout_id,
       creado_por_id: reserva.creado_por_id,
       agente: agente
         ? {

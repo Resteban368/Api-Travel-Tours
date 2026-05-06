@@ -189,4 +189,9 @@ export class CreateReservaDto {
   @IsNumber({}, { message: 'precio_responsable_aplicado debe ser un número' })
   @IsOptional()
   precio_responsable_aplicado?: number;
+
+  // Selección de asientos: layout del bus para tours terrestres
+  @IsInt()
+  @IsOptional()
+  bus_layout_id?: number;
 }

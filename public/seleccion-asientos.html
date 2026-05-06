@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selección de Asientos</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink:        #0F172A;
+      --ink-soft:   #1E293B;
+      --brand:      #1D4ED8;
+      --brand-mid:  #2563EB;
+      --brand-glow: rgba(37,99,235,0.18);
+      --gold:       #F59E0B;
+      --gold-pale:  #FEF3C7;
+      --green:      #059669;
+      --green-pale: #D1FAE5;
+      --bg:         #F1F5F9;
+      --surface:    #FFFFFF;
+      --border:     #E2E8F0;
+      --border-mid: #CBD5E1;
+      --muted:      #64748B;
+      --danger:     #EF4444;
+      --danger-pale:#FEE2E2;
+      --r-s: 8px; --r-m: 14px; --r-l: 20px;
+      --sh-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+      --sh-md: 0 4px 16px -2px rgba(15,23,42,.10), 0 2px 4px rgba(15,23,42,.06);
+      --w: min(92%, 820px);
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg); color: var(--ink);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    img { display:block; max-width:100%; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes spin   { to{transform:rotate(360deg)} }
+    @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .au { animation: fadeUp .45s cubic-bezier(.22,.68,0,1.2) both; }
+
+    /* ── Navbar ──────────────────────────────────────────────────────── */
+    .navbar {
+      position: sticky; top:0; z-index:200;
+      background: #020617;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .navbar-inner {
+      width:var(--w); margin-inline:auto;
+      display:flex; align-items:center; justify-content:space-between;
+      padding-block:13px;
+    }
+    .navbar-logo { height:36px; max-width:140px; object-fit:contain; background:#fff; border-radius:8px; padding:4px 10px; }
+    .navbar-logo-text { font-size:15px; font-weight:800; color:#fff; letter-spacing:-.01em; display:none; }
+    .nav-chip {
+      background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+      border-radius:100px; padding:6px 14px;
+      font-size:11px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.06em;
+      display:flex; align-items:center; gap:6px;
+    }
+    .nav-chip-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); animation:pulse 1.5s ease-in-out infinite; }
+    @media(max-width:480px){ .navbar-logo{height:30px;max-width:110px} .nav-chip{font-size:10px;padding:5px 10px} }
+
+    /* ── Screens ─────────────────────────────────────────────────────── */
+    .screen { display:none; }
+    .screen.active { display:block; }
+    #screen-loading { display:none; }
+    #screen-loading.active { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; }
+    #screen-error  { display:none; }
+    #screen-error.active  { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; text-align:center; }
+    #screen-success { display:none; }
+    #screen-success.active { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; text-align:center; }
+    #screen-cedula  { display:none; }
+    #screen-cedula.active  {
+      display:flex; align-items:center; justify-content:center;
+      padding:36px 16px;
+      min-height: calc(100vh - 62px); /* resta la altura del navbar */
+    }
+
+    /* ── Loading ─────────────────────────────────────────────────────── */
+    .spinner { width:44px; height:44px; border:3px solid var(--border); border-top-color:var(--brand); border-radius:50%; animation:spin .75s linear infinite; margin-bottom:16px; }
+    #screen-loading p { color:var(--muted); font-size:.9rem; font-weight:500; }
+
+    /* ── Error ───────────────────────────────────────────────────────── */
+    .error-icon  { font-size:3rem; margin-bottom:12px; }
+    .error-title { font-size:1.25rem; font-weight:800; color:var(--danger); margin-bottom:8px; }
+    .error-msg   { color:var(--muted); font-size:.9rem; max-width:340px; }
+
+    /* ── Success ─────────────────────────────────────────────────────── */
+    .success-icon  { font-size:4rem; margin-bottom:20px; }
+    .success-title { font-size:1.5rem; font-weight:800; color:var(--ink); margin-bottom:8px; }
+    .success-msg   { color:var(--muted); font-size:.95rem; line-height:1.6; max-width:380px; }
+    .success-badges { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:24px; }
+    .badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--green-pale); color:var(--green);
+      border-radius:100px; padding:8px 18px; font-weight:700; font-size:.95rem;
+    }
+
+    /* ── Cédula ──────────────────────────────────────────────────────── */
+    .cedula-card { background:var(--surface); border-radius:var(--r-l); box-shadow:var(--sh-md); padding:36px 32px; width:100%; max-width:460px; }
+    @media(max-width:480px){ .cedula-card{padding:24px 20px} }
+    .card-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--brand); margin-bottom:6px; }
+    .card-title   { font-size:1.35rem; font-weight:800; margin-bottom:6px; }
+    .card-sub     { color:var(--muted); font-size:.875rem; margin-bottom:28px; line-height:1.5; }
+    .info-pill {
+      display:flex; align-items:center; gap:14px;
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:var(--r-m); padding:14px 16px; margin-bottom:24px;
+    }
+    .info-pill-icon { width:40px; height:40px; border-radius:var(--r-s); background:var(--brand-glow); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .info-pill-label { font-size:.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+    .info-pill-value { font-size:.95rem; font-weight:700; color:var(--ink); margin-top:1px; }
+    .info-pill-sub   { font-size:.8rem; color:var(--muted); margin-top:2px; }
+    label.field-label { display:block; font-size:.8rem; font-weight:700; color:var(--ink-soft,#1E293B); margin-bottom:7px; letter-spacing:.01em; }
+    input[type="text"] {
+      width:100%; border:2px solid var(--border); border-radius:var(--r-s);
+      padding:13px 16px; font-size:1rem; font-family:inherit; color:var(--ink);
+      transition:border-color .2s, box-shadow .2s; outline:none; background:var(--surface);
+    }
+    input:focus { border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-glow); }
+    .input-err { border-color:var(--danger) !important; }
+    .field-error { color:var(--danger); font-size:.8rem; margin-top:6px; font-weight:500; }
+    .btn-primary {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      width:100%; margin-top:20px;
+      background:var(--brand); color:#fff; border:none; border-radius:var(--r-s);
+      padding:14px; font-size:1rem; font-weight:700; font-family:inherit;
+      cursor:pointer; transition:background .2s, transform .1s;
+    }
+    .btn-primary:hover { background:var(--brand-mid); }
+    .btn-primary:active { transform:scale(.98); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* ── Bus screen ──────────────────────────────────────────────────── */
+    .bus-wrap { width:var(--w); margin-inline:auto; padding:28px 0 110px; }
+
+    .bus-info-row { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+    .bus-tour-name { font-size:1.15rem; font-weight:800; color:var(--ink); }
+    .bus-tour-date { font-size:.82rem; color:var(--muted); margin-top:3px; font-weight:500; }
+    .bus-badges    { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+
+    .pill { display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:5px 12px; font-size:.78rem; font-weight:700; }
+    .pill-blue { background:#DBEAFE; color:var(--brand); }
+    .pill-gold { background:var(--gold-pale); color:#92400E; }
+
+    .timer-pill { display:inline-flex; align-items:center; gap:7px; background:var(--gold-pale); border:1px solid #FCD34D; border-radius:100px; padding:6px 14px; font-size:.8rem; font-weight:700; color:#92400E; transition:all .3s; }
+    .timer-pill.urgent { background:var(--danger-pale); border-color:#FCA5A5; color:var(--danger); }
+    .timer-pill.hidden { display:none; }
+    .timer-dot { width:7px; height:7px; border-radius:50%; background:var(--gold); animation:pulse 1.2s ease-in-out infinite; }
+    .timer-pill.urgent .timer-dot { background:var(--danger); }
+
+    /* Leyenda */
+    .leyenda { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px; padding:14px 18px; background:var(--surface); border-radius:var(--r-m); box-shadow:var(--sh-sm); border:1px solid var(--border); }
+    .leyenda-item { display:flex; align-items:center; gap:8px; font-size:.78rem; color:var(--muted); font-weight:500; }
+    .ld { width:22px; height:24px; border-radius:6px 6px 4px 4px; flex-shrink:0; position:relative; }
+    /* respaldo sutil */
+    .ld::before { content:''; position:absolute; top:0; left:0; right:0; height:6px; border-radius:5px 5px 0 0; background:rgba(0,0,0,.10); }
+    .ld-libre   { background:var(--surface); border:2px solid var(--border-mid); }
+    .ld-libre::before { background:rgba(0,0,0,.07); }
+    .ld-elegido { background:#059669; border:2px solid #047857; }
+    .ld-elegido::before { background:rgba(255,255,255,.2); }
+    .ld-hold    { background:var(--gold-pale); border:2px solid #FCD34D; }
+    .ld-ocupado { background:#1E3A5F; border:2px solid #1e3a5f; }
+    .ld-ocupado::before { background:rgba(255,255,255,.08); }
+    .ld-agente  { background:#DBEAFE; border:2px solid #93C5FD; }
+
+    /* ── Panel del bus ───────────────────────────────────────────────── */
+    .bus-panel {
+      background:var(--surface); border-radius:var(--r-l);
+      box-shadow:var(--sh-md); border:1px solid var(--border);
+      padding:28px 24px 24px;
+      display:flex; justify-content:center; overflow-x:auto;
+    }
+
+    .bus-vehicle {
+      background:linear-gradient(160deg,#F8FAFC 0%,#EFF6FF 100%);
+      border:2px solid var(--border);
+      border-radius:22px 22px 16px 16px;
+      padding:0 20px 18px;
+      min-width:260px;
+      width:fit-content;
+      position:relative;
+    }
+    /* franja de marca en el techo */
+    .bus-vehicle::before {
+      content:'';
+      position:absolute; top:-2px; left:20%; right:20%;
+      height:5px; background:var(--brand); border-radius:0 0 4px 4px;
+    }
+
+    /* ── Sección delantera: conductor + puerta ───────────────────────── */
+    .bus-front-row {
+      display:flex; align-items:stretch; gap:5px;
+      padding:12px 0 10px;
+      border-bottom:2px dashed var(--border-mid);
+      margin-bottom:10px;
+    }
+    .row-num-spacer { width:22px; flex-shrink:0; }
+
+    .cell-conductor {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px;
+      width:44px; height:52px; flex-shrink:0;
+      background:#F0FDF4; border:2px solid #86EFAC;
+      border-radius:9px 9px 5px 5px;
+      color:#166534; font-size:.6rem; font-weight:700; letter-spacing:.03em;
+      position:relative;
+    }
+    .cell-conductor::before { content:''; position:absolute; top:0; left:0; right:0; height:8px; background:rgba(22,101,52,.15); border-radius:8px 8px 0 0; }
+
+    .cell-aisle { width:32px; flex-shrink:0; }
+
+    .cell-entrada {
+      flex:1; height:52px;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      background:#F0F9FF; border:2px dashed #7DD3FC;
+      border-radius:9px 9px 5px 5px;
+      color:#0369A1; font-size:.72rem; font-weight:700;
+    }
+    .cell-entrada svg { opacity:.7; }
+
+    /* ── Grid de pasajeros ───────────────────────────────────────────── */
+    .bus-grid { display:flex; flex-direction:column; gap:5px; }
+    .bus-row  { display:flex; align-items:center; gap:5px; }
+    .row-num  { width:22px; flex-shrink:0; font-size:.65rem; font-weight:700; color:var(--muted); text-align:center; opacity:.55; }
+    .aisle    { width:32px; flex-shrink:0; position:relative; }
+    .aisle::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:1px; height:100%; background:repeating-linear-gradient(to bottom,var(--border-mid) 0 4px,transparent 4px 8px); }
+
+    /* ── Sección trasera: baños ──────────────────────────────────────── */
+    .bus-back-row {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      margin-top:10px; padding:10px 0 6px;
+      border-top:2px dashed var(--border-mid);
+      color:var(--muted); font-size:.75rem; font-weight:700; letter-spacing:.04em;
+    }
+
+    /* ── Asiento CSS puro (sin emojis) ───────────────────────────────── */
+    .seat {
+      width:44px; height:52px; flex-shrink:0;
+      border-radius:9px 9px 5px 5px;
+      border:2px solid transparent;
+      display:flex; align-items:flex-end; justify-content:center;
+      padding-bottom:5px;
+      font-size:.68rem; font-weight:800;
+      cursor:pointer; user-select:none;
+      transition:transform .12s, box-shadow .12s, background .15s, border-color .15s;
+      position:relative;
+    }
+    /* respaldo (barra superior gruesa) */
+    .seat::before {
+      content:''; position:absolute; top:0; left:0; right:0;
+      height:10px; border-radius:8px 8px 0 0;
+      background:rgba(0,0,0,.10);
+    }
+    /* base del asiento */
+    .seat::after {
+      content:''; position:absolute; bottom:3px; left:6px; right:6px;
+      height:3px; border-radius:2px;
+      background:rgba(0,0,0,.07);
+    }
+
+    .seat.libre { background:var(--surface); border-color:var(--border-mid); color:var(--muted); box-shadow:var(--sh-sm); }
+    .seat.libre:hover { border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-glow),var(--sh-sm); transform:translateY(-2px); color:var(--brand); }
+    .seat.libre:hover::before { background:rgba(29,78,216,.12); }
+
+    .seat.elegido { background:#059669; border-color:#047857; color:#fff; box-shadow:0 4px 14px rgba(5,150,105,.32); transform:translateY(-2px); }
+    .seat.elegido::before { background:rgba(255,255,255,.2); }
+    .seat.elegido::after  { background:rgba(255,255,255,.15); }
+
+    .seat.ocupado { background:#1E3A5F; border-color:#1e3a5f; color:#93C5FD; cursor:not-allowed; box-shadow:none; }
+    .seat.ocupado::before { background:rgba(255,255,255,.08); }
+    .seat.ocupado .seat-inner { display:none; }
+
+    .seat.en-hold { background:var(--gold-pale); border-color:#FCD34D; color:#92400E; cursor:not-allowed; }
+    .seat.en-hold::before { background:rgba(245,158,11,.2); }
+
+    .seat.agente { background:#DBEAFE; border-color:#93C5FD; color:#1D4ED8; cursor:not-allowed; }
+    .seat.agente::before { background:rgba(29,78,216,.12); }
+
+    .seat.vacio { background:transparent; border-color:transparent; cursor:default; pointer-events:none; box-shadow:none; }
+    .seat.vacio::before, .seat.vacio::after { display:none; }
+
+    @media(max-width:480px){
+      .seat { width:38px; height:46px; font-size:.6rem; }
+      .cell-conductor { width:38px; height:46px; }
+      .cell-entrada { height:46px; }
+      .cell-aisle,.aisle { width:20px; }
+      .row-num { width:18px; font-size:.6rem; }
+    }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:100px; font-size:.83rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .25s; z-index:300; white-space:nowrap; max-width:90vw; text-align:center; }
+    .toast.show   { opacity:1; }
+    .toast.warn   { background:#92400E; }
+    .toast.danger { background:var(--danger); }
+
+    /* ── Action bar ──────────────────────────────────────────────────── */
+    .action-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -4px 20px rgba(15,23,42,.08); padding:14px 20px; display:flex; align-items:center; gap:14px; }
+    .action-info { flex:1; }
+    .action-info strong { display:block; font-size:1rem; font-weight:800; color:var(--ink); }
+    .action-info span   { display:block; font-size:.82rem; color:var(--muted); }
+    .btn-confirm { display:flex; align-items:center; gap:8px; background:var(--brand); color:#fff; border:none; border-radius:var(--r-s); padding:13px 22px; font-size:.95rem; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; transition:background .2s; }
+    .btn-confirm:hover    { background:var(--brand-mid); }
+    .btn-confirm:disabled { opacity:.4; cursor:not-allowed; }
+    @media(max-width:400px){ .btn-confirm{padding:12px 14px;font-size:.875rem} }
+
+    /* Timer: arriba en desktop, abajo en móvil */
+    #timer-pill-mobile { margin-top:6px; }
+    @media(min-width:641px){ #timer-pill-mobile { display:none !important; } }
+    @media(max-width:640px){ #timer-pill        { display:none !important; } }
+
+  /* ── Modal ───────────────────────────────────────────────────────── */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:500;
+    background:rgba(15,23,42,.5); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal-box {
+    background:var(--surface); border-radius:var(--r-l); box-shadow:var(--sh-lg);
+    padding:32px 28px 24px; width:100%; max-width:340px; text-align:center;
+    transform:scale(.92); transition:transform .2s;
+  }
+  .modal-overlay.open .modal-box { transform:scale(1); }
+  .modal-icon  { font-size:2.5rem; margin-bottom:14px; }
+  .modal-title { font-size:1.1rem; font-weight:800; color:var(--ink); margin-bottom:8px; }
+  .modal-msg   { font-size:.88rem; color:var(--muted); line-height:1.5; margin-bottom:24px; }
+  .modal-btn {
+    display:block; width:100%;
+    background:var(--brand); color:#fff; border:none; border-radius:var(--r-s);
+    padding:13px; font-size:.95rem; font-weight:700; font-family:inherit;
+    cursor:pointer; transition:background .2s;
+  }
+  .modal-btn:hover { background:var(--brand-mid); }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <img id="nav-logo" class="navbar-logo" src="/logo-empresa.png" alt="Logo"
+         onerror="this.style.display='none';document.getElementById('nav-logo-text').style.display='block'">
+    <span id="nav-logo-text" class="navbar-logo-text">Travel Tours</span>
+    <div class="nav-chip"><div class="nav-chip-dot"></div>SELECCIÓN DE ASIENTOS</div>
+  </div>
+</nav>
+
+<div id="toast" class="toast"></div>
+
+<!-- Modal límite de asientos -->
+<div class="modal-overlay" id="modal-limite" onclick="cerrarModal(event)">
+  <div class="modal-box">
+    <div class="modal-icon">🚫</div>
+    <p class="modal-title">No puedes seleccionar más sillas</p>
+    <p class="modal-msg" id="modal-msg">Ya seleccionaste el número máximo de asientos para tu reserva.</p>
+    <button class="modal-btn" onclick="cerrarModal()">Aceptar</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="screen-loading" class="screen active">
+  <div class="spinner"></div>
+  <p>Cargando tu reserva…</p>
+</div>
+
+<!-- Error -->
+<div id="screen-error" class="screen">
+  <div class="error-icon">⚠️</div>
+  <p class="error-title">Link no válido</p>
+  <p class="error-msg" id="error-msg">Este enlace no es válido o ha expirado.</p>
+</div>
+
+<!-- Success -->
+<div id="screen-success" class="screen">
+  <div class="success-icon">✅</div>
+  <p class="success-title">¡Asientos confirmados!</p>
+  <p class="success-msg">Tu selección quedó guardada exitosamente.<br>Puedes cerrar esta página.</p>
+  <div class="success-badges" id="success-badges"></div>
+</div>
+
+<!-- Cédula -->
+<div id="screen-cedula" class="screen">
+  <div class="cedula-card au">
+    <p class="card-eyebrow">Verificación de identidad</p>
+    <h1 class="card-title">Elige tu asiento en el bus</h1>
+    <p class="card-sub">Ingresa el número de cédula del responsable de la reserva para continuar.</p>
+
+    <div class="info-pill" id="cedula-pill" style="display:none">
+      <div class="info-pill-icon">🎫</div>
+      <div style="flex:1">
+        <p class="info-pill-label">Reserva</p>
+        <p class="info-pill-value" id="cedula-reserva">—</p>
+        <p class="info-pill-sub" id="cedula-tour">—</p>
+      </div>
+    </div>
+
+    <div class="info-pill" id="cedula-responsable-pill" style="display:none">
+      <div class="info-pill-icon">👤</div>
+      <div style="flex:1">
+        <p class="info-pill-label">Responsable de la reserva</p>
+        <p class="info-pill-value" id="cedula-responsable-nombre">—</p>
+        <p class="info-pill-sub">Ingresa su número de cédula</p>
+      </div>
+    </div>
+
+    <label class="field-label" for="inp-cedula">Número de cédula del responsable</label>
+    <input type="text" id="inp-cedula" placeholder="Ej: 1234567890" inputmode="numeric" autocomplete="off" />
+    <p class="field-error" id="cedula-error" style="display:none"></p>
+    <button class="btn-primary" id="btn-verificar" onclick="verificarCedula()">Continuar →</button>
+  </div>
+</div>
+
+<!-- Bus -->
+<div id="screen-bus" class="screen">
+  <div class="bus-wrap">
+
+    <div class="bus-info-row au">
+      <div>
+        <p class="bus-tour-name" id="bus-tour-name">Bus</p>
+        <p class="bus-tour-date" id="bus-tour-date"></p>
+      </div>
+      <div class="bus-badges">
+        <div class="pill pill-blue"><span id="cnt-sel">0</span>&nbsp;/&nbsp;<span id="cnt-req">0</span> seleccionados</div>
+        <div class="timer-pill hidden" id="timer-pill">
+          <div class="timer-dot"></div>
+          <span id="timer-text">8:00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="leyenda au">
+      <div class="leyenda-item"><div class="ld ld-libre"></div>Libre</div>
+      <div class="leyenda-item"><div class="ld ld-elegido"></div>Tu asiento</div>
+      <div class="leyenda-item"><div class="ld ld-hold"></div>En espera</div>
+      <div class="leyenda-item"><div class="ld ld-ocupado"></div>Ocupado</div>
+      <div class="leyenda-item"><div class="ld ld-agente"></div>Reservado</div>
+    </div>
+
+    <div class="bus-panel au">
+      <div class="bus-vehicle">
+
+        <!-- Fila delantera: conductor (izquierda) + entrada (derecha) -->
+        <div class="bus-front-row" id="bus-front-row">
+          <div class="row-num-spacer"></div>
+          <!-- conductor y entrada se insertan por JS según columnas -->
+        </div>
+
+        <!-- Grid de pasajeros -->
+        <div class="bus-grid" id="bus-grid"></div>
+
+        <!-- Baños traseros -->
+        <div class="bus-back-row">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3v18M6 6h3a3 3 0 0 1 0 6H6M15 3h4a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-4V3zM15 12h4a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-4v-5z"/>
+          </svg>
+          BAÑOS
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="action-bar">
+    <div class="action-info">
+      <strong id="action-title">Elige tus asientos</strong>
+      <span id="action-sub">Toca un asiento disponible para seleccionarlo</span>
+      <div class="timer-pill hidden" id="timer-pill-mobile">
+        <div class="timer-dot"></div>
+        <span id="timer-text-mobile">8:00</span>
+      </div>
+    </div>
+    <button class="btn-confirm" id="btn-confirmar" disabled onclick="confirmarSeleccion()">Confirmar</button>
+  </div>
+</div>
+
+<script>
+  const token = location.pathname.split('/').pop();
+  const API   = '/v1';
+
+  const E = {
+    totalPersonas:    0,
+    layoutConfig:     null,
+    asientosOcupados: [],
+    asientosElegidos: [],
+    confirmado:       false,
+    cedula:           '',
+    holdExpiresAt:    null,
+    timerInterval:    null,
+    pollInterval:     null,
+    tourData:         null,
+  };
+
+  // ── Pantallas ────────────────────────────────────────────────────────
+  function mostrar(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function mostrarError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+    mostrar('screen-error');
+  }
+
+  // ── Toast ────────────────────────────────────────────────────────────
+  let _t;
+  function toast(msg, tipo='', ms=3500) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = `toast show ${tipo}`;
+    clearTimeout(_t); _t = setTimeout(() => el.classList.remove('show'), ms);
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────
+  async function init() {
+    // Info empresa para navbar
+    fetch('/v1/info-empresa').then(r => r.json()).then(d => {
+      if (d.nombre) document.getElementById('nav-logo-text').textContent = d.nombre;
+    }).catch(() => {});
+
+    try {
+      const data = await apiFetch('GET', `${API}/seleccion/${token}`);
+      E.totalPersonas    = data.reserva.total_personas;
+      E.layoutConfig     = data.layout.configuracion;
+      E.asientosOcupados = data.asientos_ocupados ?? [];
+      E.confirmado       = data.confirmado;
+      E.tourData         = data.reserva.tour;
+
+      if (E.confirmado && data.asientos_propios.length > 0) {
+        mostrarExito(data.asientos_propios); return;
+      }
+
+      // Restaurar hold si aún no expiró
+      if (data.asientos_en_hold?.length && data.hold_expires_at) {
+        const exp = new Date(data.hold_expires_at);
+        if (exp > new Date()) { E.asientosElegidos = [...data.asientos_en_hold]; E.holdExpiresAt = exp; }
+      }
+
+      // Pantalla cédula
+      document.getElementById('cedula-reserva').textContent = data.reserva.id_reserva;
+      if (E.tourData) {
+        document.getElementById('cedula-tour').textContent =
+          `${E.tourData.nombre} · ${formatFecha(E.tourData.fecha_inicio)}`;
+      }
+      document.getElementById('cedula-pill').style.display = 'flex';
+
+      if (data.reserva.responsable_nombre) {
+        document.getElementById('cedula-responsable-nombre').textContent = data.reserva.responsable_nombre;
+        document.getElementById('cedula-responsable-pill').style.display = 'flex';
+      }
+
+      mostrar('screen-cedula');
+
+    } catch(e) { mostrarError(e.message); }
+  }
+
+  // ── Verificar cédula ─────────────────────────────────────────────────
+  async function verificarCedula() {
+    const cedula = document.getElementById('inp-cedula').value.trim();
+    const errEl  = document.getElementById('cedula-error');
+    const inp    = document.getElementById('inp-cedula');
+    const btn    = document.getElementById('btn-verificar');
+    errEl.style.display = 'none'; inp.classList.remove('input-err');
+
+    if (!cedula) {
+      errEl.textContent = 'Ingresa tu número de cédula';
+      errEl.style.display = 'block'; inp.classList.add('input-err'); return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Verificando…';
+    try {
+      await apiFetch('POST', `${API}/seleccion/${token}/verificar-cedula`, { cedula });
+      E.cedula = cedula;
+      renderBus();
+      iniciarPolling();
+      if (E.holdExpiresAt) iniciarTimer();
+    } catch(e) {
+      errEl.textContent = e.message; errEl.style.display = 'block';
+      inp.classList.add('input-err');
+      btn.disabled = false; btn.textContent = 'Continuar →';
+    }
+  }
+
+  // ── Renderizar bus ───────────────────────────────────────────────────
+  function renderBus() {
+    const cfg    = E.layoutConfig;
+    const maxCol = cfg.columnas;
+    const mitad  = Math.floor(maxCol / 2);
+
+    // Info superior
+    if (E.tourData) {
+      document.getElementById('bus-tour-name').textContent = E.tourData.nombre || 'Tour';
+      document.getElementById('bus-tour-date').textContent =
+        E.tourData.fecha_inicio ? `Fecha: ${formatFecha(E.tourData.fecha_inicio)}` : '';
+    }
+    document.getElementById('cnt-req').textContent = E.totalPersonas;
+
+    // ── Fila delantera (conductor + entrada) ──────────────────────────
+    const frontRow = document.getElementById('bus-front-row');
+    // Limpiar (conservar spacer)
+    frontRow.innerHTML = '<div class="row-num-spacer"></div>';
+
+    // Columnas izquierda (antes del pasillo) = conductor
+    for (let col = 0; col < mitad; col++) {
+      if (col === 0) {
+        // célula del conductor
+        const c = document.createElement('div');
+        c.className = 'cell-conductor';
+        c.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+            <line x1="12" y1="9.5" x2="12" y2="3"/>
+            <line x1="8.2"  y1="10.8" x2="3.5" y2="13.5"/>
+            <line x1="15.8" y1="10.8" x2="20.5" y2="13.5"/>
+          </svg>`;
+        frontRow.appendChild(c);
+      } else {
+        // columnas extra del lado izquierdo → vacío
+        const v = document.createElement('div');
+        v.className = 'seat vacio';
+        frontRow.appendChild(v);
+      }
+    }
+
+    // Pasillo
+    const aisleEl = document.createElement('div');
+    aisleEl.className = 'cell-aisle';
+    frontRow.appendChild(aisleEl);
+
+    // Columnas derecha (después del pasillo) = ENTRADA
+    const entrada = document.createElement('div');
+    entrada.className = 'cell-entrada';
+    // Calcula el número de columnas derechas
+    const rightCols = maxCol - mitad;
+    // Hace que la celda de entrada ocupe todo el lado derecho
+    entrada.style.gridColumn = `span ${rightCols}`;
+    entrada.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h8"/>
+        <polyline points="17 8 21 12 17 16"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      ENTRADA`;
+    frontRow.appendChild(entrada);
+
+    // ── Grid de pasajeros (excluir fila del conductor si existe) ──────
+    const grid = document.getElementById('bus-grid');
+    grid.innerHTML = '';
+
+    const porFila = {};
+    for (const a of cfg.asientos) {
+      if (a.tipo === 'conductor') continue; // ya está en la sección delantera
+      if (!porFila[a.fila]) porFila[a.fila] = [];
+      porFila[a.fila].push(a);
+    }
+
+    const filas = Object.keys(porFila).map(Number).sort((a,b) => a - b);
+    let rowIndex = 1;
+
+    for (const fila of filas) {
+      const asientosFila = porFila[fila].sort((a,b) => a.columna - b.columna);
+
+      // Saltar filas que solo tenían asientos tipo conductor (ya filtrados)
+      if (asientosFila.length === 0) continue;
+
+      const rowEl = document.createElement('div');
+      rowEl.className = 'bus-row';
+
+      const numEl = document.createElement('div');
+      numEl.className = 'row-num';
+      numEl.textContent = rowIndex++;
+      rowEl.appendChild(numEl);
+
+      for (let col = 0; col < maxCol; col++) {
+        if (col === mitad) {
+          const aisleDiv = document.createElement('div');
+          aisleDiv.className = 'aisle';
+          rowEl.appendChild(aisleDiv);
+        }
+        const asiento = asientosFila.find(a => a.columna === col);
+        if (!asiento) {
+          const empty = document.createElement('div');
+          empty.className = 'seat vacio';
+          rowEl.appendChild(empty);
+          continue;
+        }
+        rowEl.appendChild(crearSeat(asiento));
+      }
+      grid.appendChild(rowEl);
+    }
+
+    actualizarContador();
+    mostrar('screen-bus');
+  }
+
+  function crearSeat(asiento) {
+    const el = document.createElement('div');
+    el.className = 'seat';
+    el.dataset.num = asiento.numero;
+
+    if (asiento.tipo === 'vacio') {
+      el.classList.add('vacio');
+    } else if (asiento.tipo === 'agente') {
+      el.classList.add('agente');
+      el.textContent = asiento.numero;
+    } else {
+      // tipo 'normal' (y cualquier otro seleccionable)
+      el.innerHTML = `<div class="seat-inner"></div>${asiento.numero}`;
+      actualizarClaseSeat(el, asiento.numero);
+      el.addEventListener('click', () => toggleSeat(asiento.numero));
+    }
+    return el;
+  }
+
+  function actualizarClaseSeat(el, numero) {
+    el.classList.remove('libre','elegido','ocupado','en-hold');
+    if (E.asientosElegidos.includes(numero))       el.classList.add('elegido');
+    else if (E.asientosOcupados.includes(numero))  el.classList.add('ocupado');
+    else                                            el.classList.add('libre');
+  }
+
+  // ── Toggle asiento ───────────────────────────────────────────────────
+  async function toggleSeat(numero) {
+    if (E.asientosOcupados.includes(numero)) return;
+    const idx = E.asientosElegidos.indexOf(numero);
+    if (idx >= 0) {
+      E.asientosElegidos.splice(idx, 1);
+    } else {
+      if (E.asientosElegidos.length >= E.totalPersonas) {
+        document.getElementById('modal-msg').textContent =
+          `Ya seleccionaste los ${E.totalPersonas} asiento(s) que corresponden a tu reserva.`;
+        document.getElementById('modal-limite').classList.add('open');
+        return;
+      }
+      E.asientosElegidos.push(numero);
+    }
+    document.querySelectorAll('.seat[data-num]').forEach(el => {
+      if (!el.classList.contains('agente') && !el.classList.contains('vacio'))
+        actualizarClaseSeat(el, el.dataset.num);
+    });
+    actualizarContador();
+    await enviarHold();
+  }
+
+  async function enviarHold() {
+    if (E.asientosElegidos.length === 0) {
+      try { await apiFetch('DELETE', `${API}/seleccion/${token}/hold`); } catch(_){}
+      E.holdExpiresAt = null; detenerTimer(); return;
+    }
+    try {
+      const d = await apiFetch('POST', `${API}/seleccion/${token}/hold`, { asientos: E.asientosElegidos });
+      if (d.expires_at) { E.holdExpiresAt = new Date(d.expires_at); iniciarTimer(); }
+    } catch(e) {
+      toast(e.message, 'danger');
+      await refrescarEstado();
+    }
+  }
+
+  // ── Timer ────────────────────────────────────────────────────────────
+  function iniciarTimer() {
+    detenerTimer(); actualizarTimerUI();
+    E.timerInterval = setInterval(() => {
+      if (!E.holdExpiresAt) { detenerTimer(); return; }
+      const resta = E.holdExpiresAt - Date.now();
+      if (resta <= 0) {
+        detenerTimer();
+        E.asientosElegidos = [];
+        document.querySelectorAll('.seat.elegido').forEach(el => {
+          el.classList.remove('elegido'); el.classList.add('libre');
+        });
+        actualizarContador();
+        toast('Tu reserva temporal expiró. Vuelve a seleccionar.', 'danger', 5000); return;
+      }
+      actualizarTimerUI();
+    }, 1000);
+  }
+  function detenerTimer() {
+    clearInterval(E.timerInterval); E.timerInterval = null;
+    document.getElementById('timer-pill').classList.add('hidden');
+    document.getElementById('timer-pill-mobile').classList.add('hidden');
+  }
+  function actualizarTimerUI() {
+    if (!E.holdExpiresAt) { detenerTimer(); return; }
+    const resta = Math.max(0, E.holdExpiresAt - Date.now());
+    const min = Math.floor(resta/60000);
+    const seg = Math.floor((resta%60000)/1000);
+    const texto = `${min}:${String(seg).padStart(2,'0')}`;
+    const urgent = resta < 60000;
+
+    // Desktop: pill arriba en badges
+    const pill = document.getElementById('timer-pill');
+    document.getElementById('timer-text').textContent = texto;
+    pill.classList.remove('hidden');
+    pill.classList.toggle('urgent', urgent);
+
+    // Móvil: pill abajo en action bar
+    const pillM = document.getElementById('timer-pill-mobile');
+    document.getElementById('timer-text-mobile').textContent = texto;
+    pillM.classList.remove('hidden');
+    pillM.classList.toggle('urgent', urgent);
+  }
+
+  // ── Polling ──────────────────────────────────────────────────────────
+  function iniciarPolling() { E.pollInterval = setInterval(refrescarEstado, 5000); }
+  function detenerPolling()  { clearInterval(E.pollInterval); E.pollInterval = null; }
+
+  async function refrescarEstado() {
+    try {
+      const data = await apiFetch('GET', `${API}/seleccion/${token}`);
+      if (data.confirmado && data.asientos_propios.length) {
+        detenerPolling(); detenerTimer(); mostrarExito(data.asientos_propios); return;
+      }
+      const nuevos = data.asientos_ocupados ?? [];
+      const robados = E.asientosElegidos.filter(n => nuevos.includes(n));
+      if (robados.length) {
+        E.asientosElegidos = E.asientosElegidos.filter(n => !robados.includes(n));
+        toast(`Asiento(s) ${robados.join(', ')} tomados por otro usuario.`, 'danger', 5000);
+        await enviarHold();
+      }
+      E.asientosOcupados = nuevos;
+      document.querySelectorAll('.seat[data-num]').forEach(el => {
+        if (!el.classList.contains('agente') && !el.classList.contains('vacio'))
+          actualizarClaseSeat(el, el.dataset.num);
+      });
+      actualizarContador();
+    } catch(_){}
+  }
+
+  // ── Contador ─────────────────────────────────────────────────────────
+  function actualizarContador() {
+    const sel = E.asientosElegidos.length, req = E.totalPersonas;
+    document.getElementById('cnt-sel').textContent = sel;
+    document.getElementById('action-title').textContent =
+      sel === 0 ? 'Elige tus asientos' :
+      sel < req ? `${sel} de ${req} seleccionados` :
+      sel > req ? 'Deselecciona un asiento' : '¡Listo para confirmar!';
+    document.getElementById('action-sub').textContent =
+      sel === 0 ? 'Toca un asiento disponible para seleccionarlo' :
+      sel < req ? `Faltan ${req-sel} asiento(s)` :
+      sel > req ? `Debes seleccionar exactamente ${req}` : 'Pulsa confirmar para guardar tu selección';
+    document.getElementById('btn-confirmar').disabled = sel !== req;
+  }
+
+  // ── Confirmar ────────────────────────────────────────────────────────
+  async function confirmarSeleccion() {
+    const btn = document.getElementById('btn-confirmar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const d = await apiFetch('POST', `${API}/seleccion/${token}/confirmar`, {
+        cedula: E.cedula, asientos: E.asientosElegidos,
+      });
+      detenerPolling(); detenerTimer(); mostrarExito(d.asientos);
+    } catch(e) {
+      toast('Error: ' + e.message, 'danger', 5000);
+      btn.disabled = false; btn.textContent = 'Confirmar';
+      await refrescarEstado();
+    }
+  }
+
+  // ── Éxito ────────────────────────────────────────────────────────────
+  function mostrarExito(asientos) {
+    document.getElementById('success-badges').innerHTML =
+      asientos.map(a => `<span class="badge">Asiento ${a}</span>`).join('');
+    mostrar('screen-success');
+  }
+
+  // ── Modal ────────────────────────────────────────────────────────────
+  function cerrarModal(e) {
+    if (e && e.target !== document.getElementById('modal-limite')) return;
+    document.getElementById('modal-limite').classList.remove('open');
+  }
+
+  // ── Liberar hold al salir ─────────────────────────────────────────────
+  function liberarHold() {
+    if (!E.asientosElegidos.length || E.confirmado) return;
+    navigator.sendBeacon(`/v1/seleccion/${token}/hold`,
+      new Blob([JSON.stringify({asientos:[]})], {type:'application/json'}));
+  }
+  window.addEventListener('beforeunload', liberarHold);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') liberarHold();
+  });
+
+  // ── Fetch helper ─────────────────────────────────────────────────────
+  async function apiFetch(method, url, body) {
+    const opts = {method, headers:{'Content-Type':'application/json'}};
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : (data.message||'Error del servidor'));
+    return data;
+  }
+
+  function formatFecha(iso) {
+    if (!iso) return '';
+    return new Date(iso+'T00:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  }
+
+  document.getElementById('inp-cedula').addEventListener('keydown', e => {
+    if (e.key==='Enter') verificarCedula();
+  });
+
+  init();
+</script>
+</body>
+</html>
