@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export type TipoAsiento = 'normal' | 'agente' | 'conductor' | 'vacio';
+export type TipoAsiento = 'normal' | 'agente' | 'conductor' | 'vacio' | 'baño';
 
 export interface AsientoLayout {
   numero: string;       // Etiqueta visible (ej. "1A", "2B", "C")
@@ -12,6 +12,7 @@ export interface AsientoLayout {
 export interface BusConfiguracion {
   filas: number;
   columnas: number;
+  pasillo_columna?: number | null; // Nuevo: posición del pasillo (null = sin pasillo)
   asientos: AsientoLayout[];
 }
 

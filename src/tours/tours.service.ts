@@ -7,6 +7,8 @@ import { ToursMaestro } from './entities/tours-maestro.entity';
 import { TourPrecio } from './entities/tour-precio.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
+import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
+import { SeleccionAsientosService } from '../seleccion-asientos/seleccion-asientos.service';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
@@ -34,7 +36,10 @@ export class ToursService {
     private readonly reservaRepository: Repository<Reserva>,
     @InjectRepository(PagoRealizado)
     private readonly pagoRepository: Repository<PagoRealizado>,
+    @InjectRepository(BusLayout)
+    private readonly busLayoutRepository: Repository<BusLayout>,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly seleccionAsientosService: SeleccionAsientosService,
     private readonly auditoriaTourService: AuditoriaTourService,
     private readonly auditoriaGeneralService: AuditoriaGeneralService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -63,6 +68,12 @@ export class ToursService {
       es_borrador: dto.es_borrador ?? false,
       sede_id: dto.sede_id ?? null,
     });
+
+    if (dto.bus_layout_ids && dto.bus_layout_ids.length > 0) {
+      tour.busLayouts = await this.busLayoutRepository.findBy({ id: In(dto.bus_layout_ids) });
+    } else {
+      tour.busLayouts = [];
+    }
     const saved = await this.toursMaestroRepository.save(tour);
 
     // Guardar precios si se enviaron
@@ -207,6 +218,11 @@ export class ToursService {
     track('es_borrador', tour.es_borrador, dto.es_borrador);
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
+    if (dto.bus_layout_ids !== undefined) {
+      tour.busLayouts = dto.bus_layout_ids.length > 0
+        ? await this.busLayoutRepository.findBy({ id: In(dto.bus_layout_ids) })
+        : [];
+    }
 
     const saved = await this.toursMaestroRepository.save(tour);
 
@@ -432,6 +448,249 @@ export class ToursService {
     return this.enriquecerConCupos(this.normalize(tour));
   }
 
+  async getBusesDisponibilidad(tourId: number) {
+    const tour = await this.toursMaestroRepository.findOne({
+      where: { id: tourId },
+      relations: ['busLayouts'],
+    });
+    if (!tour) throw new NotFoundException(`Tour ${tourId} no encontrado`);
+
+    const busLayouts = tour.busLayouts ?? [];
+    if (busLayouts.length === 0) return [];
+
+    // Contar reservas activas (no canceladas) por bus para este tour
+    const counts = await this.reservaRepository
+      .createQueryBuilder('r')
+      .select('r.bus_layout_id', 'bus_layout_id')
+      .addSelect('COUNT(r.id)', 'count')
+      .innerJoin('r.tour', 't')
+      .where('t.id = :tourId', { tourId })
+      .andWhere('r.estado != :estado', { estado: 'cancelado' })
+      .andWhere('r.bus_layout_id IS NOT NULL')
+      .groupBy('r.bus_layout_id')
+      .getRawMany();
+
+    const countMap = new Map<number, number>();
+    for (const row of counts) {
+      countMap.set(Number(row.bus_layout_id), Number(row.count));
+    }
+
+    return busLayouts.map((bus) => {
+      const ocupados = countMap.get(bus.id) ?? 0;
+      return {
+        bus_layout_id: bus.id,
+        nombre: bus.nombre,
+        total_asientos_cliente: bus.total_asientos_cliente,
+        ocupados,
+        disponibles: Math.max(0, bus.total_asientos_cliente - ocupados),
+      };
+    });
+  }
+
+  async getBusesManifiesto(tourId: number) {
+    const tour = await this.toursMaestroRepository.findOne({
+      where: { id: tourId },
+      relations: ['busLayouts'],
+    });
+    if (!tour) throw new NotFoundException(`Tour ${tourId} no encontrado`);
+
+    const busLayouts = tour.busLayouts ?? [];
+    if (busLayouts.length === 0) return [];
+
+    // Reservas activas del tour
+    const reservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId }, estado: In(['pendiente', 'al dia']) },
+      order: { fecha_creacion: 'ASC' },
+    });
+    const reservasConBus = reservas.filter((r) => r.bus_layout_id !== null);
+
+    // Batch: asientos confirmados de todas las reservas
+    const reservaIds = reservas.map((r) => r.id);
+    const asientosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds);
+
+    // Mapa: numero_asiento+busId → reserva
+    const asientoReservaMap = new Map<string, typeof reservasConBus[0]>();
+    for (const r of reservasConBus) {
+      const asientos = asientosMap.get(r.id) ?? [];
+      for (const num of asientos) {
+        asientoReservaMap.set(`${r.bus_layout_id}:${num}`, r);
+      }
+    }
+
+    const tourInfo = {
+      id: tour.id,
+      nombre_tour: tour.nombre_tour,
+      fecha_inicio: tour.fecha_inicio,
+      fecha_fin: tour.fecha_fin,
+      hora_partida: tour.hora_partida,
+      llegada: tour.llegada,
+      punto_partida: tour.punto_partida,
+      cupos: tour.cupos,
+      es_promocion: tour.es_promocion,
+      link_pdf: tour.link_pdf,
+    };
+
+    const buses = busLayouts.map((bus) => {
+      const asientosOcupados = [...asientoReservaMap.entries()]
+        .filter(([key]) => key.startsWith(`${bus.id}:`))
+        .length;
+
+      const asientosLayout = (bus.configuracion?.asientos ?? [])
+        .filter((a) => a.tipo === 'normal')
+        .map((a) => {
+          const reserva = asientoReservaMap.get(`${bus.id}:${a.numero}`);
+          return {
+            numero: a.numero,
+            fila: a.fila,
+            columna: a.columna,
+            reserva: reserva
+              ? {
+                  id: reserva.id,
+                  id_reserva: reserva.id_reserva,
+                  estado: reserva.estado,
+                  responsable: reserva.responsable
+                    ? {
+                        nombre: reserva.responsable.nombre,
+                        tipo_documento: reserva.responsable.tipo_documento,
+                        documento: reserva.responsable.documento,
+                        telefono: reserva.responsable.telefono,
+                      }
+                    : null,
+                  integrantes: (reserva.integrantes ?? []).map((i) => ({
+                    nombre: i.nombre,
+                    tipo_documento: i.tipo_documento,
+                    documento: i.documento,
+                    telefono: i.telefono,
+                  })),
+                }
+              : null,
+          };
+        });
+
+      return {
+        bus_layout_id: bus.id,
+        nombre: bus.nombre,
+        total_asientos_cliente: bus.total_asientos_cliente,
+        asientos_ocupados: asientosOcupados,
+        asientos_disponibles: Math.max(0, bus.total_asientos_cliente - asientosOcupados),
+        configuracion: bus.configuracion,
+        asientos: asientosLayout,
+      };
+    });
+
+    const _personaJson = (p: any) => p ? {
+      nombre: p.nombre,
+      tipo_documento: p.tipo_documento,
+      documento: p.documento,
+      telefono: p.telefono,
+    } : null;
+
+    const reservasSinAsientos = reservas
+      .filter((r) => (asientosMap.get(r.id) ?? []).length === 0)
+      .map((r) => ({
+        id: r.id,
+        id_reserva: r.id_reserva,
+        estado: r.estado,
+        bus_layout_id: r.bus_layout_id ?? null,
+        fecha_creacion: r.fecha_creacion,
+        responsable: _personaJson(r.responsable),
+        integrantes: (r.integrantes ?? []).map(_personaJson),
+      }));
+
+    return { tour: tourInfo, buses, reservas_sin_asientos: reservasSinAsientos };
+  }
+
+  async autoAsignarAsientos(tourId: number) {
+    const tour = await this.toursMaestroRepository.findOne({
+      where: { id: tourId },
+      relations: ['busLayouts'],
+    });
+    if (!tour) throw new NotFoundException(`Tour ${tourId} no encontrado`);
+
+    const reservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId }, estado: In(['pendiente', 'al dia']) },
+      order: { fecha_creacion: 'ASC' },
+    });
+    const reservasConBus = reservas.filter((r) => r.bus_layout_id !== null);
+    const asientosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(
+      reservasConBus.map((r) => r.id),
+    );
+
+    let reservasAsignadas = 0;
+
+    for (const bus of tour.busLayouts ?? []) {
+      const reservasDeEsteBus = reservasConBus.filter((r) => r.bus_layout_id === bus.id);
+
+      const todosAsientos = ((bus.configuracion as any)?.asientos ?? [])
+        .filter((a: any) => a.tipo === 'normal')
+        .sort((a: any, b: any) => a.fila !== b.fila ? a.fila - b.fila : a.columna - b.columna);
+
+      const asientosTomados = new Set<string>();
+      for (const r of reservasDeEsteBus) {
+        (asientosMap.get(r.id) ?? []).forEach((n) => asientosTomados.add(n));
+      }
+
+      const asientosLibres: any[] = todosAsientos.filter((a: any) => !asientosTomados.has(a.numero));
+      let pointer = 0;
+
+      for (const reserva of reservasDeEsteBus) {
+        if ((asientosMap.get(reserva.id) ?? []).length > 0) continue;
+        const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+        const slice = asientosLibres.slice(pointer, pointer + totalPersonas);
+        pointer += slice.length;
+        if (slice.length > 0) {
+          await this.seleccionAsientosService.confirmarAsientosDirecto(
+            reserva.id,
+            slice.map((a: any) => a.numero),
+          );
+          reservasAsignadas++;
+        }
+      }
+    }
+
+    return { ok: true, reservas_asignadas: reservasAsignadas };
+  }
+
+  async liberarAsiento(tourId: number, reservaId: number, numero: string) {
+    const reserva = await this.reservaRepository.findOne({
+      where: { id: reservaId, tour: { id: tourId } },
+    });
+    if (!reserva) throw new NotFoundException('Reserva no encontrada en este tour');
+    await this.seleccionAsientosService.liberarUnAsiento(reservaId, numero);
+    return { ok: true };
+  }
+
+  async moverAsiento(
+    tourId: number,
+    busLayoutId: number,
+    reservaIdOrigen: number,
+    asientoOrigen: string,
+    asientoDestino: string,
+  ) {
+    // Buscar quién tiene el asiento destino en este bus
+    const todasReservas = await this.reservaRepository.find({
+      where: { tour: { id: tourId }, bus_layout_id: busLayoutId, estado: In(['pendiente', 'al dia']) },
+    });
+    const idsReservas = todasReservas.map((r) => r.id);
+    const asientosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(idsReservas);
+
+    let reservaIdDestino: number | null = null;
+    for (const [rId, asientos] of asientosMap.entries()) {
+      if (asientos.includes(asientoDestino)) {
+        reservaIdDestino = rId;
+        break;
+      }
+    }
+
+    await this.seleccionAsientosService.moverAsiento(
+      reservaIdOrigen,
+      asientoOrigen,
+      asientoDestino,
+      reservaIdDestino,
+    );
+    return { ok: true };
+  }
+
   async findDetalle(tourId: number) {
     const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
     if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
@@ -446,14 +705,18 @@ export class ToursService {
       ? Math.max(0, tour.cupos - cuposUsados)
       : null;
 
-    // Una sola query trae todos los pagos validados de todas las reservas
+    // Batch queries: pagos, asientos y tokens de selección
     const reservaIds = reservas.map((r) => r.id);
-    const todosPagosValidados = reservaIds.length > 0
-      ? await this.pagoRepository.find({
-          where: { reserva_id: In(reservaIds), is_validated: true },
-          select: ['reserva_id', 'monto'],
-        })
-      : [];
+    const [todosPagosValidados, asientosMap, tokensMap] = await Promise.all([
+      reservaIds.length > 0
+        ? this.pagoRepository.find({
+            where: { reserva_id: In(reservaIds), is_validated: true },
+            select: ['reserva_id', 'monto'],
+          })
+        : Promise.resolve([]),
+      this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds),
+      this.seleccionAsientosService.getTokensBatch(reservaIds),
+    ]);
 
     const montoPorReserva = new Map<number, number>();
     const reservasConPago = new Set<number>();
@@ -503,6 +766,9 @@ export class ToursService {
             documento: i.documento,
           })),
           total_personas: 1 + (r.integrantes?.length ?? 0),
+          bus_layout_id: r.bus_layout_id,
+          asientos_bus: asientosMap.get(r.id) ?? [],
+          seleccion_link: tokensMap.get(r.id) ?? null,
         };
       });
 
@@ -543,9 +809,33 @@ export class ToursService {
       }
     }
 
+    // Calcular asientos ocupados por bus usando asientos confirmados reales
+    const busReservaIds = new Map<number, number[]>();
+    for (const r of reservas) {
+      if (r.bus_layout_id && r.estado !== 'cancelado') {
+        const ids = busReservaIds.get(r.bus_layout_id) ?? [];
+        ids.push(r.id);
+        busReservaIds.set(r.bus_layout_id, ids);
+      }
+    }
+
+    const normalizedTour = this.normalize(tour);
+    const busLayoutsConDisponibilidad = (normalizedTour.busLayouts ?? []).map((bus: BusLayout) => {
+      const reservaIdsDelBus = busReservaIds.get(bus.id) ?? [];
+      const asientosOcupados = reservaIdsDelBus.reduce(
+        (sum, rid) => sum + (asientosMap.get(rid)?.length ?? 0), 0,
+      );
+      return {
+        ...bus,
+        asientos_ocupados: asientosOcupados,
+        asientos_disponibles: Math.max(0, bus.total_asientos_cliente - asientosOcupados),
+      };
+    });
+
     return {
       tour: {
-        ...this.normalize(tour),
+        ...normalizedTour,
+        busLayouts: busLayoutsConDisponibilidad,
         cupos_usados: cuposUsados,
         cupos_disponibles: cuposDisponibles,
       },
@@ -596,9 +886,12 @@ export class ToursService {
     return { ...tour, cupos_disponibles: Math.max(0, tour.cupos - usados) };
   }
 
-  private normalize(tour: ToursMaestro): ToursMaestro {
+  private normalize(tour: ToursMaestro): any {
     tour.precio_por_pareja = tour.precio_por_pareja ?? false;
-    return tour;
+    return {
+      ...tour,
+      bus_layout_ids: (tour.busLayouts ?? []).map((b) => b.id),
+    };
   }
 
   /**

@@ -39,6 +39,84 @@ export class SeleccionAsientosService {
     return this.tokenRepo.save(record);
   }
 
+  async getAsientosConfirmados(reservaId: number): Promise<string[]> {
+    const asientos = await this.asientoRepo.find({
+      where: { reserva_id: reservaId, estado: 'confirmado' },
+      order: { numero_asiento: 'ASC' },
+    });
+    return asientos.map((a) => a.numero_asiento);
+  }
+
+  async getTokensBatch(reservaIds: number[]): Promise<Map<number, string>> {
+    if (reservaIds.length === 0) return new Map();
+    const tokens = await this.tokenRepo.find({ where: { reserva_id: In(reservaIds) } });
+    const map = new Map<number, string>();
+    for (const t of tokens) map.set(t.reserva_id, t.link);
+    return map;
+  }
+
+  async getAsientosConfirmadosBatch(reservaIds: number[]): Promise<Map<number, string[]>> {
+    if (reservaIds.length === 0) return new Map();
+    const asientos = await this.asientoRepo.find({
+      where: { reserva_id: In(reservaIds), estado: 'confirmado' },
+    });
+    const map = new Map<number, string[]>();
+    for (const a of asientos) {
+      const lista = map.get(a.reserva_id) ?? [];
+      lista.push(a.numero_asiento);
+      map.set(a.reserva_id, lista);
+    }
+    return map;
+  }
+
+  async confirmarAsientosDirecto(reservaId: number, numeros: string[]): Promise<void> {
+    if (numeros.length === 0) return;
+    await this.asientoRepo.delete({ reserva_id: reservaId });
+    const nuevos = numeros.map((numero_asiento) =>
+      this.asientoRepo.create({ reserva_id: reservaId, numero_asiento, estado: 'confirmado' }),
+    );
+    await this.asientoRepo.save(nuevos);
+  }
+
+  async liberarUnAsiento(reservaId: number, numero: string): Promise<void> {
+    await this.asientoRepo.delete({ reserva_id: reservaId, numero_asiento: numero });
+  }
+
+  async moverAsiento(
+    reservaIdOrigen: number,
+    asientoOrigen: string,
+    asientoDestino: string,
+    reservaIdDestino: number | null,
+  ): Promise<void> {
+    if (reservaIdDestino !== null) {
+      // Swap: delete both and reinsert with swapped numbers
+      await this.asientoRepo.delete({ reserva_id: reservaIdOrigen, numero_asiento: asientoOrigen });
+      await this.asientoRepo.delete({ reserva_id: reservaIdDestino, numero_asiento: asientoDestino });
+      await this.asientoRepo.save([
+        this.asientoRepo.create({ reserva_id: reservaIdOrigen, numero_asiento: asientoDestino, estado: 'confirmado' }),
+        this.asientoRepo.create({ reserva_id: reservaIdDestino, numero_asiento: asientoOrigen, estado: 'confirmado' }),
+      ]);
+    } else {
+      // Move to free seat: update numero_asiento in place
+      await this.asientoRepo.update(
+        { reserva_id: reservaIdOrigen, numero_asiento: asientoOrigen },
+        { numero_asiento: asientoDestino },
+      );
+    }
+  }
+
+  async getOrGenerarLink(reservaId: number): Promise<string | null> {
+    const existing = await this.tokenRepo.findOne({ where: { reserva_id: reservaId } });
+    if (existing) return existing.link;
+
+    // Verificar que la reserva tiene bus_layout_id antes de generar
+    const reserva = await this.reservaRepo.findOne({ where: { id: reservaId } });
+    if (!reserva?.bus_layout_id) return null;
+
+    const record = await this.generarToken(reservaId);
+    return record.link;
+  }
+
   // ─── Endpoints públicos ───────────────────────────────────────────────────
 
   async getInfoSeleccion(token: string) {

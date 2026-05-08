@@ -54,6 +54,48 @@ export class ToursController {
   }
 
   @Version('1')
+  @Get(':id/buses-disponibilidad')
+  getBusesDisponibilidad(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.getBusesDisponibilidad(id);
+  }
+
+  @Version('1')
+  @Get(':id/buses-manifiesto')
+  getBusesManifiesto(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.getBusesManifiesto(id);
+  }
+
+  @Version('1')
+  @Post(':id/auto-asignar-asientos')
+  autoAsignarAsientos(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.autoAsignarAsientos(id);
+  }
+
+  @Version('1')
+  @Post(':id/liberar-asiento')
+  liberarAsiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { reserva_id: number; numero_asiento: string },
+  ) {
+    return this.toursService.liberarAsiento(id, body.reserva_id, body.numero_asiento);
+  }
+
+  @Version('1')
+  @Post(':id/mover-asiento')
+  moverAsiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { bus_layout_id: number; reserva_id_origen: number; asiento_origen: string; asiento_destino: string },
+  ) {
+    return this.toursService.moverAsiento(
+      id,
+      body.bus_layout_id,
+      body.reserva_id_origen,
+      body.asiento_origen,
+      body.asiento_destino,
+    );
+  }
+
+  @Version('1')
   @Get(':id/detalle')
   findDetalle(@Param('id', ParseIntPipe) id: number) {
     return this.toursService.findDetalle(id);

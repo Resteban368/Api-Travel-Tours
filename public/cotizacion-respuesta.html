@@ -812,6 +812,38 @@
       cursor: pointer; transition: background .2s;
     }
     .hint-btn:hover { background: #1D4ED8; }
+
+    /* ═══════════════════════════════════════════════════
+       STOP OVER & HOTEL NOTES
+    ═══════════════════════════════════════════════════ */
+    .bp-stopover {
+      margin: 16px 24px 0;
+      padding: 10px 16px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .bp-stopover-icon {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      line-height: 1;
+    }
+    .bp-stopover-content { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .bp-stopover-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .bp-stopover-city { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .bp-stopover-time { font-size: 11px; font-weight: 600; color: var(--brand-mid); background: var(--brand-glow); padding: 2px 8px; border-radius: 100px; }
+
+    .hotel-notes {
+      margin-top: 16px;
+      padding: 14px 18px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .hotel-notes-text { font-size: 13px; color: var(--ink-muted); font-weight: 500; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -915,6 +947,15 @@
             <button class="bp-select-btn" data-flight-idx="${idx}">+ Incluir</button>
           </div>
         </div>
+        ${v.tiene_escala ? `
+        <div class="bp-stopover">
+          <div class="bp-stopover-icon">🛬🛫</div>
+          <div class="bp-stopover-content">
+            <span class="bp-stopover-label">Escala técnica en</span>
+            <span class="bp-stopover-city">${v.ciudad_escala || 'Ciudad no especificada'}</span>
+            ${v.tiempo_escala ? `<span class="bp-stopover-time">⏳ ${v.tiempo_escala}</span>` : ''}
+          </div>
+        </div>` : ''}
         <div class="bp-body">
           <div class="bp-city">
             <div class="bp-time">${v.hora_salida}</div>
@@ -984,10 +1025,16 @@
           <div class="hotel-name">${h.nombre}</div>
           <div class="hotel-room">🛏&nbsp; ${h.tipo_habitacion}</div>
           <div class="hotel-tags">${tags}</div>
+          ${h.notas ? `
+          <div class="hotel-notes">
+            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; margin-bottom: 6px;">Notas del hotel</div>
+            <div class="hotel-notes-text">${h.notas}</div>
+          </div>
+          <div style="height: 16px;"></div>` : ''}
           <div class="hotel-dates">
-            <strong>${fd(h.fecha_entrada)}</strong>${h.hora_entrada ? ` <span style="opacity:.65;font-size:12px;font-weight:400">${h.hora_entrada}</span>` : ''}
+            <strong>${fd(h.fecha_entrada)}</strong>${h.hora_entrada ? ` <span style="opacity:.65;font-size:12px;font-weight:400">Hora entrada: ${h.hora_entrada}</span>` : ''}
             <span class="date-arrow">→</span>
-            <strong>${fd(h.fecha_salida)}</strong>${h.hora_salida ? ` <span style="opacity:.65;font-size:12px;font-weight:400">${h.hora_salida}</span>` : ''}
+            <strong>${fd(h.fecha_salida)}</strong>${h.hora_salida ? ` <span style="opacity:.65;font-size:12px;font-weight:400">Hora salida: ${h.hora_salida}</span>` : ''}
           </div>
         </div>
         <div class="price-row" style="border-top:1px solid var(--border);">
@@ -1297,6 +1344,7 @@
         lines.push(`${tipo ? `*${tipo}:*` : ''} ${f.origen} -> ${f.destino}`);
         if (f.fecha)        lines.push(`  Fecha:  ${fd(f.fecha)}`);
         if (f.numero_vuelo) lines.push(`  Vuelo:  ${f.numero_vuelo}`);
+        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala || ''} ${f.tiempo_escala ? `(${f.tiempo_escala})` : ''}`);
         if (f.costo > 0)    lines.push(`  Precio: ${COP(f.costo)}`);
       });
     }
@@ -1307,6 +1355,7 @@
       lines.push('*-- ALOJAMIENTO --*');
       lines.push(`*${hotel.nombre}*`);
       lines.push(`  Habitacion: ${hotel.tipo_habitacion}`);
+      if (hotel.notas)          lines.push(`  Nota:       ${hotel.notas}`);
       if (hotel.fecha_entrada && hotel.fecha_salida)
         lines.push(`  Fechas:     ${fd(hotel.fecha_entrada)} al ${fd(hotel.fecha_salida)}`);
       if (hotel.precio_total > 0)

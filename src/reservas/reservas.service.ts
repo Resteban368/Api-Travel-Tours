@@ -194,14 +194,24 @@ export class ReservasService {
     return advertencia_cupos ? { ...full, advertencia_cupos } : full;
   }
 
-  async findAll(page = 1, limit = 20, rol?: string, userId?: number) {
-    const where = rol !== 'admin' && userId ? { creado_por_id: userId } : {};
-    const [reservas, total] = await this.reservaRepository.findAndCount({
-      where,
-      order: { fecha_creacion: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findAll(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.reservaRepository.createQueryBuilder('reserva')
+      .leftJoinAndSelect('reserva.responsable', 'responsable')
+      .leftJoinAndSelect('reserva.tour', 'tour');
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(reserva.id_reserva ILIKE :search OR reserva.correo ILIKE :search OR responsable.nombre ILIKE :search OR responsable.documento ILIKE :search OR tour.nombre_tour ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder.orderBy('reserva.fecha_creacion', 'DESC');
+    queryBuilder.skip(skip).take(limit);
+
+    const [reservas, total] = await queryBuilder.getManyAndCount();
 
     const userIds = [...new Set(reservas.map((r) => r.creado_por_id).filter((id) => id != null))];
     let usuarios: Record<number, Usuario> = {};
@@ -216,14 +226,18 @@ export class ReservasService {
       }, {} as Record<number, Usuario>);
     }
 
-    // 1 query batch: pagos validados de todas las reservas de la página
+    // Batch queries: pagos y asientos de todas las reservas de la página
     const reservaIds = reservas.map((r) => r.id);
-    const todosPagos = reservaIds.length > 0
-      ? await this.pagoRepository.find({
-          where: { reserva_id: In(reservaIds), is_validated: true },
-          select: ['reserva_id', 'monto'],
-        })
-      : [];
+    const [todosPagos, asientosBatchMap] = await Promise.all([
+      reservaIds.length > 0
+        ? this.pagoRepository.find({
+            where: { reserva_id: In(reservaIds), is_validated: true },
+            select: ['reserva_id', 'monto'],
+          })
+        : Promise.resolve([]),
+      this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds),
+    ]);
+
     const valorCanceladoMap = new Map<number, number>();
     for (const p of todosPagos) {
       const rid = p.reserva_id!;
@@ -231,9 +245,10 @@ export class ReservasService {
     }
 
     const data = await Promise.all(
-      reservas.map((r) => {
+      reservas.map(async (r) => {
         const agente = r.creado_por_id ? usuarios[r.creado_por_id] || null : null;
-        return this.transformResponseWithSaldo(r, agente, false, valorCanceladoMap);
+        const base = await this.transformResponseWithSaldo(r, agente, false, valorCanceladoMap);
+        return { ...base, asientos_bus: asientosBatchMap.get(r.id) ?? [] };
       }),
     );
 
@@ -252,7 +267,25 @@ export class ReservasService {
       });
     }
 
-    return this.transformResponseWithSaldo(reserva, agente, true);
+    const base = await this.transformResponseWithSaldo(reserva, agente, true);
+    const [seleccion_link, asientos_bus] = await Promise.all([
+      this.seleccionAsientosService.getOrGenerarLink(reserva.id),
+      reserva.bus_layout_id
+        ? this.seleccionAsientosService.getAsientosConfirmados(reserva.id)
+        : Promise.resolve([]),
+    ]);
+    return {
+      ...base,
+      ...(seleccion_link && { seleccion_link }),
+      asientos_bus,
+    };
+  }
+
+  async getSeleccionLink(id: number) {
+    const reserva = await this.reservaRepository.findOne({ where: { id } });
+    if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
+    const link = await this.seleccionAsientosService.getOrGenerarLink(reserva.id);
+    return { seleccion_link: link };
   }
 
   async update(id: number, dto: UpdateReservaDto, realizadoPor?: string) {
@@ -308,6 +341,7 @@ export class ReservasService {
     if (dto.correo !== undefined) reserva.correo = dto.correo;
     if (dto.estado !== undefined) reserva.estado = dto.estado;
     if (dto.notas !== undefined) reserva.notas = dto.notas;
+    if (dto.bus_layout_id !== undefined) reserva.bus_layout_id = dto.bus_layout_id ?? null;
     if (dto.descuento_por_persona !== undefined) {
       reserva.descuento_por_persona = dto.descuento_por_persona;
       needsValortotalRecalc = true;

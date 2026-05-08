@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsNumber,
   IsBoolean,
+  IsInt,
   MaxLength,
   IsArray,
   IsNotEmpty,
@@ -106,4 +107,9 @@ export class UpdateTourDto {
   @Type(() => TourPrecioDto)
   @IsOptional()
   precios?: TourPrecioDto[];
+
+  @IsArray({ message: 'bus_layout_ids debe ser un arreglo' })
+  @IsInt({ each: true, message: 'Cada bus_layout_id debe ser un número entero' })
+  @IsOptional()
+  bus_layout_ids?: number[];
 }

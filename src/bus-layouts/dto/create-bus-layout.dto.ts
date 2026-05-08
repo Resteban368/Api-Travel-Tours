@@ -19,7 +19,7 @@ export class AsientoLayoutDto {
   @Min(0)
   columna: number;
 
-  @IsEnum(['normal', 'agente', 'conductor', 'vacio'])
+  @IsEnum(['normal', 'agente', 'conductor', 'vacio', 'baño'])
   tipo: TipoAsiento;
 }
 

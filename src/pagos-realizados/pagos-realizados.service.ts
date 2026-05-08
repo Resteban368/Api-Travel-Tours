@@ -86,21 +86,33 @@ export class PagosRealizadosService {
 
   // ─── READ ─────────────────────────────────────────────────────────────────
 
-  async findAll(startDate?: string, endDate?: string, page = 1, limit = 20) {
-    const where: any = {};
+  async findAll(startDate?: string, endDate?: string, page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.pagosRepository.createQueryBuilder('pago');
 
     if (startDate && endDate) {
-      where.fecha_creacion = Between(new Date(startDate), new Date(endDate));
+      queryBuilder.andWhere('pago.fecha_creacion BETWEEN :start AND :end', {
+        start: new Date(startDate),
+        end: new Date(endDate),
+      });
     } else if (startDate) {
-      where.fecha_creacion = Between(new Date(startDate), new Date());
+      queryBuilder.andWhere('pago.fecha_creacion >= :start', {
+        start: new Date(startDate),
+      });
     }
 
-    const [data, total] = await this.pagosRepository.findAndCount({
-      where,
-      order: { fecha_creacion: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    if (search) {
+      queryBuilder.andWhere(
+        '(pago.referencia ILIKE :search OR pago.proveedor_comercio ILIKE :search OR pago.nit ILIKE :search OR pago.tipo_documento ILIKE :search OR pago.metodo_pago ILIKE :search OR pago.chat_id ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder.orderBy('pago.fecha_creacion', 'DESC');
+    queryBuilder.skip(skip).take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

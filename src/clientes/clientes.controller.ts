@@ -6,10 +6,10 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   ParseIntPipe,
   Version,
   Req,
+  Query,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
@@ -31,9 +31,9 @@ export class ClientesController {
   @Get()
   findAll(
     @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query('search') search?: string,
   ) {
-    return this.clientesService.findAll(parseInt(page), parseInt(limit));
+    return this.clientesService.findAll(parseInt(page), search);
   }
 
   @Version('1')

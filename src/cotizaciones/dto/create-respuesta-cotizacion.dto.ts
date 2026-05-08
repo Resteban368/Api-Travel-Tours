@@ -53,6 +53,18 @@ export class VueloDto {
   @Min(1)
   @IsOptional()
   numero_pasajeros?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  tiene_escala?: boolean;
+
+  @IsString()
+  @IsOptional()
+  ciudad_escala?: string;
+
+  @IsString()
+  @IsOptional()
+  tiempo_escala?: string;
 }
 
 export class OpcionHotelDto {
@@ -100,6 +112,10 @@ export class OpcionHotelDto {
   @IsString({ each: true })
   @IsOptional()
   fotos?: string[];
+
+  @IsString()
+  @IsOptional()
+  notas?: string;
 }
 
 export class AdicionalDto {

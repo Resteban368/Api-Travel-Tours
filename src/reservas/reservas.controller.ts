@@ -33,12 +33,12 @@ export class ReservasController {
   @Version('1')
   @Get()
   findAll(
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
     @Req() req: Request,
+    @Query('page') page = '1',
+    @Query('limit') limit = '50',
+    @Query('search') search?: string,
   ) {
-    const user = req.user as any;
-    return this.reservasService.findAll(parseInt(page), parseInt(limit), user?.rol, user?.id_usuario);
+    return this.reservasService.findAll(parseInt(page), parseInt(limit), search);
   }
 
   @Version('1')
@@ -55,6 +55,12 @@ export class ReservasController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reservasService.findOne(id);
+  }
+
+  @Version('1')
+  @Get(':id/seleccion-link')
+  getSeleccionLink(@Param('id', ParseIntPipe) id: number) {
+    return this.reservasService.getSeleccionLink(id);
   }
 
   @Version('1')

@@ -1,0 +1,136 @@
+ Resumen Ejecutivo de Transferencia — AgenteViajes
+                                                                                                                                  
+  ---
+  1. Estado Actual: Funcionalidades Implementadas                                                                                                               
+                                                                                                                                                                
+  Backend (NestJS 11 — /Volumes/Baneste/Flutter Proyects/AgenteViajes/Api)                                                                                      
+                                                                                                                                                                
+  - Módulo bus-layouts: CRUD completo de layouts de bus (configuración de asientos como JSONB en PostgreSQL)                                                    
+  - Módulo seleccion-asientos: Selección de asientos por token público, hold con expiración, confirmación                                                       
+  - Manifiesto de bus (src/tours/tours.service.ts):                                                                                                             
+    - GET /v1/tours/:id/buses-manifiesto — retorna todos los buses del tour con sus reservas, asientos asignados, y reservas_sin_asientos                       
+    - POST /v1/tours/:id/auto-asignar-asientos — asigna asientos automáticamente ordenando reservas por fecha_creacion ASC (más vieja → asiento más adelante)   
+    - POST /v1/tours/:id/liberar-asiento — libera un asiento específico de una reserva                                                                          
+    - POST /v1/tours/:id/mover-asiento — mueve o intercambia asientos entre reservas                                                                            
+                                                                                                                                                                
+  Flutter (/Volumes/Baneste/Flutter Proyects/AgenteViajes/agente_viajes)                                                                                        
+                                                                                                                                                                
+  - BusLayoutFormScreen: Formulario completo de creación/edición de layouts con:                                                                                
+    - Selector de filas de pasajeros (5–20)                                                                                                                   
+    - Selector interactivo de asientos de agente (modo pintura ámbar)                                                                                           
+    - Selector interactivo de asientos de baño (modo pintura verde)                                                                                           
+    - Selector de modo: Normal / Agente / Baño — tocar asiento en la vista previa cambia su tipo                                                                
+    - Vista previa visual del bus con leyenda                                                                                                                   
+    - Chips con contador por tipo especial, eliminables                                                                                                         
+  - BusManifiestoScreen: Pantalla completa de manifiesto con:                                                                                                   
+    - Lista de reservas por bus con asientos asignados                                                                                                          
+    - Barra amarilla de reservas sin asiento (chips por reserva)                                                                                                
+    - Botón "Auto-asignar"                                                                                                                                      
+    - Modo mover: toca asiento origen → banner azul → toca destino (swap automático si destino ocupado)                                                         
+    - Dialogo de carga durante operaciones, snackbar de éxito, AlertDialog de error                                                                             
+  - BlocConsumer con estados: Initial → Loading → Loaded → Operando → OperacionExito/OperacionError → Asignando                                                 
+  - AuthClient: Retry automático en HTTP 500 con 800ms de delay (maneja race condition de TypeORM al arrancar)                                                  
+  - Navegación: Botón "Ver manifiesto de bus" en tour_detalle_screen.dart dentro del card de cupos                                                              
+                                                                                                                                                                
+  HTML público (/Api/public/seleccion-asientos.html)                                                                                                            
+                                                                                                                                                                
+  - Carga layout real desde API (E.layoutConfig = data.layout.configuracion)                                                                                    
+  - Renderiza asientos de baño individualmente en cualquier posición (no solo lado derecho)                                                                   
+  - Maneja hold con timer, polling de estado, verificación de cédula                                                                                            
+                                                                                                                                                                
+  ---                                                                                                                                                           
+  2. Arquitectura: Archivos Clave                                                                                                                               
+                                                                                                                                                                
+  Api/src/                                                                                                                                                    
+  ├── tours/
+  │   ├── tours.service.ts          ← getBusesManifiesto, autoAsignarAsientos, liberarAsiento, moverAsiento                                                     
+  │   └── tours.controller.ts       ← POST :id/auto-asignar-asientos, liberar-asiento, mover-asiento                                                            
+  ├── seleccion-asientos/                                                                                                                                       
+  │   └── seleccion-asientos.service.ts  ← liberarUnAsiento, moverAsiento (swap vs move-to-free)                                                                
+  ├── bus-layouts/                                                                                                                                              
+  │   ├── dto/create-bus-layout.dto.ts   ← AsientoLayoutDto (@IsNotEmpty en numero)                                                                           
+  │   └── entities/bus-layout.entity.ts  ← TipoAsiento type, BusConfiguracion interface                                                                         
+  └── public/seleccion-asientos.html     ← UI pública cliente                                                                                                   
+                                                                                                                                                                
+  agente_viajes/lib/features/bus_layouts/                                                                                                                       
+  ├── domain/entities/bus_layout.dart         ← TipoAsiento enum (bano sin tilde en Dart)                                                                       
+  ├── data/repositories/api_bus_layout_repository.dart  ← _toJson filtra vacio seats                                                                            
+  ├── presentation/                                                                                                                                             
+  │   ├── bloc/bus_manifiesto_bloc.dart       ← _manifiestoActual() helper (clave)                                                                              
+  │   ├── bloc/bus_manifiesto_state.dart      ← 6 estados                                                                                                       
+  │   ├── screens/bus_layout_form_screen.dart ← _PaintMode enum, _toggleSeat()                                                                                  
+  │   └── screens/bus_manifiesto_screen.dart  ← _ModoMoverInfo, _loadingDialogOpen                                                                              
+                                                                                                                                                                
+  Decisiones técnicas importantes:                                                                                                                              
+  - Los asientos vacio se filtran antes de enviar al API (no se serializan) — el renderizador maneja posiciones vacías por ausencia                             
+  - TipoAsiento.bano en Dart (sin tilde) ↔ 'baño' en JSON/TypeScript (con tilde) — conversión en _tipoAsientoToString                                           
+  - _manifiestoActual() en el BLoC extrae el manifiesto de CUALQUIER estado válido (no solo BusManifiestoLoaded) para evitar que operaciones consecutivas fallen
+   silenciosamente                                                                                                                                              
+  - Layout de bus: 5 columnas (0=A, 1=B, 2=pasillo/vacio, 3=C, 4=D), fila 0 = conductor                                                                         
+                                                                                                                                                                
+  ---                                                                                                                                                           
+  3. Tareas Pendientes (TODOs)                                                                                                                                
+                                                                                                                                                                
+  1. Pendiente inmediato: Verificar por qué el servidor NestJS no está recargando los cambios del DTO (create-bus-layout.dto.ts fue modificado pero parece no 
+  reflejarse — posible necesidad de reinicio manual)                                                                                                            
+  2. HTML seleccion-asientos: Agregar ítem en la leyenda para asientos de baño (actualmente no hay leyenda visual para tipo baño)
+  3. Bus Layout Form: Cuando se carga un layout existente que tenía baños con numeración antigua (ej. "43", "44" en vez de "11C", "11D"), los baños no se       
+  pre-cargan en _banoSeatNumbers — decidir si migrar o ignorar                                                                                                  
+  4. Manifiesto: Agregar paginación o búsqueda si el tour tiene muchas reservas                                                                                 
+  5. seleccion-asientos.html: Mostrar visualmente el asiento de baño en la leyenda del cliente                                                                  
+                                                                                                                                                                
+  ---                                                                                                                                                           
+  4. Contexto Específico — Bugs y Hacks                                                                                                                         
+                                                                                                                                                                
+  ┌──────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │           Item           │                                                           Detalle                                                            │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ 
+  │ Retry 500 en AuthClient  │ auth_client.dart tiene un retry automático de 800ms cuando el server responde 500. Esto cubre la race condition de TypeORM   │
+  │                          │ al iniciar (synchronize: true corre migraciones en el arranque y puede tardar). NO es un bug, es intencional.                │
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤   
+  │ Doble request bug        │ Si se despacha el mismo BLoC event dos veces al entrar a una pantalla (desde create: y desde initState), se hacen 2          │
+  │                          │ requests. Asegurarse de no duplicar add(LoadBusManifiesto(...)).                                                             │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ 
+  │ _manifiestoActual() es   │ Sin este helper, después de una operación exitosa el estado es BusManifiestoOperacionExito y el siguiente liberar/mover      │   
+  │ crítico                  │ falla silenciosamente porque el viejo código chequeaba if (state is! BusManifiestoLoaded) return.                            │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ tourId vs busLayoutId    │ Bug ya corregido: _mostrarDetalleReserva recibía bus.busLayoutId en el parámetro tourId. Ahora usa _tourId (campo de estado  │   
+  │                          │ del widget seteado en _buildContent).                                                                                        │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Router recibe String     │ settings.arguments al navegar a /bus-layouts/manifiesto llega como String, no int. El router lo parsea: final tourId = arg   │   
+  │                          │ is int ? arg : int.parse(arg.toString()).                                                                                    │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ bano vs baño             │ En Dart: TipoAsiento.bano. En JSON enviado al API: 'baño' (con tilde). En la DB y TypeScript: 'baño'. La conversión es en    │   
+  │                          │ _tipoAsientoToString() del repository.                                                                                       │   
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Vacio seats no se envían │ _toJson en api_bus_layout_repository.dart filtra .where((a) => a.tipo != TipoAsiento.vacio) antes de serializar. El backend  │   
+  │                          │ aún tiene @IsNotEmpty() en numero del DTO.                                                                                   │   
+  └──────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                                                                                                                                
+  ---                                                                                                                                                         
+  5. Comando de Inicio para la Nueva Instancia
+                                                                                                                                                                
+  Copia y pega esto exactamente como primer mensaje:
+                                                                                                                                                                
+  ---                                                                                                                                                         
+  ▎ Estoy retomando el desarrollo de AgenteViajes, una app Flutter + NestJS para agencia de viajes. Contexto de dónde quedamos:                                 
+                                                                                                                                                                
+  ▎ Último trabajo completado: Implementación del formulario de layout de bus (bus_layout_form_screen.dart) con selector de modo pintura (Normal/Agente/Baño) 
+  para marcar asientos interactivamente. También se actualizó seleccion-asientos.html para renderizar asientos de baño en cualquier posición del bus.           
+                                                                                                                                                              
+  ▎ Problema activo: Al crear un bus layout desde Flutter, el API devuelve 400 "numero should not be empty" para los asientos de tipo vacio. Ya se aplicó la fix
+   en Flutter (api_bus_layout_repository.dart) para filtrar asientos vacio antes de enviar. El backend (create-bus-layout.dto.ts) tiene @IsNotEmpty() en numero 
+  — esto es correcto ahora que Flutter no envía vacios. Verificar que el servidor esté corriendo la versión actualizada.                                        
+                                                                                                                                                                
+  ▎ Rutas de los proyectos:                                                                                                                                   
+  ▎ - API NestJS: /Volumes/Baneste/Flutter Proyects/AgenteViajes/Api
+  ▎ - App Flutter: /Volumes/Baneste/Flutter Proyects/AgenteViajes/agente_viajes
+                                                                                                                                                                
+  ▎ Por favor lee los archivos clave antes de continuar:
+  ▎ 1. Api/src/bus-layouts/dto/create-bus-layout.dto.ts                                                                                                         
+  ▎ 2. agente_viajes/lib/features/bus_layouts/data/repositories/api_bus_layout_repository.dart                                                                
+  ▎ 3. agente_viajes/lib/features/bus_layouts/presentation/screens/bus_layout_form_screen.dart                                                                  
+                                                                                                                                                                
+  ▎ Luego ayúdame a verificar que el flujo de creación de bus layout funcione end-to-end.
+                                                                                                                                                                
+  ---           

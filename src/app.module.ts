@@ -63,6 +63,8 @@ import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        retryAttempts: 5,
+        retryDelay: 2000,
         extra: {
           max: 20,
           idleTimeoutMillis: 30000,

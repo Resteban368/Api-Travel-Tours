@@ -5,11 +5,14 @@ import {
   CreateDateColumn,
   ManyToOne,
   OneToMany,
+  ManyToMany,
+  JoinTable,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Sede } from '../../sedes/entities/sede.entity';
 import { TourPrecio } from './tour-precio.entity';
+import { BusLayout } from '../../bus-layouts/entities/bus-layout.entity';
 
 @Entity('tours_maestro')
 export class ToursMaestro {
@@ -91,6 +94,14 @@ export class ToursMaestro {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @ManyToMany(() => BusLayout, { eager: true })
+  @JoinTable({
+    name: 'tour_bus_layouts',
+    joinColumn: { name: 'tour_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'bus_layout_id', referencedColumnName: 'id' },
+  })
+  busLayouts: BusLayout[];
 
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true, default: null })
   deleted_at: Date | null;

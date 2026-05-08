@@ -73,14 +73,31 @@ export class ClientesService {
     return saved;
   }
 
-  async findAll(page = 1, limit = 20) {
-    const [data, total] = await this.clientesRepository.findAndCount({
-      where: { deleted_at: IsNull() },
-      order: { fecha_creacion: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  async findAll(page = 1, search?: string) {
+    const limit = 50;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.clientesRepository.createQueryBuilder('cliente');
+    queryBuilder.where('cliente.deleted_at IS NULL');
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(cliente.nombre ILIKE :search OR cliente.telefono ILIKE :search OR cliente.documento ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder.orderBy('cliente.fecha_creacion', 'DESC');
+    queryBuilder.skip(skip).take(limit);
+
+    const [data, totalItems] = await queryBuilder.getManyAndCount();
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data,
+      totalItems,
+      totalPages,
+    };
   }
 
   async findOne(id: number): Promise<ClienteApp> {
