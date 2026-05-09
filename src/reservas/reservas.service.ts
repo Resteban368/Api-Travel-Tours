@@ -541,6 +541,26 @@ export class ReservasService {
     return this.auditoriaService.obtenerAuditoria(id);
   }
 
+  async remove(id: number, realizadoPor?: string) {
+    const reserva = await this.reservaRepository.findOne({ where: { id } });
+    if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
+
+    const idReservaString = reserva.id_reserva;
+
+    await this.reservaRepository.softRemove(reserva);
+
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'reservas',
+      operacion: 'ELIMINAR',
+      documento_id: idReservaString,
+      detalle: { id_reserva: idReservaString, tipo_reserva: reserva.tipo_reserva, estado_anterior: reserva.estado, nota: 'Eliminado lógico' },
+    });
+
+    return { message: `Reserva con ID ${id} eliminada lógicamente` };
+  }
+
   // --------------- helpers ---------------
 
   private async calcularCuposUsados(tourId: number): Promise<number> {

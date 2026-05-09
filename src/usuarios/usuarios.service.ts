@@ -90,9 +90,50 @@ export class UsuariosService implements OnModuleInit {
   // ─── CRUD (solo admin) ────────────────────────────────────────────────────
 
   async create(dto: CreateUsuarioDto, actorId?: number, actorNombre?: string): Promise<Omit<Usuario, 'password_hash' | 'refresh_token_hash'>> {
-    const exists = await this.findByEmail(dto.email);
+    const exists = await this.usuariosRepository.findOne({ 
+      where: { email: dto.email },
+      withDeleted: true 
+    });
+
     if (exists) {
-      throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
+      if (exists.fecha_eliminacion) {
+        // Restaurar usuario eliminado lógicamente
+        const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+        const roleName = dto.rol ?? 'agente';
+        let rol = await this.rolesRepository.findOne({ where: { nombre: roleName } });
+        if (!rol) {
+          rol = await this.rolesRepository.save(
+            this.rolesRepository.create({ nombre: roleName }),
+          );
+        }
+
+        exists.nombre = dto.nombre;
+        exists.password_hash = password_hash;
+        exists.rol = rol;
+        exists.rol_nombre = roleName as UserRole;
+        exists.activo = dto.activo ?? true;
+        exists.fecha_eliminacion = null; // Quitamos la marca de borrado
+
+        const saved = await this.usuariosRepository.save(exists);
+
+        if (dto.permisos && dto.permisos.length > 0) {
+          await this.asignarPermisos(saved.id_usuario, dto.permisos);
+        }
+
+        await this.auditoriaService.registrar({
+          usuario_id: actorId ?? null,
+          usuario_nombre: actorNombre ?? null,
+          modulo: 'usuarios',
+          operacion: 'ACTUALIZAR',
+          documento_id: saved.id_usuario,
+          detalle: { nombre: saved.nombre, email: saved.email, rol: saved.rol_nombre, nota: 'Usuario restaurado y actualizado' },
+        });
+
+        return this.sanitize(saved);
+      } else {
+        throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
+      }
     }
 
     const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -110,7 +151,7 @@ export class UsuariosService implements OnModuleInit {
       email: dto.email,
       password_hash,
       rol,
-      rol_nombre: roleName,
+      rol_nombre: roleName as UserRole,
       activo: dto.activo ?? true,
     });
 
@@ -201,13 +242,16 @@ export class UsuariosService implements OnModuleInit {
   async remove(id: number, actorId?: number, actorNombre?: string): Promise<{ message: string }> {
     const usuario = await this.findById(id);
     if (!usuario) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
-    await this.permisoRepo.delete({ usuario_id: id });
-    await this.usuariosRepository.remove(usuario);
+    
+    // Al ser un borrado lógico, no borramos los permisos. Si se restaura, volverá a tenerlos
+    // (a menos que en la creación de la restauración vengan nuevos).
+    
+    await this.usuariosRepository.softRemove(usuario);
     await this.auditoriaService.registrar({
       usuario_id: actorId ?? null,
       usuario_nombre: actorNombre ?? null,
       modulo: 'usuarios',
-      operacion: 'ELIMINAR',
+      operacion: 'ELIMINAR', // Eliminación lógica
       documento_id: id,
       detalle: { nombre: usuario.nombre, email: usuario.email, rol: usuario.rol_nombre },
     });

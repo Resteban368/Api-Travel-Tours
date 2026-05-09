@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   ParseIntPipe,
@@ -101,5 +102,15 @@ export class ReservasController {
   @Get(':id/auditoria')
   obtenerAuditoria(@Param('id', ParseIntPipe) id: number) {
     return this.reservasService.obtenerAuditoria(id);
+  }
+
+  @Version('1')
+  @Delete(':id')
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    const email = (req.user as any)?.email;
+    return this.reservasService.remove(id, email);
   }
 }

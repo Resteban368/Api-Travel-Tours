@@ -78,12 +78,12 @@ export class PagosRealizadosController {
   @Patch(':id/estado')
   cambiarEstado(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { accion: 'validar' | 'rechazar'; motivo_rechazo?: string },
+    @Body() body: { accion: 'validar' | 'rechazar' | 'resetear'; motivo_rechazo?: string },
     @Req() req: any,
   ) {
     const { accion, motivo_rechazo } = body;
-    if (accion !== 'validar' && accion !== 'rechazar') {
-      throw new BadRequestException('accion debe ser "validar" o "rechazar"');
+    if (accion !== 'validar' && accion !== 'rechazar' && accion !== 'resetear') {
+      throw new BadRequestException('accion debe ser "validar", "rechazar" o "resetear"');
     }
     const realizadoPor = req.user?.nombre || req.user?.email;
     return this.pagosService.cambiarEstado(id, accion, motivo_rechazo, realizadoPor);

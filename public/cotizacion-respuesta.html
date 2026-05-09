@@ -3,847 +3,849 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cotización de Viaje – Travel Tours Florencia</title>
+  <title>Cotización – Travel Tours Florencia</title>
   <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    /* ═══════════════════════════════════════════════════
-       TOKENS
-    ═══════════════════════════════════════════════════ */
     :root {
-      --ink:        #0F172A;
-      --ink-soft:   #1E293B;
-      --ink-muted:  #475569;
-      --brand:      #1D4ED8;
-      --brand-mid:  #2563EB;
-      --brand-glow: rgba(37,99,235,0.18);
-      --gold:       #F59E0B;
-      --gold-pale:  #FEF3C7;
-      --green:      #059669;
-      --green-pale: #D1FAE5;
-      --bg:         #F1F5F9;
+      --ink:        #0D0E18;
+      --ink-soft:   #222336;
+      --ink-muted:  #6B6C7A;
+      --accent:     #1D4ED8;
+      --accent-pale:#EEF2FF;
+      --accent-mid: #2563EB;
+      --gold:       #9D6E2F;
+      --gold-pale:  #FBF3E0;
+      --green:      #0F7A52;
+      --green-mid:  #10B981;
+      --green-pale: #E3F5EE;
+      --bg:         #F2EFE9;
+      --bg-subtle:  #FAF9F6;
       --surface:    #FFFFFF;
-      --border:     #E2E8F0;
-      --border-mid: #CBD5E1;
-      --muted:      #64748B;
-      --r-s: 8px; --r-m: 14px; --r-l: 20px; --r-xl: 28px;
-      --sh-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
-      --sh-md: 0 4px 16px -2px rgba(15,23,42,.10), 0 2px 4px rgba(15,23,42,.06);
-      --sh-lg: 0 20px 40px -8px rgba(15,23,42,.18);
-      --w: min(92%, 1160px);
+      --border:     #E2DDD5;
+      --border-mid: #CCC8BF;
+      --muted:      #6B6C7A;
+      --dark:       #07080F;
+      --dark-mid:   #0D1020;
+
+      --r-xs:4px; --r-s:8px; --r-m:12px; --r-l:18px; --r-xl:24px; --r-2xl:32px;
+
+      --sh-xs: 0 1px 2px rgba(13,14,24,.04);
+      --sh-sm: 0 2px 8px rgba(13,14,24,.06), 0 1px 2px rgba(13,14,24,.04);
+      --sh-md: 0 8px 24px rgba(13,14,24,.08), 0 2px 8px rgba(13,14,24,.04);
+      --sh-lg: 0 20px 48px rgba(13,14,24,.12), 0 8px 16px rgba(13,14,24,.06);
+
+      --w: min(92%, 1180px);
     }
 
-    /* ═══════════════════════════════════════════════════
-       RESET & BASE
-    ═══════════════════════════════════════════════════ */
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior:smooth; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
+      font-family:'Plus Jakarta Sans', system-ui, sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+      line-height:1.65;
+      -webkit-font-smoothing:antialiased;
     }
-    img { display: block; max-width: 100%; }
-    a { text-decoration: none; }
+    img { display:block; max-width:100%; }
+    a { text-decoration:none; }
 
-    /* ═══════════════════════════════════════════════════
-       ANIMATIONS
-    ═══════════════════════════════════════════════════ */
+    /* ANIMATIONS */
     @keyframes fadeUp {
-      from { opacity:0; transform:translateY(24px); }
+      from { opacity:0; transform:translateY(20px); }
       to   { opacity:1; transform:translateY(0); }
     }
     @keyframes spin { to { transform:rotate(360deg); } }
-    .au { animation: fadeUp .55s cubic-bezier(.22,.68,0,1.2) both; }
-    .d1 { animation-delay:.08s; } .d2 { animation-delay:.18s; }
-    .d3 { animation-delay:.28s; } .d4 { animation-delay:.38s; }
+    @keyframes progress { from { width:0% } to { width:100% } }
+    .au { animation:fadeUp .55s cubic-bezier(.16,1,.3,1) both; }
+    .d1 { animation-delay:.05s; } .d2 { animation-delay:.12s; }
+    .d3 { animation-delay:.19s; } .d4 { animation-delay:.26s; }
 
-    /* ═══════════════════════════════════════════════════
-       LAYOUT
-    ═══════════════════════════════════════════════════ */
-    .wrap { width: var(--w); margin-inline: auto; }
-
+    /* LAYOUT */
+    .wrap { width:var(--w); margin-inline:auto; }
     .page-grid {
-      display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: 28px;
-      align-items: start;
-      padding-block: 32px 80px;
+      display:grid;
+      grid-template-columns:1fr 360px;
+      gap:32px;
+      align-items:start;
+      padding-block:36px 96px;
     }
-    @media (max-width:1024px) {
-      .page-grid { grid-template-columns: 1fr; }
-      .sidebar { position: static !important; }
+    @media (max-width:1040px) {
+      .page-grid { grid-template-columns:1fr; }
+      .sidebar { position:static !important; }
     }
 
-    /* ═══════════════════════════════════════════════════
-       NAVBAR
-    ═══════════════════════════════════════════════════ */
+    /* NAVBAR */
     .navbar {
-      position: sticky; top: 0; z-index: 200;
-      background: #020617;
-      border-bottom: 1px solid rgba(255,255,255,.07);
+      position:sticky; top:0; z-index:200;
+      background:rgba(7,8,15,.88);
+      backdrop-filter:blur(20px) saturate(160%);
+      -webkit-backdrop-filter:blur(20px) saturate(160%);
+      border-bottom:1px solid rgba(255,255,255,.07);
     }
     .navbar-inner {
-      width: var(--w); margin-inline: auto;
-      display: flex; align-items: center; justify-content: space-between;
-      padding-block: 13px;
+      width:var(--w); margin-inline:auto;
+      display:flex; align-items:center; justify-content:space-between;
+      padding-block:13px;
     }
     .navbar-logo {
-      height: 36px; max-width: 140px;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 8px;
-      padding: 4px 10px;
-    }
-    @media (max-width: 480px) {
-      .navbar-logo { height: 30px; max-width: 110px; padding: 3px 8px; }
-      .quote-chip { font-size: 11px; padding: 5px 10px; }
+      height:32px; max-width:120px;
+      object-fit:contain;
+      background:#fff;
+      border-radius:var(--r-s);
+      padding:4px 10px;
     }
     .quote-chip {
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 100px;
-      padding: 6px 14px;
-      font-size: 12px; font-weight: 600;
-      color: rgba(255,255,255,.5);
-      letter-spacing: .06em;
+      font-family:'DM Mono', monospace;
+      font-size:10px; font-weight:500;
+      letter-spacing:.08em; text-transform:uppercase;
+      color:rgba(255,255,255,.38);
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:100px;
+      padding:5px 13px;
+    }
+    @media (max-width:480px) {
+      .navbar-logo { height:28px; }
+      .quote-chip { font-size:9px; padding:4px 10px; }
     }
 
-    /* ═══════════════════════════════════════════════════
-       HERO — imagen de destino como fondo
-    ═══════════════════════════════════════════════════ */
+    /* HERO */
     .hero {
-      position: relative; overflow: hidden;
-      min-height: 560px;
-      display: flex; align-items: flex-end;
-      background: #020617 center/cover no-repeat;
+      position:relative; overflow:hidden;
+      min-height:580px;
+      display:flex; align-items:flex-end;
+      background:var(--dark) center/cover no-repeat;
     }
-    /* overlay: oscuro arriba (para que el navbar no se pierda)
-       y muy oscuro abajo (donde va el texto) */
     .hero::before {
-      content:'';
-      position: absolute; inset: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(2,6,23,.55)  0%,
-        rgba(2,6,23,.25) 35%,
-        rgba(2,6,23,.60) 65%,
-        rgba(2,6,23,.92) 100%
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(
+        110deg,
+        rgba(7,8,15,.90) 0%,
+        rgba(7,8,15,.60) 45%,
+        rgba(7,8,15,.30) 70%,
+        rgba(7,8,15,.60) 100%
       );
-      pointer-events: none; z-index: 1;
+      pointer-events:none; z-index:1;
     }
-    /* shimmer de color de marca */
     .hero::after {
-      content:'';
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse 70% 50% at 20% 80%, rgba(37,99,235,.18) 0%, transparent 60%);
-      pointer-events: none; z-index: 1;
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(ellipse 50% 55% at 0% 100%, rgba(29,78,216,.16) 0%, transparent 60%);
+      pointer-events:none; z-index:1;
     }
+    .hero-slides { position:absolute; inset:0; z-index:0; }
+    .slide {
+      position:absolute; inset:0;
+      background-size:cover; background-position:center;
+      opacity:0; transition:opacity 1.2s ease;
+    }
+    .slide.active { opacity:1; }
+
     .hero-content {
-      position: relative; z-index: 2;
-      width: var(--w); margin-inline: auto;
-      padding-block: 56px 60px;
+      position:relative; z-index:2;
+      width:var(--w); margin-inline:auto;
+      padding-block:60px 68px;
+      max-width:700px;
+    }
+    .hero-eyebrow {
+      display:inline-flex; align-items:center; gap:8px;
+      font-size:11px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
+      color:rgba(255,255,255,.55);
+      margin-bottom:16px;
+    }
+    .hero-eyebrow-dot {
+      width:5px; height:5px; border-radius:50%;
+      background:var(--accent-mid); flex-shrink:0;
     }
     .hero h1 {
-      font-size: clamp(30px, 5.5vw, 58px);
-      font-weight: 900;
-      letter-spacing: -.035em;
-      color: #fff;
-      line-height: 1.05;
-      margin-bottom: 16px;
-      text-shadow: 0 2px 20px rgba(2,6,23,.6);
+      font-size:clamp(36px, 5.5vw, 66px);
+      font-weight:800;
+      letter-spacing:-0.04em;
+      color:#fff;
+      line-height:1.03;
+      margin-bottom:20px;
+    }
+    .hero-dates-row {
+      display:flex; align-items:center; gap:12px;
+      flex-wrap:wrap;
     }
     .hero-dates {
-      font-size: 16px; font-weight: 700;
-      color: rgba(255,255,255,.90);
-      margin-bottom: 10px;
-      letter-spacing: .01em;
+      font-size:15px; font-weight:600;
+      color:rgba(255,255,255,.78);
+      letter-spacing:-0.01em;
+    }
+    .hero-dates-sep { color:rgba(255,255,255,.25); }
+    .hero-client {
+      font-size:13px; font-weight:500;
+      color:rgba(255,255,255,.45);
     }
     .hero-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,.40);
-      margin-top: 4px;
+      margin-top:14px;
+      font-size:12px; color:rgba(255,255,255,.30);
+      font-family:'DM Mono',monospace;
+      letter-spacing:.04em;
     }
-    @media (max-width: 640px) {
-      .hero { min-height: 420px; }
-    }
-
-    /* ═══════════════════════════════════════════════════
-       SLIDER
-    ═══════════════════════════════════════════════════ */
-    .hero-slides {
-      position: absolute; inset: 0; z-index: 0;
-    }
-    .slide {
-      position: absolute; inset: 0;
-      background-size: cover;
-      background-position: center;
-      opacity: 0;
-      transition: opacity 1.1s ease;
-    }
-    .slide.active { opacity: 1; }
-
-    /* Barra de progreso del slide activo */
-    .slider-dots {
-      display: flex; gap: 8px;
-      margin-top: 28px;
-    }
+    .slider-dots { display:flex; gap:6px; margin-top:28px; }
     .sdot {
-      height: 4px; border-radius: 100px;
-      background: rgba(255,255,255,.3);
-      border: none; cursor: pointer; padding: 0;
-      transition: background .3s, width .35s cubic-bezier(.4,0,.2,1), flex .35s cubic-bezier(.4,0,.2,1);
-      flex: 1; max-width: 32px;
-      position: relative; overflow: hidden;
+      height:2px; border-radius:100px;
+      background:rgba(255,255,255,.20);
+      border:none; cursor:pointer; padding:0;
+      transition:background .3s, max-width .4s cubic-bezier(.16,1,.3,1), flex .4s cubic-bezier(.16,1,.3,1);
+      flex:1; max-width:24px;
+      position:relative; overflow:hidden;
     }
-    .sdot.active {
-      background: rgba(255,255,255,.55);
-      max-width: 64px;
-    }
-    /* progress fill dentro del dot activo */
+    .sdot.active { background:rgba(255,255,255,.40); max-width:48px; }
     .sdot.active::after {
-      content: '';
-      position: absolute; top: 0; left: 0; bottom: 0;
-      background: #fff;
-      border-radius: 100px;
-      animation: progress var(--slide-duration, 5s) linear forwards;
+      content:''; position:absolute; top:0; left:0; bottom:0;
+      background:#fff; border-radius:100px;
+      animation:progress var(--slide-duration,5s) linear forwards;
     }
-    @keyframes progress { from { width: 0% } to { width: 100% } }
-
-    /* Flechas del slider */
     .slider-arrows {
-      position: absolute;
-      top: 50%; transform: translateY(-50%);
-      z-index: 3;
-      width: 100%;
-      display: flex; justify-content: space-between;
-      padding-inline: 20px;
-      pointer-events: none;
+      position:absolute; top:50%; transform:translateY(-50%);
+      z-index:3; width:100%;
+      display:flex; justify-content:space-between;
+      padding-inline:20px; pointer-events:none;
     }
     .sarrow {
-      width: 40px; height: 40px;
-      background: rgba(255,255,255,.12);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,.18);
-      border-radius: 50%;
-      color: #fff; font-size: 18px;
-      cursor: pointer; pointer-events: all;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .2s;
-      user-select: none;
+      width:38px; height:38px;
+      background:rgba(255,255,255,.10);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:50%; color:#fff; font-size:16px;
+      cursor:pointer; pointer-events:all;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s, transform .2s;
+      user-select:none;
     }
-    .sarrow:hover { background: rgba(255,255,255,.22); }
+    .sarrow:hover { background:rgba(255,255,255,.20); transform:scale(1.05); }
+    .sarrow:active { transform:scale(.95); }
     @media (max-width:640px) {
-      .sarrow { width: 34px; height: 34px; font-size: 15px; }
-      .slider-arrows { top: 28px; transform: none; }
+      .hero { min-height:420px; }
+      .hero-content { padding-block:44px 52px; }
+      .sarrow { width:32px; height:32px; font-size:13px; }
+      .slider-arrows { top:20px; transform:none; }
     }
 
-    /* ═══════════════════════════════════════════════════
-       SECTION HEADER
-    ═══════════════════════════════════════════════════ */
+    /* SECTION HEADER */
     .sec-head {
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 20px;
+      display:flex; align-items:center; gap:10px;
+      margin-bottom:20px;
+      padding-bottom:14px;
+      border-bottom:1px solid var(--border);
     }
     .sec-icon {
-      width: 36px; height: 36px;
-      background: var(--brand-glow);
-      color: var(--brand-mid);
-      border-radius: var(--r-s);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px; flex-shrink: 0;
+      width:24px; height:24px;
+      color:var(--accent);
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0;
     }
+    .sec-icon svg { width:100%; height:100%; }
     .sec-head h2 {
-      font-size: 18px; font-weight: 700;
-      color: var(--ink);
+      font-size:15px; font-weight:700;
+      color:var(--ink);
+      letter-spacing:-0.02em;
+      flex:1;
+    }
+    .sec-count {
+      font-family:'DM Mono',monospace;
+      font-size:11px; color:var(--muted); font-weight:400;
     }
 
-    /* ═══════════════════════════════════════════════════
-       CARDS
-    ═══════════════════════════════════════════════════ */
+    /* CARDS */
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-l);
-      box-shadow: var(--sh-sm);
-      overflow: hidden;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r-l);
+      box-shadow:var(--sh-sm);
+      overflow:hidden;
     }
-    .card-body { padding: 24px; }
-    section { margin-bottom: 36px; }
+    .card-body { padding:24px; }
+    section { margin-bottom:28px; }
 
-    /* ═══════════════════════════════════════════════════
-       INCLUDES
-    ═══════════════════════════════════════════════════ */
+    /* INCLUDES */
     .includes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
-      gap: 12px;
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(min(200px,100%),1fr));
+      gap:10px;
     }
     .inc-item {
-      display: flex; align-items: center; gap: 11px;
-      font-size: 14px; font-weight: 500; color: var(--ink);
+      display:flex; align-items:flex-start; gap:9px;
+      font-size:13px; font-weight:500; color:var(--ink-soft);
+      line-height:1.4;
     }
     .inc-dot {
-      width: 22px; height: 22px; flex-shrink: 0;
-      background: var(--green-pale); color: var(--green);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800;
+      width:18px; height:18px; flex-shrink:0; margin-top:1px;
+      display:flex; align-items:center; justify-content:center;
     }
+    .inc-dot.ok { color:var(--green); }
+    .inc-dot.no { color:var(--muted); }
+    .inc-dot svg { width:100%; height:100%; }
 
-    /* ═══════════════════════════════════════════════════
-       BOARDING PASS
-    ═══════════════════════════════════════════════════ */
+    /* BOARDING PASS */
     .bp {
-      background: var(--surface);
-      border-radius: var(--r-l);
-      overflow: hidden;
-      box-shadow: var(--sh-md);
-      border: 1px solid var(--border);
-      margin-bottom: 20px;
+      background:var(--surface);
+      border-radius:var(--r-xl);
+      overflow:hidden;
+      box-shadow:var(--sh-md);
+      border:1px solid var(--border);
+      margin-bottom:14px;
+      transition:box-shadow .25s, transform .25s;
     }
+    .bp:hover { box-shadow:var(--sh-lg); transform:translateY(-2px); }
 
     .bp-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px;
-      color: #fff;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:15px 24px;
+      color:#fff;
+      position:relative;
     }
-    .bp-header.ida    { background: linear-gradient(135deg, #1D4ED8, #2563EB); }
-    .bp-header.vuelta { background: linear-gradient(135deg, #0F172A, #1E3A5F); }
+    /* Flat solid — no gradients */
+    .bp-header.ida    { background:#0D1E6A; }
+    .bp-header.vuelta { background:#0E0E18; }
+
+    /* subtle inner top highlight only */
+    .bp-header::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:rgba(255,255,255,.10); pointer-events:none;
+    }
 
     .bp-type {
-      font-size: 11px; font-weight: 800;
-      letter-spacing: .12em; text-transform: uppercase;
-      opacity: .9;
+      font-size:10px; font-weight:700;
+      letter-spacing:.12em; text-transform:uppercase;
+      opacity:.70; font-family:'DM Mono',monospace;
     }
-    .bp-airline-row {
-      display: flex; align-items: center; gap: 8px;
-    }
+    .bp-airline-row { display:flex; align-items:center; gap:8px; }
     .bp-airline-logo {
-      width: 28px; height: 28px;
-      object-fit: contain;
-      border-radius: 6px;
-      background: rgba(255,255,255,.15);
+      width:24px; height:24px;
+      object-fit:contain; border-radius:var(--r-xs);
+      background:rgba(255,255,255,.15);
     }
-    .bp-airline-name { font-size: 13px; font-weight: 600; opacity: .85; }
-    .bp-fn { font-size: 11px; font-weight: 700; opacity: .65; margin-top: 1px; }
+    .bp-airline-name { font-size:12px; font-weight:700; opacity:.85; }
+    .bp-fn { font-size:10px; font-weight:400; opacity:.50; margin-top:1px; font-family:'DM Mono',monospace; }
+
+    .bp-select-btn {
+      display:flex; align-items:center; gap:4px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.20);
+      border-radius:100px;
+      color:rgba(255,255,255,.80); font-size:10px; font-weight:700;
+      padding:5px 12px; letter-spacing:.05em; text-transform:uppercase;
+      cursor:pointer; user-select:none;
+      transition:all .2s;
+      white-space:nowrap; flex-shrink:0;
+      font-family:'Plus Jakarta Sans',sans-serif;
+    }
+    .bp-select-btn:hover { background:rgba(255,255,255,.20); }
+    .bp-select-btn:active { transform:scale(.97); }
+    .bp.flight-selected .bp-select-btn {
+      background:rgba(16,185,129,.22);
+      border-color:rgba(52,211,153,.40);
+      color:#6EE7B7;
+    }
+    .bp.flight-selected {
+      border-color:rgba(29,78,216,.30);
+      box-shadow:0 0 0 3px rgba(29,78,216,.07), var(--sh-md);
+    }
 
     .bp-body {
-      padding: 24px 28px 20px;
-      display: flex; align-items: center; gap: 16px;
+      padding:28px 28px 22px;
+      display:flex; align-items:center; gap:20px;
     }
-    .bp-city { flex: 1; }
-    .bp-city.right { text-align: right; }
+    .bp-city { flex:1; }
+    .bp-city.right { text-align:right; }
     .bp-time {
-      font-size: 36px; font-weight: 900;
-      letter-spacing: -.02em; color: var(--ink);
-      line-height: 1;
+      font-size:42px; font-weight:800;
+      letter-spacing:-0.05em; color:var(--ink);
+      line-height:1;
     }
     .bp-code {
-      font-size: 13px; font-weight: 700;
-      color: var(--brand-mid);
-      margin-top: 3px;
+      font-size:12px; font-weight:600;
+      color:var(--accent-mid); margin-top:5px;
+      letter-spacing:.06em;
+      font-family:'DM Mono',monospace;
     }
     .bp-city-name {
-      font-size: 12px; color: var(--muted);
-      margin-top: 2px; line-height: 1.3;
+      font-size:12px; color:var(--muted);
+      margin-top:3px; line-height:1.3; font-weight:500;
     }
-
     .bp-connector {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; gap: 5px;
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; gap:6px;
     }
-    .bp-plane { font-size: 22px; color: var(--ink-muted); }
+    .bp-plane { color:var(--muted); display:flex; align-items:center; }
+    .bp-plane svg { width:18px; height:18px; }
     .bp-line {
-      width: 100%; height: 1.5px;
-      background: linear-gradient(90deg, var(--border), var(--brand-mid), var(--border));
+      width:100%; height:1px;
+      background:linear-gradient(90deg, transparent, var(--border-mid), transparent);
     }
 
     .bp-foot {
-      display: flex; gap: 0;
-      border-top: 1.5px dashed var(--border);
+      display:flex; gap:0;
+      border-top:1.5px dashed var(--border);
+      background:var(--bg-subtle);
     }
-    .bp-foot-item {
-      flex: 1; padding: 12px 20px;
-      border-right: 1px solid var(--border);
-    }
-    .bp-foot-item:last-child { border-right: none; }
+    .bp-foot-item { flex:1; padding:13px 18px; border-right:1px solid var(--border); }
+    .bp-foot-item:last-child { border-right:none; }
     .bp-lbl {
-      font-size: 9px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .08em;
-      color: var(--muted); margin-bottom: 3px;
+      font-size:9px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.10em;
+      color:var(--muted); margin-bottom:4px;
+      font-family:'DM Mono',monospace;
     }
-    .bp-val { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .bp-val { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:-0.01em; }
 
-    @media (max-width: 520px) {
-      .bp-time { font-size: 22px; }
-      .bp-body { padding: 14px 12px 10px; gap: 8px; }
-      .bp-foot { flex-wrap: wrap; }
-      .bp-foot-item { padding: 8px 10px; min-width: 30%; }
-      .bp-foot-item:last-child { border-right: none; }
-      .bp-airline-name { display: none; }
+    @media (max-width:520px) {
+      .bp-time { font-size:24px; }
+      .bp-body { padding:16px 14px 12px; gap:10px; }
+      .bp-foot { flex-wrap:wrap; }
+      .bp-foot-item { padding:10px 12px; min-width:33%; }
+      .bp-airline-name { display:none; }
     }
 
-    /* ═══════════════════════════════════════════════════
-       HOTEL CARD
-    ═══════════════════════════════════════════════════ */
+    /* STOPOVER */
+    .bp-stopover {
+      padding:10px 24px;
+      display:flex; align-items:center; gap:10px;
+      background:var(--bg-subtle);
+      border-bottom:1px solid var(--border);
+    }
+    .bp-stopover-icon { color:var(--muted); display:flex; }
+    .bp-stopover-icon svg { width:14px; height:14px; }
+    .bp-stopover-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-family:'DM Mono',monospace; }
+    .bp-stopover-city { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:-0.01em; }
+    .bp-stopover-time { font-size:10px; font-weight:600; color:var(--accent); background:var(--accent-pale); padding:2px 8px; border-radius:100px; font-family:'DM Mono',monospace; }
+    .bp-stopover-content { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+
+    /* HOTEL CARD */
     .hotel-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-l);
-      box-shadow: var(--sh-sm);
-      overflow: hidden;
-      margin-bottom: 20px;
-      transition: box-shadow .25s;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r-xl);
+      box-shadow:var(--sh-sm);
+      overflow:hidden;
+      margin-bottom:16px;
+      transition:box-shadow .25s, transform .25s;
     }
-    .hotel-card:hover { box-shadow: var(--sh-md); }
-
-    /* ═══════════════════════════════════════════════════
-       SELECTION UI
-    ═══════════════════════════════════════════════════ */
-    .bp-select-btn {
-      display: flex; align-items: center; gap: 5px;
-      background: rgba(255,255,255,.12);
-      border: 1.5px solid rgba(255,255,255,.25);
-      border-radius: 100px;
-      color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700;
-      padding: 5px 11px; letter-spacing: .04em;
-      cursor: pointer; user-select: none;
-      transition: background .2s, border-color .2s, color .2s;
-      white-space: nowrap; flex-shrink: 0;
-    }
-    .bp-select-btn:hover { background: rgba(255,255,255,.24); }
-    .bp.flight-selected .bp-select-btn {
-      background: rgba(16,185,129,.28);
-      border-color: #34D399;
-      color: #6EE7B7;
-    }
-    .bp.flight-selected {
-      border-color: var(--brand-mid);
-      box-shadow: 0 0 0 3px var(--brand-glow), var(--sh-md);
-    }
-
-    .hotel-select-btn {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      margin: 0 24px 20px;
-      padding: 11px 16px;
-      border-radius: var(--r-m);
-      font-size: 14px; font-weight: 700;
-      cursor: pointer; user-select: none;
-      transition: all .2s;
-      border: 2px solid var(--border);
-      background: var(--bg);
-      color: var(--ink-muted);
-      width: calc(100% - 48px);
-    }
-    .hotel-select-btn:hover {
-      border-color: var(--brand-mid);
-      color: var(--brand-mid);
-      background: #EFF6FF;
-    }
-    .hotel-card.hotel-selected .hotel-select-btn {
-      background: var(--green);
-      border-color: var(--green);
-      color: #fff;
-    }
-    .hotel-card.hotel-selected {
-      border-color: var(--brand-mid);
-      box-shadow: 0 0 0 3px rgba(37,99,235,.12), var(--sh-md);
-    }
+    .hotel-card:hover { box-shadow:var(--sh-lg); transform:translateY(-2px); }
 
     .hotel-slider {
-      position: relative; height: 220px; overflow: hidden;
-      background: #E2E8F0; cursor: zoom-in;
+      position:relative; height:220px; overflow:hidden;
+      background:var(--border); cursor:zoom-in;
     }
-    @media (max-width: 480px) { .hotel-slider { height: 170px; } }
+    @media (max-width:480px) { .hotel-slider { height:175px; } }
     .hotel-slide {
-      position: absolute; inset: 0;
-      background-size: cover; background-position: center;
-      opacity: 0; transition: opacity .8s ease;
+      position:absolute; inset:0;
+      background-size:cover; background-position:center;
+      opacity:0; transition:opacity .8s ease;
     }
-    .hotel-slide.active { opacity: 1; }
+    .hotel-slide.active { opacity:1; }
     .hotel-slider-dots {
-      position: absolute; bottom: 10px; left: 0; right: 0;
-      display: flex; justify-content: center; gap: 6px; z-index: 2;
-      pointer-events: none;
+      position:absolute; bottom:10px; left:0; right:0;
+      display:flex; justify-content:center; gap:5px; z-index:2;
+      pointer-events:none;
     }
     .hotel-sdot {
-      width: 6px; height: 6px; border-radius: 100px;
-      background: rgba(255,255,255,.5); border: none; padding: 0;
-      cursor: pointer; pointer-events: all;
-      transition: background .3s, width .3s;
+      width:5px; height:5px; border-radius:100px;
+      background:rgba(255,255,255,.45); border:none; padding:0;
+      cursor:pointer; pointer-events:all;
+      transition:background .3s, width .3s cubic-bezier(.16,1,.3,1);
     }
-    .hotel-sdot.active { background: #fff; width: 18px; }
+    .hotel-sdot.active { background:#fff; width:14px; }
     .hotel-arrows {
-      position: absolute; top: 50%; transform: translateY(-50%);
-      width: 100%; display: flex; justify-content: space-between;
-      padding-inline: 10px; z-index: 3; pointer-events: none;
+      position:absolute; top:50%; transform:translateY(-50%);
+      width:100%; display:flex; justify-content:space-between;
+      padding-inline:10px; z-index:3; pointer-events:none;
     }
     .hotel-arrow {
-      width: 32px; height: 32px;
-      background: rgba(2,6,23,.45); backdrop-filter: blur(6px);
-      border: 1px solid rgba(255,255,255,.2);
-      border-radius: 50%; color: #fff; font-size: 14px;
-      cursor: pointer; pointer-events: all;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .2s; user-select: none;
+      width:30px; height:30px;
+      background:rgba(7,8,15,.50); backdrop-filter:blur(6px);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:50%; color:#fff; font-size:12px;
+      cursor:pointer; pointer-events:all;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s, transform .2s; user-select:none;
     }
-    .hotel-arrow:hover { background: rgba(2,6,23,.7); }
+    .hotel-arrow:hover { background:rgba(7,8,15,.75); transform:scale(1.08); }
     .hotel-nophoto {
-      height: 220px; width: 100%;
-      background: linear-gradient(135deg, #E2E8F0, #CBD5E1);
-      display: flex; align-items:center; justify-content:center;
-      font-size: 56px; color: var(--muted);
+      height:220px; width:100%;
+      background:linear-gradient(135deg, var(--bg), var(--border));
+      display:flex; align-items:center; justify-content:center;
+      color:var(--border-mid);
     }
-    /* ═══════════════════════════════════════════════════
-       LIGHTBOX
-    ═══════════════════════════════════════════════════ */
+    .hotel-nophoto svg { width:48px; height:48px; }
+
+    /* LIGHTBOX */
     .lightbox {
-      position: fixed; inset: 0; z-index: 2000;
-      background: rgba(2,6,23,.92);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none;
-      transition: opacity .25s;
+      position:fixed; inset:0; z-index:2000;
+      background:rgba(7,8,15,.95);
+      backdrop-filter:blur(8px);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none; transition:opacity .25s;
     }
-    .lightbox.show { opacity: 1; pointer-events: all; }
+    .lightbox.show { opacity:1; pointer-events:all; }
     .lightbox img {
-      max-width: 92vw; max-height: 88vh;
-      border-radius: 14px;
-      box-shadow: 0 24px 60px rgba(0,0,0,.6);
-      object-fit: contain;
-      user-select: none;
+      max-width:92vw; max-height:88vh;
+      border-radius:var(--r-l);
+      box-shadow:0 32px 80px rgba(0,0,0,.7);
+      object-fit:contain; user-select:none;
     }
     .lightbox-close {
-      position: absolute; top: 20px; right: 24px;
-      background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.2);
-      color: #fff; font-size: 22px; width: 44px; height: 44px; border-radius: 50%;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: background .2s;
+      position:absolute; top:20px; right:24px;
+      background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16);
+      color:#fff; font-size:18px; width:42px; height:42px; border-radius:50%;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:background .2s;
     }
-    .lightbox-close:hover { background: rgba(255,255,255,.22); }
+    .lightbox-close:hover { background:rgba(255,255,255,.20); }
 
-    .hotel-body { padding: 22px 24px 20px; }
-    .hotel-name { font-size: 20px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
-    .hotel-room { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+    .hotel-body { padding:22px 24px 18px; }
+    .hotel-name { font-size:19px; font-weight:800; color:var(--ink); margin-bottom:4px; letter-spacing:-0.03em; }
+    .hotel-room { font-size:12px; color:var(--muted); margin-bottom:14px; font-weight:500; }
 
-    .hotel-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
-    .tag {
-      padding: 4px 11px;
-      border-radius: 6px;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: .02em;
-    }
-    .tag-gold { background: var(--gold-pale); color: #92400E; }
-    .tag-blue { background: #DBEAFE; color: #1E40AF; }
+    .hotel-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+    .tag { padding:3px 9px; border-radius:var(--r-xs); font-size:11px; font-weight:600; letter-spacing:.01em; }
+    .tag-gold { background:var(--gold-pale); color:#7A4F1E; }
+    .tag-blue { background:var(--accent-pale); color:#1E3FA0; }
 
     .hotel-dates {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 13px; color: var(--muted);
-      margin-bottom: 18px; padding-bottom: 18px;
-      border-bottom: 1px solid var(--border);
+      display:flex; align-items:center; gap:10px;
+      font-size:13px; color:var(--muted);
+      margin-bottom:18px; padding-bottom:18px;
+      border-bottom:1px solid var(--border); font-weight:500;
     }
-    .hotel-dates strong { color: var(--ink); font-weight: 700; }
-    .date-arrow { color: var(--brand-mid); font-weight: 700; }
+    .hotel-dates strong { color:var(--ink); font-weight:700; }
+    .date-arrow { color:var(--accent-mid); }
 
-    .price-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
-    .price-cell { padding: 14px 16px; }
-    .price-cell + .price-cell { border-left: 1px solid var(--border); }
-    .price-cell:last-child { background: var(--bg); border-radius: 0 0 var(--r-l) var(--r-l); }
-    .price-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 5px; }
-    .price-val { font-size: 17px; font-weight: 800; color: var(--ink); }
-    .price-val.total { font-size: 20px; color: var(--brand-mid); }
-
-    @media (max-width: 540px) {
-      .price-row { grid-template-columns: 1fr 1fr; }
-      .price-cell:nth-child(3) { grid-column: 1 / -1; border-left: none; border-top: 1px solid var(--border); }
+    .price-row { display:grid; grid-template-columns:1fr 1fr 1fr; }
+    .price-cell { padding:15px 18px; }
+    .price-cell + .price-cell { border-left:1px solid var(--border); }
+    .price-cell:last-child { background:var(--bg-subtle); }
+    .price-lbl {
+      font-size:9px; text-transform:uppercase; letter-spacing:.09em;
+      color:var(--muted); margin-bottom:5px; font-weight:600;
+      font-family:'DM Mono',monospace;
+    }
+    .price-val { font-size:15px; font-weight:800; color:var(--ink); letter-spacing:-0.02em; }
+    .price-val.total { font-size:18px; color:var(--accent); }
+    @media (max-width:540px) {
+      .price-row { grid-template-columns:1fr 1fr; }
+      .price-cell:nth-child(3) { grid-column:1/-1; border-left:none; border-top:1px solid var(--border); }
     }
 
-    /* ═══════════════════════════════════════════════════
-       ADICIONALES
-    ═══════════════════════════════════════════════════ */
+    /* HOTEL SELECT BUTTON */
+    .hotel-select-btn {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      margin:0 24px 22px;
+      padding:12px 16px;
+      border-radius:var(--r-m);
+      font-size:13px; font-weight:700;
+      cursor:pointer; user-select:none;
+      transition:all .2s cubic-bezier(.16,1,.3,1);
+      border:1.5px solid var(--border-mid);
+      background:var(--bg-subtle);
+      color:var(--ink-muted);
+      width:calc(100% - 48px);
+      letter-spacing:-0.01em;
+      font-family:'Plus Jakarta Sans',sans-serif;
+    }
+    .hotel-select-btn:hover {
+      border-color:var(--accent-mid);
+      color:var(--accent-mid);
+      background:var(--accent-pale);
+      transform:translateY(-1px);
+    }
+    .hotel-select-btn:active { transform:scale(.98); }
+    .hotel-card.hotel-selected .hotel-select-btn {
+      background:var(--green); border-color:var(--green); color:#fff;
+      box-shadow:0 4px 12px rgba(15,122,82,.25);
+    }
+    .hotel-card.hotel-selected {
+      border-color:rgba(29,78,216,.25);
+      box-shadow:0 0 0 3px rgba(29,78,216,.06), var(--sh-md);
+    }
+
+    /* HOTEL NOTES */
+    .hotel-notes {
+      margin-top:14px; padding:12px 16px;
+      background:var(--bg-subtle); border:1px solid var(--border);
+      border-radius:var(--r-m);
+    }
+    .hotel-notes-label {
+      font-size:9px; font-weight:700; text-transform:uppercase;
+      color:var(--muted); letter-spacing:.10em; margin-bottom:5px;
+      font-family:'DM Mono',monospace;
+    }
+    .hotel-notes-text { font-size:13px; color:var(--ink-soft); font-weight:500; line-height:1.6; }
+
+    /* ADICIONALES */
     .adc-row {
-      display: flex; align-items: center;
-      gap: 12px; padding: 14px 0;
-      border-bottom: 1px solid var(--border);
-      transition: opacity .2s;
+      display:flex; align-items:center;
+      gap:12px; padding:13px 0;
+      border-bottom:1px solid var(--border);
+      transition:opacity .2s;
     }
-    .adc-info { flex: 1; min-width: 0; }
-    .adc-row:first-child { padding-top: 0; }
-    .adc-row:last-child  { border-bottom: none; padding-bottom: 0; }
-    .adc-name { font-size: 15px; font-weight: 600; }
-    .adc-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
-    .adc-price { font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; }
+    .adc-info { flex:1; min-width:0; }
+    .adc-row:first-child { padding-top:0; }
+    .adc-row:last-child  { border-bottom:none; padding-bottom:0; }
+    .adc-name { font-size:14px; font-weight:600; letter-spacing:-0.01em; }
+    .adc-desc { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.5; font-weight:400; }
+    .adc-price { font-size:14px; font-weight:800; color:var(--ink); white-space:nowrap; letter-spacing:-0.02em; }
     .adc-fixed-badge {
-      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-      background: var(--green-pale); color: var(--green);
-      border-radius: 6px; padding: 3px 8px; white-space: nowrap; flex-shrink: 0;
+      font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+      background:var(--green-pale); color:var(--green);
+      border-radius:var(--r-xs); padding:3px 8px; white-space:nowrap; flex-shrink:0;
     }
     .adc-toggle {
-      display: flex; align-items: center; justify-content: center;
-      width: 28px; height: 28px; flex-shrink: 0;
-      border-radius: 50%; border: 2px solid var(--border-mid);
-      background: var(--bg); cursor: pointer; user-select: none;
-      font-size: 13px; font-weight: 800; color: var(--muted);
-      transition: all .2s;
+      display:flex; align-items:center; justify-content:center;
+      width:26px; height:26px; flex-shrink:0;
+      border-radius:50%; border:1.5px solid var(--border-mid);
+      background:var(--bg); cursor:pointer; user-select:none;
+      transition:all .2s;
+      color:var(--muted);
     }
-    .adc-toggle:hover { border-color: var(--brand-mid); color: var(--brand-mid); background: #EFF6FF; }
-    .adc-row.adc-selected .adc-toggle { background: var(--green); border-color: var(--green); color: #fff; }
-    .adc-row.adc-selected .adc-name { color: var(--ink); }
-    .adc-row:not(.adc-selected):not(.adc-fijo) { opacity: .55; }
-    .adc-row:not(.adc-selected):not(.adc-fijo) .adc-name { color: var(--muted); text-decoration: line-through; }
-    .adc-row:not(.adc-selected):not(.adc-fijo) .adc-price { color: var(--muted); }
+    .adc-toggle svg { width:12px; height:12px; }
+    .adc-toggle:hover { border-color:var(--accent-mid); color:var(--accent-mid); background:var(--accent-pale); }
+    .adc-row.adc-selected .adc-toggle { background:var(--green); border-color:var(--green); color:#fff; }
+    .adc-row:not(.adc-selected):not(.adc-fijo) { opacity:.50; }
+    .adc-row:not(.adc-selected):not(.adc-fijo) .adc-name { color:var(--muted); text-decoration:line-through; }
+    .adc-row:not(.adc-selected):not(.adc-fijo) .adc-price { color:var(--muted); }
 
-    /* ═══════════════════════════════════════════════════
-       CONDITIONS
-    ═══════════════════════════════════════════════════ */
+    /* CONDITIONS */
     .cond-box {
-      background: #FFFBEB;
-      border: 1px solid #FDE68A;
-      border-radius: var(--r-m);
-      padding: 20px 24px;
+      background:var(--gold-pale);
+      border:1px solid rgba(157,110,47,.20);
+      border-radius:var(--r-l);
+      padding:20px 24px;
     }
-    .cond-box p { font-size: 13px; color: #78350F; line-height: 1.8; }
+    .cond-box p { font-size:13px; color:#5A3A10; line-height:1.85; font-weight:500; }
 
-    /* ═══════════════════════════════════════════════════
-       SIDEBAR
-    ═══════════════════════════════════════════════════ */
-    .sidebar { position: sticky; top: 80px; }
+    /* SIDEBAR — light, architectural */
+    .sidebar { position:sticky; top:80px; }
+
+    .client-card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r-l);
+      padding:16px 20px;
+      margin-bottom:12px;
+      box-shadow:var(--sh-xs);
+    }
+    .client-card-label {
+      font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.10em; color:var(--muted); margin-bottom:7px;
+      font-family:'DM Mono',monospace;
+    }
+    .client-card-name { font-size:16px; font-weight:800; color:var(--ink); letter-spacing:-0.025em; }
+    .client-card-phone { font-size:12px; color:var(--muted); margin-top:3px; font-weight:500; }
 
     .price-summary {
-      background: var(--ink);
-      border-radius: var(--r-l);
-      overflow: hidden;
-      box-shadow: var(--sh-lg);
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-top:2.5px solid var(--accent);
+      border-radius:var(--r-xl);
+      overflow:hidden;
+      box-shadow:var(--sh-lg);
     }
     .ps-header {
-      padding: 28px 28px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding:24px 24px 20px;
+      border-bottom:1px solid var(--border);
     }
-    .ps-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 8px; }
-    .ps-from { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 4px; }
-    .ps-price { font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -.03em; line-height: 1; }
-    .ps-price span { font-size: 16px; font-weight: 500; color: rgba(255,255,255,.5); }
+    .ps-label {
+      font-size:10px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:8px;
+      font-family:'DM Mono',monospace;
+    }
+    .ps-price {
+      font-size:38px; font-weight:800; color:var(--ink);
+      letter-spacing:-0.04em; line-height:1;
+    }
+    .ps-price span { font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; }
 
-    .ps-options { padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .ps-options { padding:16px 24px; border-bottom:1px solid var(--border); }
     .ps-option {
-      display: flex; justify-content:space-between; align-items:center;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-      gap: 12px;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:9px 0; border-bottom:1px solid var(--border); gap:12px;
     }
-    .ps-option:last-child { border-bottom: none; }
-    .ps-opt-name { font-size: 13px; color: rgba(255,255,255,.75); line-height: 1.3; }
-    .ps-opt-price { font-size: 14px; font-weight: 700; color: rgba(255,255,255,.9); white-space: nowrap; }
+    .ps-option:last-child { border-bottom:none; }
+    .ps-opt-name { font-size:12px; color:var(--ink-muted); line-height:1.4; font-weight:500; }
+    .ps-opt-price { font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; letter-spacing:-0.01em; }
 
-    .ps-cta { padding: 20px 28px; display: flex; flex-direction: column; gap: 10px; }
+    .ps-cta { padding:18px 24px 22px; display:flex; flex-direction:column; gap:10px; }
     .btn-wa {
-      display: flex; align-items:center; justify-content:center; gap: 10px;
-      background: #16A34A; color: #fff;
-      font-size: 15px; font-weight: 700;
-      padding: 15px; border-radius: var(--r-m);
-      transition: background .2s, transform .15s;
+      display:flex; align-items:center; justify-content:center; gap:9px;
+      background:#16A34A; color:#fff;
+      font-size:14px; font-weight:800;
+      padding:14px; border-radius:var(--r-m);
+      transition:background .2s, transform .2s;
+      letter-spacing:-0.01em;
+      box-shadow:0 4px 14px rgba(22,163,74,.28);
+      font-family:'Plus Jakarta Sans',sans-serif;
     }
-    .btn-wa:hover { background: #15803D; transform: translateY(-1px); }
-    .btn-wa:active { transform: translateY(0); }
+    .btn-wa:hover { background:#15803D; transform:translateY(-1px); }
+    .btn-wa:active { transform:scale(.98); }
     .btn-ref {
-      text-align: center;
-      font-size: 12px; color: rgba(255,255,255,.35);
-      padding-top: 4px;
+      text-align:center; font-size:10px; color:var(--muted);
+      font-family:'DM Mono',monospace; letter-spacing:.06em;
     }
 
-    /* Mobile CTA bar */
+    /* MOBILE CTA */
     .mobile-cta {
-      display: none;
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--surface); border-top: 1px solid var(--border);
-      padding: 12px 16px 20px; z-index: 300;
+      display:none;
+      position:fixed; bottom:0; left:0; right:0;
+      background:rgba(242,239,233,.94);
+      backdrop-filter:blur(16px);
+      border-top:1px solid var(--border);
+      padding:10px 16px 20px; z-index:300;
     }
-    @media (max-width:1024px) {
-      .mobile-cta { display: block; }
-      .page-grid { padding-bottom: 100px; }
+    @media (max-width:1040px) {
+      .mobile-cta { display:block; }
+      .page-grid { padding-bottom:96px; }
     }
     .mobile-wa {
-      display: flex; align-items:center; justify-content:center; gap: 10px;
-      background: #16A34A; color: #fff;
-      font-size: 15px; font-weight: 700;
-      padding: 16px; border-radius: var(--r-m);
-      width: 100%; max-width: 480px; margin-inline: auto;
-      box-shadow: 0 4px 16px rgba(22,163,74,.35);
+      display:flex; align-items:center; justify-content:center; gap:9px;
+      background:#16A34A; color:#fff;
+      font-size:14px; font-weight:800;
+      padding:15px; border-radius:var(--r-m);
+      width:100%; max-width:480px; margin-inline:auto;
+      box-shadow:0 4px 18px rgba(22,163,74,.35);
+      font-family:'Plus Jakarta Sans',sans-serif;
     }
 
-    /* ═══════════════════════════════════════════════════
-       FOOTER — mismo fondo que navbar (#020617)
-    ═══════════════════════════════════════════════════ */
+    /* FOOTER */
     .footer {
-      background: #020617;
-      border-top: 1px solid rgba(255,255,255,.07);
-      padding: 52px 0 36px;
+      background:var(--dark);
+      border-top:1px solid rgba(255,255,255,.06);
+      padding:52px 0 36px;
     }
     .footer-inner {
-      width: var(--w); margin-inline: auto;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 48px;
-      align-items: start;
+      width:var(--w); margin-inline:auto;
+      display:grid; grid-template-columns:auto 1fr auto;
+      gap:48px; align-items:start;
     }
-    @media (max-width: 768px) {
-      .footer-inner { grid-template-columns: 1fr; text-align: center; gap: 28px; }
-      .footer-social { justify-content: center !important; align-items: center !important; }
-      .footer-logo { margin-inline: auto; }
-      .footer-links a, .footer-links span { justify-content: center; }
+    @media (max-width:768px) {
+      .footer-inner { grid-template-columns:1fr; text-align:center; gap:24px; }
+      .footer-social { justify-content:center !important; align-items:center !important; flex-direction:row !important; flex-wrap:wrap; }
+      .footer-logo { margin-inline:auto; }
     }
-
-    .footer-brand { display: flex; flex-direction: column; }
+    .footer-brand { display:flex; flex-direction:column; }
     .footer-logo {
-      height: 52px; max-width: 180px;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 8px;
-      padding: 5px 12px;
-      margin-bottom: 14px;
+      height:44px; max-width:160px; object-fit:contain;
+      background:#fff; border-radius:var(--r-s);
+      padding:5px 12px; margin-bottom:14px;
     }
-    .footer h3 { font-size: 15px; font-weight: 800; color: rgba(255,255,255,.85); margin-bottom: 4px; }
-    .footer-nit { font-size: 11px; color: rgba(255,255,255,.28); letter-spacing: .06em; margin-top: 4px; }
-
-    .footer-links { display: flex; flex-direction:column; gap: 6px; }
-    .footer-links a, .footer-links span {
-      font-size: 13px; color: rgba(255,255,255,.45);
-      transition: color .2s; line-height: 1.8;
-    }
-    .footer-links a:hover { color: rgba(255,255,255,.85); }
-
-    .footer-social { display: flex; flex-direction:column; gap: 8px; align-items:flex-end; }
-    @media (max-width:768px) { .footer-social { align-items:center; flex-direction:row; flex-wrap:wrap; } }
+    .footer h3 { font-size:14px; font-weight:700; color:rgba(255,255,255,.78); letter-spacing:-0.02em; }
+    .footer-nit { font-size:11px; color:rgba(255,255,255,.22); margin-top:4px; font-family:'DM Mono',monospace; }
+    .footer-links { display:flex; flex-direction:column; gap:4px; }
+    .footer-links a, .footer-links span { font-size:13px; color:rgba(255,255,255,.38); transition:color .2s; line-height:1.9; font-weight:500; }
+    .footer-links a:hover { color:rgba(255,255,255,.78); }
+    .footer-social { display:flex; flex-direction:column; gap:7px; align-items:flex-end; }
     .social-pill {
-      display: flex; align-items:center; gap: 7px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.1);
-      color: rgba(255,255,255,.65);
-      font-size: 13px; font-weight: 600;
-      padding: 8px 16px; border-radius: 100px;
-      transition: background .2s, color .2s;
+      display:flex; align-items:center; gap:7px;
+      background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+      color:rgba(255,255,255,.50); font-size:12px; font-weight:600;
+      padding:7px 14px; border-radius:100px;
+      transition:background .2s, color .2s;
     }
-    .social-pill:hover { background: rgba(255,255,255,.12); color: #fff; }
-
+    .social-pill:hover { background:rgba(255,255,255,.10); color:rgba(255,255,255,.90); }
     .footer-bottom {
-      width: var(--w); margin-inline: auto;
-      margin-top: 36px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,.07);
-      display: flex; justify-content:space-between; align-items:center;
-      gap: 12px; flex-wrap:wrap;
+      width:var(--w); margin-inline:auto;
+      margin-top:36px; padding-top:20px;
+      border-top:1px solid rgba(255,255,255,.06);
+      display:flex; justify-content:space-between; align-items:center;
+      gap:12px; flex-wrap:wrap;
     }
-    .footer-copy { font-size: 12px; color: rgba(255,255,255,.2); }
-    .footer-copy-right { font-size: 12px; color: rgba(255,255,255,.2); }
+    .footer-copy, .footer-copy-right { font-size:11px; color:rgba(255,255,255,.18); font-weight:500; }
 
-    /* ═══════════════════════════════════════════════════
-       STATES
-    ═══════════════════════════════════════════════════ */
-    .state { min-height: 100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; }
-    .spinner { width:44px; height:44px; border:3px solid var(--border); border-top-color:var(--brand-mid); border-radius:50%; animation:spin .8s linear infinite; margin-bottom:16px; }
-    .state h2 { font-size:22px; font-weight:700; margin-bottom:8px; }
-    .state p { font-size:14px; color:var(--muted); }
+    /* STATES */
+    .state {
+      min-height:100dvh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:40px; text-align:center;
+    }
+    .state-icon { color:var(--border-mid); margin-bottom:20px; }
+    .state-icon svg { width:48px; height:48px; }
+    .spinner {
+      width:36px; height:36px;
+      border:2px solid var(--border);
+      border-top-color:var(--accent-mid);
+      border-radius:50%;
+      animation:spin .75s linear infinite;
+      margin-bottom:20px;
+    }
+    .state h2 { font-size:20px; font-weight:800; margin-bottom:8px; letter-spacing:-0.025em; }
+    .state p { font-size:13px; color:var(--muted); font-weight:500; }
 
-    /* ═══════════════════════════════════════════════════
-       HINT MODAL
-    ═══════════════════════════════════════════════════ */
+    /* HINT MODAL */
     .hint-backdrop {
-      position: fixed; inset: 0; z-index: 9000;
-      background: rgba(2,6,23,.55);
-      backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px;
-      opacity: 0; pointer-events: none;
-      transition: opacity .3s ease;
+      position:fixed; inset:0; z-index:9000;
+      background:rgba(7,8,15,.55);
+      backdrop-filter:blur(5px);
+      display:flex; align-items:center; justify-content:center;
+      padding:20px;
+      opacity:0; pointer-events:none; transition:opacity .3s;
     }
-    .hint-backdrop.show { opacity: 1; pointer-events: all; }
+    .hint-backdrop.show { opacity:1; pointer-events:all; }
     .hint-modal {
-      background: var(--surface);
-      border-radius: var(--r-xl);
-      box-shadow: var(--sh-lg);
-      max-width: 460px; width: 100%;
-      overflow: hidden;
-      transform: translateY(20px) scale(.97);
-      transition: transform .35s cubic-bezier(.22,.68,0,1.2);
+      background:var(--surface);
+      border-radius:var(--r-2xl);
+      box-shadow:var(--sh-lg);
+      border:1px solid var(--border);
+      max-width:440px; width:100%;
+      overflow:hidden;
+      transform:translateY(20px) scale(.97);
+      transition:transform .4s cubic-bezier(.16,1,.3,1);
     }
-    .hint-backdrop.show .hint-modal { transform: translateY(0) scale(1); }
+    .hint-backdrop.show .hint-modal { transform:translateY(0) scale(1); }
     .hint-top {
-      background: #020617;
-      padding: 28px 28px 24px;
-      text-align: center;
-      display: flex; flex-direction: column; align-items: center;
+      background:var(--dark);
+      padding:28px 28px 24px;
+      text-align:left;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      position:relative;
+    }
+    .hint-top::after {
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(ellipse 60% 50% at 0% 100%, rgba(29,78,216,.15) 0%, transparent 70%);
+      pointer-events:none;
     }
     .hint-logo {
-      height: 44px; max-width: 160px;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 10px;
-      padding: 6px 14px;
-      margin-bottom: 16px;
+      height:36px; max-width:130px;
+      object-fit:contain; background:#fff;
+      border-radius:var(--r-xs);
+      padding:4px 10px; margin-bottom:18px;
+      position:relative; z-index:1;
     }
-    .hint-top h2 { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-    .hint-top p  { font-size: 13px; color: rgba(255,255,255,.75); line-height: 1.5; }
-    .hint-body { padding: 22px 28px; }
+    .hint-top h2 { font-size:19px; font-weight:800; color:#fff; margin-bottom:6px; letter-spacing:-0.03em; position:relative; z-index:1; }
+    .hint-top p  { font-size:13px; color:rgba(255,255,255,.55); line-height:1.6; font-weight:400; position:relative; z-index:1; }
+    .hint-body { padding:20px 28px; }
     .hint-row {
-      display: flex; align-items: flex-start; gap: 14px;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
+      display:flex; align-items:flex-start; gap:14px;
+      padding:13px 0; border-bottom:1px solid var(--border);
     }
-    .hint-row:last-of-type { border-bottom: none; }
+    .hint-row:last-of-type { border-bottom:none; }
     .hint-badge {
-      width: 36px; height: 36px; flex-shrink: 0;
-      border-radius: var(--r-s);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      width:34px; height:34px; flex-shrink:0;
+      border-radius:var(--r-s);
+      display:flex; align-items:center; justify-content:center;
+      color:var(--accent);
     }
-    .hint-badge.blue { background: #DBEAFE; }
-    .hint-badge.green { background: var(--green-pale); }
-    .hint-text strong { font-size: 14px; font-weight: 700; color: var(--ink); display: block; margin-bottom: 2px; }
-    .hint-text span   { font-size: 12px; color: var(--muted); line-height: 1.5; }
-    .hint-footer { padding: 0 28px 24px; }
+    .hint-badge.blue { background:var(--accent-pale); color:var(--accent); }
+    .hint-badge.green { background:var(--green-pale); color:var(--green); }
+    .hint-badge svg { width:16px; height:16px; }
+    .hint-text strong { font-size:14px; font-weight:700; color:var(--ink); display:block; margin-bottom:3px; letter-spacing:-0.01em; }
+    .hint-text span   { font-size:12px; color:var(--muted); line-height:1.6; }
+    .hint-footer { padding:0 28px 24px; }
     .hint-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 100%; padding: 14px;
-      background: var(--brand-mid); color: #fff;
-      font-size: 15px; font-weight: 700;
-      border: none; border-radius: var(--r-m);
-      cursor: pointer; transition: background .2s;
+      display:flex; align-items:center; justify-content:center;
+      width:100%; padding:13px;
+      background:var(--accent-mid); color:#fff;
+      font-size:14px; font-weight:700;
+      border:none; border-radius:var(--r-m);
+      cursor:pointer; transition:background .2s, transform .2s;
+      letter-spacing:-0.01em;
+      font-family:'Plus Jakarta Sans',sans-serif;
     }
-    .hint-btn:hover { background: #1D4ED8; }
-
-    /* ═══════════════════════════════════════════════════
-       STOP OVER & HOTEL NOTES
-    ═══════════════════════════════════════════════════ */
-    .bp-stopover {
-      margin: 16px 24px 0;
-      padding: 10px 16px;
-      background: #F8FAFC;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .bp-stopover-icon {
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0;
-      line-height: 1;
-    }
-    .bp-stopover-content { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .bp-stopover-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-    .bp-stopover-city { font-size: 13px; font-weight: 700; color: var(--ink); }
-    .bp-stopover-time { font-size: 11px; font-weight: 600; color: var(--brand-mid); background: var(--brand-glow); padding: 2px 8px; border-radius: 100px; }
-
-    .hotel-notes {
-      margin-top: 16px;
-      padding: 14px 18px;
-      background: #F8FAFC;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-    }
-    .hotel-notes-text { font-size: 13px; color: var(--ink-muted); font-weight: 500; line-height: 1.5; }
+    .hint-btn:hover { background:var(--accent); transform:translateY(-1px); }
+    .hint-btn:active { transform:scale(.98); }
   </style>
 </head>
 <body>
@@ -855,55 +857,68 @@
   </div>
 </div>
 
-<!-- Lightbox -->
 <div class="lightbox" id="lightbox">
-  <button class="lightbox-close" id="lightbox-close">✕</button>
+  <button class="lightbox-close" id="lightbox-close">&#x2715;</button>
   <img id="lightbox-img" src="" alt="">
 </div>
 
-<!-- Hint Modal -->
 <div class="hint-backdrop" id="hint-backdrop">
   <div class="hint-modal">
     <div class="hint-top">
       <img src="/logo-empresa.png" class="hint-logo" alt="Logo">
-      <h2>¡Personaliza tu paquete!</h2>
+      <h2>Personaliza tu paquete</h2>
       <p>Esta cotización incluye varias opciones. Elige las que más te convengan para ver el precio final exacto.</p>
     </div>
     <div class="hint-body">
       <div class="hint-row">
-        <div class="hint-badge blue">✈</div>
+        <div class="hint-badge blue">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+        </div>
         <div class="hint-text">
           <strong>Vuelos</strong>
-          <span>Todos los vuelos están incluidos por defecto. Puedes activar o desactivar cada uno con el botón <em>"Incluido"</em> en cada tarjeta.</span>
+          <span>Todos incluidos por defecto. Activa o desactiva cada uno con el botón de cada tarjeta.</span>
         </div>
       </div>
       <div class="hint-row">
-        <div class="hint-badge green">🏨</div>
+        <div class="hint-badge green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7l9-4 9 4"/><path d="M4 21V7M20 21V7"/><path d="M9 21v-4h6v4"/></svg>
+        </div>
         <div class="hint-text">
           <strong>Hoteles</strong>
-          <span>Se muestran varias opciones de alojamiento. Haz clic en <em>"Seleccionar esta opción"</em> en la que prefieras para calcular el precio total con ese hotel.</span>
+          <span>Varias opciones de alojamiento. Haz clic en <em>"Seleccionar"</em> en la que prefieras.</span>
         </div>
       </div>
     </div>
     <div class="hint-footer">
-      <button class="hint-btn" id="hint-close">¡Entendido, vamos a elegir!</button>
+      <button class="hint-btn" id="hint-close">Entendido</button>
     </div>
   </div>
 </div>
 
 <script>
-  /* ── Helpers ───────────────────────────────────────── */
+  /* ── Helpers ─────────────────────────────────────────── */
   const COP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
   const MO  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const fd  = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${+d} ${MO[+m-1]} ${y}`; };
   const code = s => s?.match(/\(([A-Z]{3})\)/)?.[1] || s?.substring(0,3).toUpperCase() || '???';
   const city = s => s?.split('(')[0]?.trim() || s;
 
-  const SLIDE_DURATION = 5000; // ms
-
+  const SLIDE_DURATION = 5000;
   const token = window.location.pathname.split('/').filter(Boolean).pop();
 
-  /* ── Fetch ─────────────────────────────────────────── */
+  /* ── SVG Icons ───────────────────────────────────────── */
+  const ICO = {
+    check:  `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8L6.5 11.5L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    xmark:  `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    plane:  `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+    hotel:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 21h18"/><path d="M3 7l9-4 9 4"/><path d="M4 21V7M20 21V7"/><path d="M9 21v-4h6v4"/></svg>`,
+    plus:   `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    doc:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+    hotel2: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 21h18"/><path d="M3 7l9-4 9 4"/><path d="M4 21V7M20 21V7"/><path d="M9 21v-4h6v4"/></svg>`,
+    planeS: `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(90deg)"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+  };
+
+  /* ── Fetch ───────────────────────────────────────────── */
   async function load() {
     try {
       const [rCot, rEmp] = await Promise.all([
@@ -911,26 +926,26 @@
         fetch(`/v1/info-empresa/publica`),
       ]);
       if (!rCot.ok) throw 0;
-      const data    = await rCot.json();
-      const empArr  = rEmp.ok ? await rEmp.json() : [];
+      const data   = await rCot.json();
+      const empArr = rEmp.ok ? await rEmp.json() : [];
       const empresa = Array.isArray(empArr) ? empArr[0] : empArr;
       render(data, empresa || {});
     } catch {
       document.getElementById('app').innerHTML = `
         <div class="state">
-          <div style="font-size:52px;margin-bottom:16px;">✈️</div>
+          <div class="state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></div>
           <h2>Cotización no encontrada</h2>
           <p>El enlace puede haber expirado o ser incorrecto.</p>
         </div>`;
     }
   }
 
-  /* ── Boarding Pass ─────────────────────────────────── */
+  /* ── Boarding Pass ───────────────────────────────────── */
   function renderBP(v, idx) {
     const a    = v.aerolinea;
     const logo = a?.logo_url || (a?.codigo_iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.codigo_iata}.png` : null);
     const cls  = v.tipo === 'ida' ? 'ida' : 'vuelta';
-    const label= v.tipo === 'ida' ? '✈ Vuelo de Ida' : '↩ Vuelo de Vuelta';
+    const label= v.tipo === 'ida' ? 'Vuelo de Ida' : 'Vuelo de Vuelta';
 
     return `
       <div class="bp au" data-flight-idx="${idx}">
@@ -938,7 +953,7 @@
           <div class="bp-type">${label}</div>
           <div style="display:flex;align-items:center;gap:10px">
             <div class="bp-airline-row">
-              ${logo ? `<img src="${logo}" class="bp-airline-logo" alt="${a?.nombre}" onerror="this.style.display='none'">` : ''}
+              ${logo ? `<img src="${logo}" class="bp-airline-logo" alt="${a?.nombre||''}" onerror="this.style.display='none'">` : ''}
               <div>
                 <div class="bp-airline-name">${a?.nombre || 'Aerolínea'}</div>
                 <div class="bp-fn">${v.numero_vuelo}</div>
@@ -949,11 +964,11 @@
         </div>
         ${v.tiene_escala ? `
         <div class="bp-stopover">
-          <div class="bp-stopover-icon">🛬🛫</div>
+          <div class="bp-stopover-icon">${ICO.planeS}</div>
           <div class="bp-stopover-content">
-            <span class="bp-stopover-label">Escala técnica en</span>
+            <span class="bp-stopover-label">Escala en</span>
             <span class="bp-stopover-city">${v.ciudad_escala || 'Ciudad no especificada'}</span>
-            ${v.tiempo_escala ? `<span class="bp-stopover-time">⏳ ${v.tiempo_escala}</span>` : ''}
+            ${v.tiempo_escala ? `<span class="bp-stopover-time">${v.tiempo_escala}</span>` : ''}
           </div>
         </div>` : ''}
         <div class="bp-body">
@@ -963,7 +978,7 @@
             <div class="bp-city-name">${city(v.origen)}</div>
           </div>
           <div class="bp-connector">
-            <div class="bp-plane">✈</div>
+            <div class="bp-plane">${ICO.plane}</div>
             <div class="bp-line"></div>
           </div>
           <div class="bp-city right">
@@ -989,19 +1004,13 @@
             <div class="bp-lbl">Vuelo</div>
             <div class="bp-val">${v.numero_vuelo}</div>
           </div>
-          ${v.numero_pasajeros ? `<div class="bp-foot-item">
-            <div class="bp-lbl">Pasajeros</div>
-            <div class="bp-val">${v.numero_pasajeros}</div>
-          </div>` : ''}
-          ${v.costo != null ? `<div class="bp-foot-item">
-            <div class="bp-lbl">Costo</div>
-            <div class="bp-val" style="color:var(--brand);font-weight:700">${COP(v.costo)}</div>
-          </div>` : ''}
+          ${v.numero_pasajeros ? `<div class="bp-foot-item"><div class="bp-lbl">Pasajeros</div><div class="bp-val">${v.numero_pasajeros}</div></div>` : ''}
+          ${v.costo != null ? `<div class="bp-foot-item"><div class="bp-lbl">Costo</div><div class="bp-val" style="color:var(--accent)">${COP(v.costo)}</div></div>` : ''}
         </div>
       </div>`;
   }
 
-  /* ── Hotel Card ────────────────────────────────────── */
+  /* ── Hotel Card ──────────────────────────────────────── */
   function renderHotel(h, idx) {
     const fotos = (h.fotos||[]).filter(Boolean);
     const photosHtml = fotos.length
@@ -1014,7 +1023,7 @@
             </div>
             <div class="hotel-slider-dots">${fotos.map((_,i)=>`<button class="hotel-sdot${i===0?' active':''}" data-i="${i}"></button>`).join('')}</div>` : ''}
         </div>`
-      : `<div class="hotel-nophoto">🏨</div>`;
+      : `<div class="hotel-nophoto">${ICO.hotel2}</div>`;
 
     const tags = (h.que_incluye||[]).map(t=>`<span class="tag tag-gold">${t}</span>`).join('');
 
@@ -1023,27 +1032,27 @@
         ${photosHtml}
         <div class="hotel-body">
           <div class="hotel-name">${h.nombre}</div>
-          <div class="hotel-room">🛏&nbsp; ${h.tipo_habitacion}</div>
-          <div class="hotel-tags">${tags}</div>
+          <div class="hotel-room">${h.tipo_habitacion}</div>
+          ${tags ? `<div class="hotel-tags">${tags}</div>` : ''}
           ${h.notas ? `
           <div class="hotel-notes">
-            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; margin-bottom: 6px;">Notas del hotel</div>
+            <div class="hotel-notes-label">Notas</div>
             <div class="hotel-notes-text">${h.notas}</div>
           </div>
-          <div style="height: 16px;"></div>` : ''}
+          <div style="height:14px"></div>` : ''}
           <div class="hotel-dates">
-            <strong>${fd(h.fecha_entrada)}</strong>${h.hora_entrada ? ` <span style="opacity:.65;font-size:12px;font-weight:400">Hora entrada: ${h.hora_entrada}</span>` : ''}
-            <span class="date-arrow">→</span>
-            <strong>${fd(h.fecha_salida)}</strong>${h.hora_salida ? ` <span style="opacity:.65;font-size:12px;font-weight:400">Hora salida: ${h.hora_salida}</span>` : ''}
+            <strong>${fd(h.fecha_entrada)}</strong>${h.hora_entrada ? ` <span style="font-weight:400;font-size:11px;opacity:.7">Entrada ${h.hora_entrada}</span>` : ''}
+            <span class="date-arrow">&#8594;</span>
+            <strong>${fd(h.fecha_salida)}</strong>${h.hora_salida ? ` <span style="font-weight:400;font-size:11px;opacity:.7">Salida ${h.hora_salida}</span>` : ''}
           </div>
         </div>
         <div class="price-row" style="border-top:1px solid var(--border);">
           <div class="price-cell">
-            <div class="price-lbl">👤 Por adulto</div>
+            <div class="price-lbl">Por adulto</div>
             <div class="price-val">${COP(h.precio_adulto)}</div>
           </div>
           <div class="price-cell">
-            <div class="price-lbl">👶 Por menor</div>
+            <div class="price-lbl">Por menor</div>
             <div class="price-val">${COP(h.precio_menor)}</div>
           </div>
           <div class="price-cell">
@@ -1055,9 +1064,8 @@
       </div>`;
   }
 
-  /* ── Main render ───────────────────────────────────── */
+  /* ── Main Render ─────────────────────────────────────── */
   function render(d, emp) {
-    /* Imágenes de destino → slider si hay más de una */
     const imgs = d.imagenes_destino || [];
 
     const slidesHtml = imgs.length > 1
@@ -1078,63 +1086,60 @@
          </div>`
       : '';
 
-    const galleryHtml = ''; /* todo va en el slider */
-
-    /* Incluye */
     const includesHtml = (d.items_incluidos||[]).length ? `
       <section class="au d1">
         <div class="sec-head">
-          <div class="sec-icon">✅</div>
-          <h2>¿Qué incluye este viaje?</h2>
+          <div class="sec-icon">${ICO.check}</div>
+          <h2>Incluye</h2>
+          <span class="sec-count">${d.items_incluidos.length} items</span>
         </div>
         <div class="card"><div class="card-body">
           <div class="includes-grid">
-            ${d.items_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot">✓</div><span>${i}</span></div>`).join('')}
+            ${d.items_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot ok">${ICO.check}</div><span>${i}</span></div>`).join('')}
           </div>
         </div></div>
       </section>` : '';
 
-    /* No incluye */
     const noIncludesHtml = (d.items_no_incluidos||[]).length ? `
       <section class="au d1">
         <div class="sec-head">
-          <div class="sec-icon">🚫</div>
-          <h2>¿Qué NO incluye?</h2>
+          <div class="sec-icon" style="color:var(--muted)">${ICO.xmark}</div>
+          <h2>No incluye</h2>
+          <span class="sec-count">${d.items_no_incluidos.length} items</span>
         </div>
         <div class="card"><div class="card-body">
           <div class="includes-grid">
-            ${d.items_no_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot" style="color:var(--muted)">✕</div><span style="color:var(--muted)">${i}</span></div>`).join('')}
+            ${d.items_no_incluidos.map(i=>`<div class="inc-item"><div class="inc-dot no">${ICO.xmark}</div><span style="color:var(--muted)">${i}</span></div>`).join('')}
           </div>
         </div></div>
       </section>` : '';
 
-    /* Vuelos */
     const vuelosHtml = (d.vuelos||[]).length ? `
       <section class="au d2">
         <div class="sec-head">
-          <div class="sec-icon">✈</div>
-          <h2>Itinerario de Vuelos</h2>
+          <div class="sec-icon">${ICO.plane}</div>
+          <h2>Vuelos</h2>
+          <span class="sec-count">${d.vuelos.length} tramo${d.vuelos.length>1?'s':''}</span>
         </div>
         ${d.vuelos.map(renderBP).join('')}
       </section>` : '';
 
-    /* Hoteles */
     const hotelesHtml = (d.opciones_hotel||[]).length ? `
       <section class="au d3">
         <div class="sec-head">
-          <div class="sec-icon">🏨</div>
-          <h2>Opciones de Alojamiento</h2>
+          <div class="sec-icon">${ICO.hotel}</div>
+          <h2>Alojamiento</h2>
+          <span class="sec-count">${d.opciones_hotel.length} opción${d.opciones_hotel.length>1?'es':''}</span>
         </div>
         ${d.opciones_hotel.map((h,i)=>renderHotel(h,i)).join('')}
       </section>` : '';
 
-    /* Adicionales */
     const adc = (d.adicionales||[]);
     const adcHtml = adc.length ? `
       <section class="au d4">
         <div class="sec-head">
-          <div class="sec-icon">➕</div>
-          <h2>Servicios Adicionales</h2>
+          <div class="sec-icon">${ICO.plus}</div>
+          <h2>Servicios adicionales</h2>
         </div>
         <div class="card"><div class="card-body">
           ${adc.map((a,i)=>{
@@ -1142,7 +1147,7 @@
             return `<div class="adc-row adc-selected${fijo?' adc-fijo':''}" data-adc-idx="${i}">
               ${fijo
                 ? `<span class="adc-fixed-badge">Incluido</span>`
-                : `<button class="adc-toggle" data-adc-idx="${i}">✓</button>`}
+                : `<button class="adc-toggle" data-adc-idx="${i}">${ICO.check}</button>`}
               <div class="adc-info">
                 <div class="adc-name">${a.nombre}</div>
                 ${a.descripcion?`<div class="adc-desc">${a.descripcion}</div>`:''}
@@ -1153,58 +1158,29 @@
         </div></div>
       </section>` : '';
 
-    /* Condiciones */
     const condHtml = d.condiciones_generales ? `
       <section class="au">
         <div class="sec-head">
-          <div class="sec-icon">📋</div>
-          <h2>Condiciones Generales</h2>
+          <div class="sec-icon" style="color:var(--gold)">${ICO.doc}</div>
+          <h2>Condiciones generales</h2>
         </div>
         <div class="cond-box"><p>${d.condiciones_generales}</p></div>
       </section>` : '';
 
-    /* Sidebar — precio total calculado */
-    const totalVuelos     = (d.vuelos||[]).reduce((s,v)=>s+(Number(v.costo)||0), 0);
-    const totalHoteles    = (d.opciones_hotel||[]).reduce((s,h)=>s+(Number(h.precio_total)||0), 0);
-    const totalAdicionales= (d.adicionales||[]).reduce((s,a)=>s+(Number(a.precio)||0), 0);
-    const precioTotal     = d.precio_total ?? (totalVuelos + totalHoteles + totalAdicionales);
-
     const waNumber = (emp.telefono || '').replace(/\D/g,'');
-    _waNumber  = waNumber;
+    _waNumber    = waNumber;
     _waEmpNombre = emp.nombre || 'Travel Tours';
     const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hola ${_waEmpNombre}! Me interesa reservar: ${d.titulo_viaje}`)}`;
-    const waIcon = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
-
-    const vuelosItems = (d.vuelos||[]).filter(v=>v.costo>0).map(v=>
-      `<div class="ps-option">
-        <div class="ps-opt-name">✈ ${v.origen} → ${v.destino}${v.numero_pasajeros ? ` <span style="opacity:.6;font-size:11px">(${v.numero_pasajeros} pax)</span>` : ''}</div>
-        <div class="ps-opt-price">${COP(v.costo)}</div>
-      </div>`).join('');
-
-    const hotelesItems = (d.opciones_hotel||[]).filter(h=>h.precio_total>0).map(h=>
-      `<div class="ps-option">
-        <div class="ps-opt-name">🏨 ${h.nombre}<br><span style="opacity:.55;font-size:11px">${h.tipo_habitacion}</span></div>
-        <div class="ps-opt-price">${COP(h.precio_total)}</div>
-      </div>`).join('');
-
-    const adicionalesItems = (d.adicionales||[]).filter(a=>a.precio>0).map(a=>
-      `<div class="ps-option">
-        <div class="ps-opt-name">⭐ ${a.nombre}</div>
-        <div class="ps-opt-price">${COP(a.precio)}</div>
-      </div>`).join('');
-
-    const optionsList = [vuelosItems, hotelesItems, adicionalesItems].filter(Boolean).join('');
+    const waIcon = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
 
     const fechaActualizacion = new Date(d.created_at).toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
-
-    // Fechas del viaje: ida desde vuelos, vuelta desde vuelos o hotel
     const vueloIda    = (d.vuelos||[]).find(v => v.tipo === 'ida');
     const vueloVuelta = (d.vuelos||[]).find(v => v.tipo === 'vuelta');
     const hotel       = (d.opciones_hotel||[])[0];
     const fechaInicio = vueloIda?.fecha    || hotel?.fecha_entrada || null;
     const fechaFin    = vueloVuelta?.fecha || hotel?.fecha_salida  || null;
     const fechasViaje = fechaInicio && fechaFin
-      ? `${fd(fechaInicio)} &nbsp;→&nbsp; ${fd(fechaFin)}`
+      ? `${fd(fechaInicio)} &nbsp;&#8594;&nbsp; ${fd(fechaFin)}`
       : fechaInicio ? fd(fechaInicio) : '';
 
     document.getElementById('app').innerHTML = `
@@ -1218,15 +1194,20 @@
       <header class="hero">
         ${slidesHtml}
         <div class="hero-content">
+          <div class="hero-eyebrow au d1">
+            <div class="hero-eyebrow-dot"></div>
+            ${d.nombre_cliente ? `Para ${d.nombre_cliente}` : 'Cotización personalizada'}
+          </div>
           <h1 class="au d1">${d.titulo_viaje}</h1>
-          ${d.nombre_cliente ? `<div class="au d2" style="font-size:15px;font-weight:600;color:rgba(255,255,255,.9);margin-top:6px">👤 ${d.nombre_cliente}${d.telefono_cliente ? ` &nbsp;·&nbsp; 📞 ${d.telefono_cliente}` : ''}</div>` : ''}
-          ${fechasViaje ? `<div class="hero-dates au d2"> ${fechasViaje}</div>` : ''}
-          <p class="hero-sub au d3">Última actualización: ${fechaActualizacion}</p>
+          <div class="hero-dates-row au d2">
+            ${fechasViaje ? `<div class="hero-dates">${fechasViaje}</div>` : ''}
+            ${fechasViaje && d.telefono_cliente ? `<span class="hero-dates-sep">·</span>` : ''}
+            ${d.telefono_cliente ? `<div class="hero-client">${d.telefono_cliente}</div>` : ''}
+          </div>
+          <div class="hero-sub au d3">Actualizado ${fechaActualizacion} &nbsp;·&nbsp; ${token.substring(0,8).toUpperCase()}</div>
           ${dotsHtml}
         </div>
       </header>
-
-      ${galleryHtml}
 
       <div class="wrap">
         <div class="page-grid">
@@ -1240,10 +1221,10 @@
           </main>
 
           <aside class="sidebar">
-            ${d.nombre_cliente ? `<div class="card au d1" style="margin-bottom:16px;padding:16px 20px">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Preparado para</div>
-              <div style="font-size:16px;font-weight:700;color:var(--ink)">${d.nombre_cliente}</div>
-              ${d.telefono_cliente ? `<div style="font-size:13px;color:var(--muted);margin-top:3px">📞 ${d.telefono_cliente}</div>` : ''}
+            ${d.nombre_cliente ? `<div class="client-card au d1">
+              <div class="client-card-label">Preparado para</div>
+              <div class="client-card-name">${d.nombre_cliente}</div>
+              ${d.telefono_cliente ? `<div class="client-card-phone">${d.telefono_cliente}</div>` : ''}
             </div>` : ''}
             <div class="price-summary au d2">
               <div class="ps-header">
@@ -1255,9 +1236,9 @@
               </div>
               <div class="ps-cta">
                 <a href="${waLink}" class="btn-wa" id="btn-wa-main" target="_blank">
-                  ${waIcon} ¡Reservar Ahora!
+                  ${waIcon} Reservar ahora
                 </a>
-                <div class="btn-ref">Ref: ${token.substring(0,8).toUpperCase()}</div>
+                <div class="btn-ref">REF ${token.substring(0,8).toUpperCase()}</div>
               </div>
             </div>
           </aside>
@@ -1269,24 +1250,23 @@
           <div class="footer-brand">
             <img src="/logo-empresa.png" class="footer-logo" alt="${emp.nombre || 'Agencia de Viajes'}">
             <h3>${emp.nombre || 'Agencia de Viajes'}</h3>
-            ${emp.detalles_empresa ? `<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.4">${emp.detalles_empresa}</div>` : ''}
+            ${emp.detalles_empresa ? `<div style="font-size:12px;color:rgba(255,255,255,.30);margin-top:4px;line-height:1.5">${emp.detalles_empresa}</div>` : ''}
           </div>
           <div class="footer-links">
-            ${emp.direccion_sede_principal ? `<span>📍 ${emp.direccion_sede_principal}</span>` : ''}
-            ${emp.telefono ? `<a href="tel:${emp.telefono}">📞 ${emp.telefono}</a>` : ''}
-            ${emp.correo ? `<a href="mailto:${emp.correo}">✉️ ${emp.correo}</a>` : ''}
-            ${emp.pagina_web ? `<a href="${emp.pagina_web}" target="_blank">🌐 ${emp.pagina_web}</a>` : ''}
-            ${emp.horario_presencial ? `<span>🕐 ${emp.horario_presencial}</span>` : ''}
+            ${emp.direccion_sede_principal ? `<span>${emp.direccion_sede_principal}</span>` : ''}
+            ${emp.telefono ? `<a href="tel:${emp.telefono}">${emp.telefono}</a>` : ''}
+            ${emp.correo ? `<a href="mailto:${emp.correo}">${emp.correo}</a>` : ''}
+            ${emp.pagina_web ? `<a href="${emp.pagina_web}" target="_blank">${emp.pagina_web}</a>` : ''}
+            ${emp.horario_presencial ? `<span>${emp.horario_presencial}</span>` : ''}
           </div>
           <div class="footer-social">
             ${(emp.redes_sociales || []).map(r => {
               const name = (r.name || r.nombre || '').toLowerCase();
-              const svgIG = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`;
-              const svgFB = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
-              const svgTW = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
-              const icon = name.includes('instagram') ? svgIG : name.includes('facebook') ? svgFB : name.includes('twitter') || name.includes('x') ? svgTW : '🔗';
-              const label = r.name || r.nombre || 'Red social';
-              return `<a href="${r.link || r.url || '#'}" class="social-pill" target="_blank">${icon} ${label}</a>`;
+              const svgIG = `<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`;
+              const svgFB = `<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+              const svgTW = `<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+              const icon = name.includes('instagram') ? svgIG : name.includes('facebook') ? svgFB : name.includes('twitter')||name.includes('x') ? svgTW : '';
+              return `<a href="${r.link||r.url||'#'}" class="social-pill" target="_blank">${icon} ${r.name||r.nombre||'Red social'}</a>`;
             }).join('')}
           </div>
         </div>
@@ -1302,169 +1282,138 @@
         </a>
       </div>`;
 
-    // iniciar slider y selecciones después de que el DOM esté pintado
     requestAnimationFrame(() => { initSlider(); initSelections(d); initHotelSliders(); });
   }
 
-  /* ── Selection state ───────────────────────────────── */
-  let _flights = [], _hotels = [], _adicionales = [], _cotData = {};
-  let _selectedFlights = new Set();
-  let _selectedHotelIdx = -1;
-  let _selectedAdicionales = new Set();
-  let _waNumber = '', _waEmpNombre = '';
+  /* ── State ───────────────────────────────────────────── */
+  let _flights=[], _hotels=[], _adicionales=[], _cotData={};
+  let _selectedFlights=new Set(), _selectedHotelIdx=-1, _selectedAdicionales=new Set();
+  let _waNumber='', _waEmpNombre='';
 
   function buildWaLink() {
     const SEP  = '━━━━━━━━━━━━━━━━━━━━';
     const ref  = window.location.pathname.split('/').filter(Boolean).pop().substring(0,8).toUpperCase();
-    const selFlights = _flights.filter((_, i) => _selectedFlights.has(i));
+    const selFlights = _flights.filter((_,i) => _selectedFlights.has(i));
     const hotel = _selectedHotelIdx >= 0 ? _hotels[_selectedHotelIdx] : null;
-
-    const selAdicionales = _adicionales.filter((_, i) => _selectedAdicionales.has(i));
-    const total = selFlights.reduce((s, f) => s + (Number(f.costo) || 0), 0)
-      + (hotel ? (Number(hotel.precio_total) || 0) : 0)
-      + selAdicionales.reduce((s, a) => s + (Number(a.precio) || 0), 0);
-
+    const selAdc = _adicionales.filter((_,i) => _selectedAdicionales.has(i));
+    const total = selFlights.reduce((s,f)=>s+(Number(f.costo)||0),0)
+      + (hotel ? (Number(hotel.precio_total)||0) : 0)
+      + selAdc.reduce((s,a)=>s+(Number(a.precio)||0),0);
     const lines = [];
-
-    // Encabezado
     lines.push(`Hola *${_waEmpNombre}!*`);
     lines.push(`Quiero reservar el siguiente paquete de viaje:`);
-    lines.push('');
-    lines.push(SEP);
-    lines.push(`*${(_cotData.titulo_viaje || 'Paquete de viaje').toUpperCase()}*`);
-    lines.push(`_Ref. ${ref}_`);
-    lines.push(SEP);
-
-    // Vuelos
+    lines.push(''); lines.push(SEP);
+    lines.push(`*${(_cotData.titulo_viaje||'Paquete de viaje').toUpperCase()}*`);
+    lines.push(`_Ref. ${ref}_`); lines.push(SEP);
     if (selFlights.length) {
-      lines.push('');
-      lines.push('*-- VUELOS --*');
+      lines.push(''); lines.push('*-- VUELOS --*');
       selFlights.forEach(f => {
-        const tipo = f.tipo === 'ida' ? 'Ida' : f.tipo === 'vuelta' ? 'Vuelta' : '';
-        lines.push(`${tipo ? `*${tipo}:*` : ''} ${f.origen} -> ${f.destino}`);
+        const tipo = f.tipo==='ida'?'Ida':f.tipo==='vuelta'?'Vuelta':'';
+        lines.push(`${tipo?`*${tipo}:*`:''} ${f.origen} -> ${f.destino}`);
         if (f.fecha)        lines.push(`  Fecha:  ${fd(f.fecha)}`);
         if (f.numero_vuelo) lines.push(`  Vuelo:  ${f.numero_vuelo}`);
-        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala || ''} ${f.tiempo_escala ? `(${f.tiempo_escala})` : ''}`);
-        if (f.costo > 0)    lines.push(`  Precio: ${COP(f.costo)}`);
+        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala||''} ${f.tiempo_escala?`(${f.tiempo_escala})`:''}`);
+        if (f.costo>0)      lines.push(`  Precio: ${COP(f.costo)}`);
       });
     }
-
-    // Hotel
     if (hotel) {
-      lines.push('');
-      lines.push('*-- ALOJAMIENTO --*');
+      lines.push(''); lines.push('*-- ALOJAMIENTO --*');
       lines.push(`*${hotel.nombre}*`);
       lines.push(`  Habitacion: ${hotel.tipo_habitacion}`);
-      if (hotel.notas)          lines.push(`  Nota:       ${hotel.notas}`);
+      if (hotel.notas) lines.push(`  Nota: ${hotel.notas}`);
       if (hotel.fecha_entrada && hotel.fecha_salida)
-        lines.push(`  Fechas:     ${fd(hotel.fecha_entrada)} al ${fd(hotel.fecha_salida)}`);
-      if (hotel.precio_total > 0)
-        lines.push(`  Precio:     ${COP(hotel.precio_total)}`);
+        lines.push(`  Fechas: ${fd(hotel.fecha_entrada)} al ${fd(hotel.fecha_salida)}`);
+      if (hotel.precio_total>0) lines.push(`  Precio: ${COP(hotel.precio_total)}`);
     }
-
-    // Adicionales
-    if (selAdicionales.length) {
-      lines.push('');
-      lines.push('*-- ADICIONALES --*');
-      selAdicionales.forEach(a => {
-        lines.push(`  ${a.nombre}${a.precio > 0 ? `  —  ${COP(a.precio)}` : ''}`);
-      });
+    if (selAdc.length) {
+      lines.push(''); lines.push('*-- ADICIONALES --*');
+      selAdc.forEach(a => lines.push(`  ${a.nombre}${a.precio>0?`  —  ${COP(a.precio)}`:''}`));
     }
-
-    // Total
-    if (total > 0) {
-      lines.push('');
-      lines.push(SEP);
-      lines.push(`*TOTAL DEL PAQUETE: ${COP(total)}*`);
-      lines.push(SEP);
+    if (total>0) {
+      lines.push(''); lines.push(SEP);
+      lines.push(`*TOTAL: ${COP(total)}*`); lines.push(SEP);
     }
-
     return `https://wa.me/${_waNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
   }
 
   function updateWaLinks() {
     const link = buildWaLink();
-    const main   = document.getElementById('btn-wa-main');
-    const mobile = document.getElementById('btn-wa-mobile');
-    if (main)   main.href   = link;
-    if (mobile) mobile.href = link;
+    const main=document.getElementById('btn-wa-main');
+    const mob=document.getElementById('btn-wa-mobile');
+    if(main) main.href=link;
+    if(mob)  mob.href=link;
   }
 
   function updateSidebar() {
-    const flightCost = _flights.reduce((s, f, i) =>
-      _selectedFlights.has(i) ? s + (Number(f.costo) || 0) : s, 0);
-    const hotelCost  = _selectedHotelIdx >= 0
-      ? (Number(_hotels[_selectedHotelIdx]?.precio_total) || 0) : 0;
-    const adcCost = _adicionales.reduce((s, a, i) => _selectedAdicionales.has(i) ? s + (Number(a.precio) || 0) : s, 0);
-    const calc = flightCost + hotelCost + adcCost;
-    const hasAnyPrice = _flights.some(f => f.costo > 0) || _hotels.some(h => h.precio_total > 0) || _adicionales.some(a => a.precio > 0);
-    const total = hasAnyPrice ? calc : (_cotData.precio_total || 0);
+    const fCost = _flights.reduce((s,f,i)=>_selectedFlights.has(i)?s+(Number(f.costo)||0):s,0);
+    const hCost = _selectedHotelIdx>=0?(Number(_hotels[_selectedHotelIdx]?.precio_total)||0):0;
+    const aCost = _adicionales.reduce((s,a,i)=>_selectedAdicionales.has(i)?s+(Number(a.precio)||0):s,0);
+    const calc  = fCost+hCost+aCost;
+    const hasAny= _flights.some(f=>f.costo>0)||_hotels.some(h=>h.precio_total>0)||_adicionales.some(a=>a.precio>0);
+    const total = hasAny?calc:(_cotData.precio_total||0);
 
-    const priceEl = document.getElementById('ps-main-price');
-    if (priceEl) priceEl.textContent = total > 0 ? COP(total) : 'Consultar precio';
+    const priceEl=document.getElementById('ps-main-price');
+    if(priceEl) priceEl.textContent=total>0?COP(total):'Consultar';
 
-    let html = '';
-    _flights.forEach((f, i) => {
-      if (_selectedFlights.has(i) && f.costo > 0)
-        html += `<div class="ps-option"><div class="ps-opt-name">✈ ${f.origen} → ${f.destino}${f.numero_pasajeros ? ` <span style="opacity:.6;font-size:11px">(${f.numero_pasajeros} pax)</span>` : ''}</div><div class="ps-opt-price">${COP(f.costo)}</div></div>`;
+    let html='';
+    _flights.forEach((f,i)=>{
+      if(_selectedFlights.has(i)&&f.costo>0)
+        html+=`<div class="ps-option"><div class="ps-opt-name">${f.origen} &#8594; ${f.destino}${f.numero_pasajeros?` <span style="opacity:.55;font-size:11px">(${f.numero_pasajeros} pax)</span>`:''}</div><div class="ps-opt-price">${COP(f.costo)}</div></div>`;
     });
-    if (_selectedHotelIdx >= 0) {
-      const h = _hotels[_selectedHotelIdx];
-      if (h && h.precio_total > 0)
-        html += `<div class="ps-option"><div class="ps-opt-name">🏨 ${h.nombre}<br><span style="opacity:.55;font-size:11px">${h.tipo_habitacion}</span></div><div class="ps-opt-price">${COP(h.precio_total)}</div></div>`;
+    if(_selectedHotelIdx>=0){
+      const h=_hotels[_selectedHotelIdx];
+      if(h&&h.precio_total>0)
+        html+=`<div class="ps-option"><div class="ps-opt-name">${h.nombre}<br><span style="opacity:.5;font-size:11px">${h.tipo_habitacion}</span></div><div class="ps-opt-price">${COP(h.precio_total)}</div></div>`;
     }
-    _adicionales.forEach((a, i) => {
-      if (_selectedAdicionales.has(i) && a.precio > 0)
-        html += `<div class="ps-option"><div class="ps-opt-name">⭐ ${a.nombre}</div><div class="ps-opt-price">${COP(a.precio)}</div></div>`;
+    _adicionales.forEach((a,i)=>{
+      if(_selectedAdicionales.has(i)&&a.precio>0)
+        html+=`<div class="ps-option"><div class="ps-opt-name">${a.nombre}</div><div class="ps-opt-price">${COP(a.precio)}</div></div>`;
     });
-    if (html)
-      html += `<div style="border-top:1px solid rgba(255,255,255,.15);margin-top:4px;padding-top:12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5)">Total</div><div style="font-size:16px;font-weight:800;color:#fff">${COP(total)}</div></div>`;
+    if(html)
+      html+=`<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:10px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.10em;color:var(--muted);font-family:'DM Mono',monospace">Total</div><div style="font-size:16px;font-weight:800;color:var(--ink);letter-spacing:-0.03em">${COP(total)}</div></div>`;
 
-    const optBody = document.getElementById('ps-options-body');
-    const optWrap = document.getElementById('ps-options-wrapper');
-    if (optBody) optBody.innerHTML = html;
-    if (optWrap) optWrap.style.display = html ? '' : 'none';
-
+    const optBody=document.getElementById('ps-options-body');
+    const optWrap=document.getElementById('ps-options-wrapper');
+    if(optBody) optBody.innerHTML=html;
+    if(optWrap) optWrap.style.display=html?'':'none';
     updateWaLinks();
   }
 
   function updateBtnLabels() {
-    document.querySelectorAll('.bp-select-btn').forEach(btn => {
-      const i = +btn.dataset.flightIdx;
-      btn.textContent = _selectedFlights.has(i) ? '✓ Incluido' : '+ Incluir';
+    document.querySelectorAll('.bp-select-btn').forEach(btn=>{
+      const i=+btn.dataset.flightIdx;
+      btn.textContent=_selectedFlights.has(i)?'✓ Incluido':'+ Incluir';
     });
-    document.querySelectorAll('.hotel-select-btn').forEach(btn => {
-      const i = +btn.dataset.hotelIdx;
-      btn.textContent = _selectedHotelIdx === i ? '✓ Seleccionado' : 'Seleccionar esta opción';
+    document.querySelectorAll('.hotel-select-btn').forEach(btn=>{
+      const i=+btn.dataset.hotelIdx;
+      btn.textContent=_selectedHotelIdx===i?'✓ Seleccionado':'Seleccionar esta opción';
     });
   }
 
   function initSelections(d) {
-    _flights     = d.vuelos || [];
-    _hotels      = d.opciones_hotel || [];
-    _adicionales = d.adicionales || [];
-    _cotData     = d;
-    _selectedFlights = new Set(_flights.map((_, i) => i));
-    _selectedHotelIdx = _hotels.length > 0 ? 0 : -1;
-    _selectedAdicionales = new Set(_adicionales.map((_, i) => i)); // todos inician seleccionados
+    _flights=d.vuelos||[]; _hotels=d.opciones_hotel||[];
+    _adicionales=d.adicionales||[]; _cotData=d;
+    _selectedFlights=new Set(_flights.map((_,i)=>i));
+    _selectedHotelIdx=_hotels.length>0?0:-1;
+    _selectedAdicionales=new Set(_adicionales.map((_,i)=>i));
 
-    _selectedFlights.forEach(i => document.querySelector(`.bp[data-flight-idx="${i}"]`)?.classList.add('flight-selected'));
-    if (_selectedHotelIdx >= 0)
+    _selectedFlights.forEach(i=>document.querySelector(`.bp[data-flight-idx="${i}"]`)?.classList.add('flight-selected'));
+    if(_selectedHotelIdx>=0)
       document.querySelector(`.hotel-card[data-hotel-idx="${_selectedHotelIdx}"]`)?.classList.add('hotel-selected');
 
-    document.querySelectorAll('.adc-toggle').forEach(btn => {
-      btn.addEventListener('click', e => {
+    document.querySelectorAll('.adc-toggle').forEach(btn=>{
+      btn.addEventListener('click',e=>{
         e.stopPropagation();
-        const i = +btn.dataset.adcIdx;
-        const row = document.querySelector(`.adc-row[data-adc-idx="${i}"]`);
-        if (_selectedAdicionales.has(i)) {
+        const i=+btn.dataset.adcIdx;
+        const row=document.querySelector(`.adc-row[data-adc-idx="${i}"]`);
+        if(_selectedAdicionales.has(i)){
           _selectedAdicionales.delete(i);
           row?.classList.remove('adc-selected');
-          btn.textContent = '';
+          btn.innerHTML='';
         } else {
           _selectedAdicionales.add(i);
           row?.classList.add('adc-selected');
-          btn.textContent = '✓';
+          btn.innerHTML=ICO.check;
         }
         updateSidebar();
       });
@@ -1472,39 +1421,37 @@
 
     updateBtnLabels();
 
-    // Mostrar hint modal si hay vuelos o más de un hotel
-    const hasSelectables = _flights.length > 0 || _hotels.length > 1;
-    if (hasSelectables) {
-      const backdrop = document.getElementById('hint-backdrop');
-      const closeBtn = document.getElementById('hint-close');
-      // Pequeño delay para que la página ya esté visible
-      setTimeout(() => backdrop?.classList.add('show'), 600);
-      const closeHint = () => {
+    const hasSelectables=_flights.length>0||_hotels.length>1;
+    if(hasSelectables){
+      const backdrop=document.getElementById('hint-backdrop');
+      const closeBtn=document.getElementById('hint-close');
+      setTimeout(()=>backdrop?.classList.add('show'),600);
+      const closeHint=()=>{
         backdrop?.classList.remove('show');
-        backdrop?.addEventListener('transitionend', () => backdrop.remove(), { once: true });
+        backdrop?.addEventListener('transitionend',()=>backdrop.remove(),{once:true});
       };
-      closeBtn?.addEventListener('click', closeHint);
-      backdrop?.addEventListener('click', e => { if (e.target === backdrop) closeHint(); });
+      closeBtn?.addEventListener('click',closeHint);
+      backdrop?.addEventListener('click',e=>{ if(e.target===backdrop) closeHint(); });
     }
 
-    document.querySelectorAll('.bp-select-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
+    document.querySelectorAll('.bp-select-btn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
         e.stopPropagation();
-        const i = +btn.dataset.flightIdx;
-        const card = document.querySelector(`.bp[data-flight-idx="${i}"]`);
-        if (_selectedFlights.has(i)) { _selectedFlights.delete(i); card?.classList.remove('flight-selected'); }
-        else { _selectedFlights.add(i); card?.classList.add('flight-selected'); }
+        const i=+btn.dataset.flightIdx;
+        const card=document.querySelector(`.bp[data-flight-idx="${i}"]`);
+        if(_selectedFlights.has(i)){_selectedFlights.delete(i);card?.classList.remove('flight-selected');}
+        else{_selectedFlights.add(i);card?.classList.add('flight-selected');}
         updateBtnLabels(); updateSidebar();
       });
     });
 
-    document.querySelectorAll('.hotel-select-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
+    document.querySelectorAll('.hotel-select-btn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
         e.stopPropagation();
-        const i = +btn.dataset.hotelIdx;
-        document.querySelectorAll('.hotel-card').forEach(c => c.classList.remove('hotel-selected'));
-        if (_selectedHotelIdx === i) { _selectedHotelIdx = -1; }
-        else { _selectedHotelIdx = i; document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`)?.classList.add('hotel-selected'); }
+        const i=+btn.dataset.hotelIdx;
+        document.querySelectorAll('.hotel-card').forEach(c=>c.classList.remove('hotel-selected'));
+        if(_selectedHotelIdx===i){_selectedHotelIdx=-1;}
+        else{_selectedHotelIdx=i;document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`)?.classList.add('hotel-selected');}
         updateBtnLabels(); updateSidebar();
       });
     });
@@ -1512,106 +1459,67 @@
     updateSidebar();
   }
 
-  /* ── Slider logic (se llama desde render) ─────────── */
+  /* ── Sliders ─────────────────────────────────────────── */
   function initSlider() {
-    const slides = document.querySelectorAll('.slide');
-    const dots   = document.querySelectorAll('.sdot');
-    const prev   = document.getElementById('sa-prev');
-    const next   = document.getElementById('sa-next');
-    if (slides.length <= 1) return;
-
-    let cur = 0;
-    let timer;
-
-    function goTo(idx) {
+    const slides=document.querySelectorAll('.slide');
+    const dots=document.querySelectorAll('.sdot');
+    const prev=document.getElementById('sa-prev');
+    const next=document.getElementById('sa-next');
+    if(slides.length<=1) return;
+    let cur=0, timer;
+    function goTo(idx){
       slides[cur].classList.remove('active');
       dots[cur].classList.remove('active');
-      cur = (idx + slides.length) % slides.length;
+      cur=(idx+slides.length)%slides.length;
       slides[cur].classList.add('active');
-      // reinicia animación CSS del dot
-      const d = dots[cur];
-      d.classList.remove('active');
-      void d.offsetWidth; // reflow
-      d.classList.add('active');
+      const dd=dots[cur]; dd.classList.remove('active'); void dd.offsetWidth; dd.classList.add('active');
     }
-
-    function startTimer() {
-      clearInterval(timer);
-      timer = setInterval(() => goTo(cur + 1), SLIDE_DURATION);
-    }
-
-    dots.forEach(d => d.addEventListener('click', () => { goTo(+d.dataset.i); startTimer(); }));
-    prev?.addEventListener('click', () => { goTo(cur - 1); startTimer(); });
-    next?.addEventListener('click', () => { goTo(cur + 1); startTimer(); });
-
-    // Pausa al hover sobre el hero
-    document.querySelector('.hero')?.addEventListener('mouseenter', () => clearInterval(timer));
-    document.querySelector('.hero')?.addEventListener('mouseleave', startTimer);
-
+    function startTimer(){ clearInterval(timer); timer=setInterval(()=>goTo(cur+1),SLIDE_DURATION); }
+    dots.forEach(d=>d.addEventListener('click',()=>{goTo(+d.dataset.i);startTimer();}));
+    prev?.addEventListener('click',()=>{goTo(cur-1);startTimer();});
+    next?.addEventListener('click',()=>{goTo(cur+1);startTimer();});
+    document.querySelector('.hero')?.addEventListener('mouseenter',()=>clearInterval(timer));
+    document.querySelector('.hero')?.addEventListener('mouseleave',startTimer);
     startTimer();
   }
 
-  /* ── Hotel Sliders ─────────────────────────────────── */
   function initHotelSliders() {
-    document.querySelectorAll('.hotel-slider[data-hotel-slider]').forEach(sliderEl => {
-      const slides = sliderEl.querySelectorAll('.hotel-slide');
-      const dots   = sliderEl.querySelectorAll('.hotel-sdot');
-      if (!slides.length) return;
-
-      let cur = 0;
-      let timer;
-
-      function goTo(idx) {
-        slides[cur].classList.remove('active');
-        dots[cur]?.classList.remove('active');
-        cur = (idx + slides.length) % slides.length;
-        slides[cur].classList.add('active');
-        dots[cur]?.classList.add('active');
+    document.querySelectorAll('.hotel-slider[data-hotel-slider]').forEach(sliderEl=>{
+      const slides=sliderEl.querySelectorAll('.hotel-slide');
+      const dots=sliderEl.querySelectorAll('.hotel-sdot');
+      if(!slides.length) return;
+      let cur=0, timer;
+      function goTo(idx){
+        slides[cur].classList.remove('active'); dots[cur]?.classList.remove('active');
+        cur=(idx+slides.length)%slides.length;
+        slides[cur].classList.add('active'); dots[cur]?.classList.add('active');
       }
-
-      function startTimer() {
-        clearInterval(timer);
-        if (slides.length > 1) timer = setInterval(() => goTo(cur + 1), 3500);
-      }
-
-      dots.forEach((d, i) => d.addEventListener('click', e => { e.stopPropagation(); goTo(i); startTimer(); }));
-
-      sliderEl.querySelectorAll('.hotel-arrow').forEach(btn => {
-        btn.addEventListener('click', e => { e.stopPropagation(); goTo(cur + (btn.dataset.dir === 'prev' ? -1 : 1)); startTimer(); });
+      function startTimer(){ clearInterval(timer); if(slides.length>1) timer=setInterval(()=>goTo(cur+1),3500); }
+      dots.forEach((d,i)=>d.addEventListener('click',e=>{e.stopPropagation();goTo(i);startTimer();}));
+      sliderEl.querySelectorAll('.hotel-arrow').forEach(btn=>{
+        btn.addEventListener('click',e=>{e.stopPropagation();goTo(cur+(btn.dataset.dir==='prev'?-1:1));startTimer();});
       });
-
-      sliderEl.addEventListener('mouseenter', () => clearInterval(timer));
-      sliderEl.addEventListener('mouseleave', startTimer);
-
-      sliderEl.addEventListener('click', e => {
-        if (e.target.closest('.hotel-arrow') || e.target.closest('.hotel-sdot')) return;
-        const src = slides[cur]?.dataset.src;
-        if (src) openLightbox(src);
+      sliderEl.addEventListener('mouseenter',()=>clearInterval(timer));
+      sliderEl.addEventListener('mouseleave',startTimer);
+      sliderEl.addEventListener('click',e=>{
+        if(e.target.closest('.hotel-arrow')||e.target.closest('.hotel-sdot')) return;
+        const src=slides[cur]?.dataset.src; if(src) openLightbox(src);
       });
-
       startTimer();
     });
   }
 
-  /* ── Lightbox ───────────────────────────────────────── */
-  function openLightbox(src) {
-    const lb  = document.getElementById('lightbox');
-    const img = document.getElementById('lightbox-img');
-    img.src = src;
+  /* ── Lightbox ────────────────────────────────────────── */
+  function openLightbox(src){
+    const lb=document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src=src;
     lb.classList.add('show');
   }
-
-  document.getElementById('lightbox').addEventListener('click', e => {
-    if (e.target === document.getElementById('lightbox')) {
-      document.getElementById('lightbox').classList.remove('show');
-    }
+  document.getElementById('lightbox').addEventListener('click',e=>{
+    if(e.target===document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('show');
   });
-  document.getElementById('lightbox-close').addEventListener('click', () => {
-    document.getElementById('lightbox').classList.remove('show');
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('show');
-  });
+  document.getElementById('lightbox-close').addEventListener('click',()=>document.getElementById('lightbox').classList.remove('show'));
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.getElementById('lightbox').classList.remove('show'); });
 
   load();
 </script>

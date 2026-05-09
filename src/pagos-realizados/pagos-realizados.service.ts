@@ -218,7 +218,7 @@ export class PagosRealizadosService {
 
   async cambiarEstado(
     id: number,
-    accion: 'validar' | 'rechazar',
+    accion: 'validar' | 'rechazar' | 'resetear',
     motivoRechazo?: string,
     realizadoPor?: string,
   ): Promise<PagoRealizado> {
@@ -230,15 +230,20 @@ export class PagosRealizadosService {
       updatePayload.is_validated = true;
       updatePayload.is_rechazado = false;
       updatePayload.motivo_rechazo = null;
-    } else {
+    } else if (accion === 'rechazar') {
       updatePayload.is_validated = false;
       updatePayload.is_rechazado = true;
       updatePayload.motivo_rechazo = motivoRechazo ?? null;
+    } else if (accion === 'resetear') {
+      updatePayload.is_validated = false;
+      updatePayload.is_rechazado = false;
+      updatePayload.motivo_rechazo = null;
+      updatePayload.reserva_id = null;
     }
 
-    const accionAuditoria = accion === 'validar' ? 'VALIDACION' : 'RECHAZO';
+    const accionAuditoria = accion === 'validar' ? 'VALIDACION' : accion === 'rechazar' ? 'RECHAZO' : 'RESETEO';
     const valorAnterior = pago.is_validated ? 'validado' : pago.is_rechazado ? 'rechazado' : 'pendiente';
-    const valorNuevo = accion === 'validar' ? 'validado' : 'rechazado';
+    const valorNuevo = accion === 'validar' ? 'validado' : accion === 'rechazar' ? 'rechazado' : 'pendiente';
 
     await this.dataSource.transaction(async (manager) => {
       await manager.update(PagoRealizado, { id_pago: id }, updatePayload);
@@ -261,7 +266,10 @@ export class PagosRealizadosService {
           });
           // Recalcular con el nuevo estado del pago ya aplicado
           const totalPagado = pagosValidados
-            .filter((p) => (p.id_pago === id ? accion === 'validar' : p.is_validated))
+            .filter((p) => {
+              if (accion === 'resetear' && p.id_pago === id) return false;
+              return p.id_pago === id ? accion === 'validar' : p.is_validated;
+            })
             .reduce((sum, p) => sum + Number(p.monto), 0);
           const nuevoEstado = Number(reserva.valor_total) > 0 && totalPagado >= Number(reserva.valor_total)
             ? 'al dia'

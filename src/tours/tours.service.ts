@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -165,7 +165,10 @@ export class ToursService {
   }
 
   async update(id: number, dto: UpdateTourDto, usuarioId?: number, usuarioNombre?: string): Promise<ToursMaestro> {
-    const tour = await this.toursMaestroRepository.findOne({ where: { id } });
+    const tour = await this.toursMaestroRepository.findOne({ 
+      where: { id },
+      relations: ['busLayouts']
+    });
     if (!tour) {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
@@ -219,6 +222,25 @@ export class ToursService {
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
     if (dto.bus_layout_ids !== undefined) {
+      const currentBusIds = tour.busLayouts?.map((b) => b.id) || [];
+      const newBusIds = dto.bus_layout_ids;
+
+      const removedBusIds = currentBusIds.filter((bid) => !newBusIds.includes(bid));
+
+      if (removedBusIds.length > 0) {
+        const reservasActivasCount = await this.reservaRepository
+          .createQueryBuilder('r')
+          .innerJoin('r.tour', 't')
+          .where('t.id = :tourId', { tourId: id })
+          .andWhere('r.bus_layout_id IN (:...removedBusIds)', { removedBusIds })
+          .andWhere('r.estado IN (:...estados)', { estados: ['pendiente', 'al dia'] })
+          .getCount();
+
+        if (reservasActivasCount > 0) {
+          throw new BadRequestException('No se puede remover un bus que ya tiene reservas asignadas.');
+        }
+      }
+
       tour.busLayouts = dto.bus_layout_ids.length > 0
         ? await this.busLayoutRepository.findBy({ id: In(dto.bus_layout_ids) })
         : [];

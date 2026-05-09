@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   ManyToOne,
   ManyToMany,
   JoinTable,
@@ -154,4 +155,7 @@ export class Reserva {
     eager: true,
   })
   hoteles: HotelReserva[];
+
+  @DeleteDateColumn({ name: 'fecha_eliminacion', type: 'timestamptz', nullable: true })
+  fecha_eliminacion: Date | null;
 }
