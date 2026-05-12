@@ -35,6 +35,8 @@ import { HotelesModule } from './hoteles/hoteles.module';
 import { AuditoriaGeneralModule } from './auditoria-general/auditoria-general.module';
 import { BusLayoutsModule } from './bus-layouts/bus-layouts.module';
 import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos.module';
+import { SaldosPendientesModule } from './saldos-pendientes/saldos-pendientes.module';
+import { RecordatorioSaldoModule } from './recordatorio-saldo/recordatorio-saldo.module';
 
 @Module({
   imports: [
@@ -62,7 +64,7 @@ import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        synchronize: false,
         retryAttempts: 5,
         retryDelay: 2000,
         extra: {
@@ -98,6 +100,8 @@ import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos
     AuditoriaGeneralModule,
     BusLayoutsModule,
     SeleccionAsientosModule,
+    SaldosPendientesModule,
+    RecordatorioSaldoModule,
   ],
   controllers: [AppController],
   providers: [

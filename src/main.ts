@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression = require('compression');
+import express from 'express';
 import { join } from 'path';
 import { Logger } from 'nestjs-pino';
 
@@ -21,8 +22,14 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'assets'), { prefix: '/assets' });
 
   app.use(compression({ threshold: 1024 }));
-  app.useBodyParser('json', { limit: '10mb' });
-  app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
+
+  // Límite específico para uploads (10mb)
+  app.use('/v1/uploads', express.json({ limit: '10mb' }));
+  app.use('/v1/uploads', express.urlencoded({ limit: '10mb', extended: true }));
+
+  // Límite global para el resto (1mb)
+  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
 
   app.use(helmet({
     contentSecurityPolicy: false,   // no aplica para API REST

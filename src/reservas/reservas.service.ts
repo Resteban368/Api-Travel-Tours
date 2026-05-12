@@ -547,7 +547,7 @@ export class ReservasService {
 
     const idReservaString = reserva.id_reserva;
 
-    await this.reservaRepository.softRemove(reserva);
+    await this.reservaRepository.softDelete(id);
 
     await this.auditoriaGeneralService.registrar({
       usuario_id: null,

@@ -185,12 +185,12 @@ export class AuthService {
       expiresIn: '2h',
     });
 
-    // Refresh token — JWT opaco firmado, expira en 7 días
+    // Refresh token — JWT opaco firmado, expira en 24 horas
     const refreshToken = this.jwtService.sign(
       { sub: userId },
       {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: '7d',
+        expiresIn: '24h',
       },
     );
 

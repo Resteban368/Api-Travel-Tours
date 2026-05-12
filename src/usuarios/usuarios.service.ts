@@ -132,7 +132,7 @@ export class UsuariosService implements OnModuleInit {
 
         return this.sanitize(saved);
       } else {
-        throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
+        throw new BadRequestException('No se pudo completar el registro. Por favor verifica los datos ingresados.');
       }
     }
 
@@ -202,7 +202,7 @@ export class UsuariosService implements OnModuleInit {
 
     if (dto.email && dto.email !== usuario.email) {
       const exists = await this.findByEmail(dto.email);
-      if (exists) throw new ConflictException(`Ya existe un usuario con el email ${dto.email}`);
+      if (exists) throw new BadRequestException('El email proporcionado no es válido o ya está en uso.');
     }
 
     const { permisos, ...datosUsuario } = dto;

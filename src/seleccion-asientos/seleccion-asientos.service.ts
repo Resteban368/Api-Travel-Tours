@@ -32,7 +32,7 @@ export class SeleccionAsientosService {
 
   async generarToken(reservaId: number): Promise<ReservaSeleccionToken> {
     const token = uuidv4();
-    const baseUrl = process.env.APP_URL ?? 'http://localhost:3001';
+    const baseUrl = (process.env.APP_URL ?? 'http://localhost:3001').replace(/\/$/, '');
     const link = `${baseUrl}/seleccion/${token}`;
 
     const record = this.tokenRepo.create({ reserva_id: reservaId, token, link });

@@ -6,9 +6,11 @@ import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entit
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
+import { RespuestaCotizacion } from '../cotizaciones/entities/respuesta-cotizacion.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PagoRealizado, Reserva, Cotizacion, Usuario])],
+  imports: [TypeOrmModule.forFeature([PagoRealizado, Reserva, Cotizacion, Usuario, ToursMaestro, RespuestaCotizacion])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })

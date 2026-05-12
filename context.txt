@@ -1,3 +1,165 @@
+
+                                                                                                                                                                                             
+  ---                                                                                                                                                                                              
+  Inventario Completo — Prioridad + Impacto                                                                                                                                                        
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                              
+ 
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  PRIORIDAD ALTA — Seguridad
+
+  ┌─────┬──────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────┐
+  │  #  │                               Hallazgo                               │                      Archivo                       │                         Impacto                          │
+  ├─────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────
+  ├─────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤   
+  ├─────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤   
+  │ A-3 │ Validación de contraseña inconsistente: ChangePasswordDto exige      │ src/auth/dto/register-user.dto.ts                  │ Cuentas nuevas pueden crearse con contraseñas débiles    │   
+  │     │ mayúscula + número, RegisterUserDto solo exige 8 caracteres          │                                                    │ tipo password1                                           │
+  ├─────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤   
+  │ A-4 │ Sin validación de variables de entorno al arrancar: OPENAI_API_KEY y │ src/embeddings/embeddings.service.ts,              │ En producción, errores opacos aparecen horas después;    │   
+  │     │  YCLOUD_API_KEY fallan silenciosamente con null                      │ src/whatsapp/whatsapp.service.ts                   │ imposible detectar configuración rota en deploy          │
+  ├─────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤               │   
+  └─────┴──────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────┘
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  PRIORIDAD ALTA — Rendimiento
+
+  ┌─────┬───────────────────────────────────────────────────────────────────────┬────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┐ 
+  │  #  │                               Hallazgo                                │              Archivo               │                                Impacto                                 │ 
+  ├─────┼───────────────────────────────────────────────────────────────────────┼────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤ 
+  │ A-6 │ N+1 crítico en calcularCuposUsados: carga TODAS las reservas con      │ src/tours/tours.service.ts         │ Con 1000 reservas por tour, cada llamada a findOne ejecuta queries que │ 
+  │     │ integrantes en memoria para contarlos en JavaScript                   │                                    │  traen megabytes de datos innecesarios                                 │ 
+  ├─────┼───────────────────────────────────────────────────────────────────────┼────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤    
+  │ A-7 │ Analytics sin LIMIT: getAnalytics carga todos los pagos y reservas    │ src/analytics/analytics.service.ts │ En un período con 50k registros, puede consumir cientos de MB de RAM y │ 
+  │     │ del período en RAM                                                    │                                    │  bloquear el event loop por segundos                                   │    
+  ├─────┼───────────────────────────────────────────────────────────────────────┼────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤  
+  │ A-8 │ Índices compuestos faltantes en las columnas más consultadas del      │ Entidades de pagos, asientos,      │ Queries de analytics, detalle de tour y validación de asientos hacen   │    
+  │     │ sistema                                                               │ tours                              │ full table scans — se degrada linealmente con el volumen               │    
+  └─────┴───────────────────────────────────────────────────────────────────────┴────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┘
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  PRIORIDAD MEDIA — Seguridad
+                                                                                                                                                                                                   
+  ┌─────┬──────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
+  │  #  │                                   Hallazgo                                   │            Archivo            │                                Impacto                                │   
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+  │ M-1 │ Rate limiting global de 60 req/min aplicado igual al endpoint de búsqueda    │ src/tours/tours.controller.ts │ Un usuario puede generar 60 llamadas/min a OpenAI → costo             │
+  │     │ por embedding (llama a OpenAI por request)                                   │                               │ descontrolado + posible agotamiento de cuota                          │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤   
+  │ M-2 │ Rate limiting de login demasiado permisivo: 5 intentos/minuto permite        │ src/auth/auth.controller.ts   │ Con contraseñas de 8 chars simples (ver A-3), un ataque de baja       │
+  │     │ ataques de fuerza bruta lentos                                               │                               │ velocidad puede tener éxito sin ser bloqueado                         │   
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+  │ M-3 │ Logs no redactan req.body.password, req.body.token ni datos de usuario en    │ src/app.module.ts             │ Contraseñas y tokens aparecen en texto plano en los logs del servidor │   
+  │     │ respuestas                                                                   │                               │  / CloudWatch / Datadog                                               │   
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ M-4 │ CORS en desarrollo acepta cualquier localhost:* con credentials: true        │ src/main.ts                   │ Una app maliciosa corriendo localmente puede hacer requests           │   
+  │     │                                                                              │                               │ autenticados a la API de dev                                          │   
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ M-5 │ contentSecurityPolicy: false — Helmet desactiva CSP completamente            │ src/main.ts                   │ Si hay alguna interfaz web que use esta API directamente, queda       │   
+  │     │                                                                              │                               │ expuesta a XSS sin mitigación de CSP                                  │   
+  ├─────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ M-6 │ Sin endpoint de health check autenticado vs. público: no hay separación      │ src/main.ts                   │ Kubernetes/load balancer no puede distinguir si la app está lista     │   
+  │     │ entre liveness y readiness                                                   │                               │ para recibir tráfico vs. simplemente viva                             │   
+  └─────┴──────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  PRIORIDAD MEDIA — Rendimiento
+                               
+  ┌──────┬──────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+  │  #   │                             Hallazgo                             │                            Archivo                            │                     Impacto                      │   
+  ├──────┼──────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ M-7  │ findDetalle hace múltiples queries secuenciales para construir   │ src/tours/tours.service.ts                                    │ Cada request al detalle de tour tiene latencia   │   
+  │      │ el detalle de un tour (reservas → pagos → asientos → tokens)     │                                                               │ acumulada de 5-8 queries en serie                │ 
+  ├──────┼──────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤   
+  │      │ Cache sin variantes por filtro/paginación: CACHE_KEY_ACTIVOS y   │                                                               │ Requests con diferentes filtros reciben la misma │
+  │ M-8  │ CACHE_KEY_TODOS ignoran query params                             │ src/tours/tours.service.ts                                    │  respuesta cacheada → datos incorrectos para el  │   
+  │      │                                                                  │                                                               │ usuario                                          │ 
+  ├──────┼──────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤   
+  │ M-9  │ Embeddings síncronos bloquean la respuesta: crear/actualizar un  │ src/tours/tours.service.ts                                    │ Crear un tour con itinerario largo puede tardar  │   
+  │      │ tour llama a OpenAI en serie antes de responder                  │                                                               │ 5-15 segundos bloqueando el request              │
+  ├──────┼──────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤   
+  │ M-10 │ Queries sin select() traen todas las columnas en endpoints que   │ src/tours/tours.service.ts,                                   │ Transferencia de datos innecesaria entre DB y    │   
+  │      │ solo necesitan un subconjunto                                    │ src/pagos-realizados/pagos-realizados.service.ts              │ app; mayor presión en serialización JSON         │
+  ├──────┼──────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤   
+  │ M-11 │ getAsientosConfirmadosBatch no está cacheado aunque se llama en  │ src/seleccion-asientos/seleccion-asientos.service.ts          │ Mismos datos de asientos consultados múltiples   │ 
+  │      │ múltiples puntos del flujo de findDetalle                        │                                                               │ veces por request                                │   
+  └──────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  PRIORIDAD BAJA — Calidad y Hardening
+
+  ┌─────┬────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┐
+  │  #  │                            Hallazgo                            │                       Archivo                        │                           Impacto                            │
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤   
+  │ B-1 │ Sin endpoint de métricas (Prometheus/OpenTelemetry) — no hay   │ Toda la app                                          │ Imposible detectar degradación de rendimiento o endpoints    │
+  │     │ visibilidad de latencia por ruta                               │                                                      │ lentos en producción sin herramientas externas               │   
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤   
+  │ B-2 │ id_tour sin validación de unicidad a nivel DTO — la            │ src/tours/dto/create-tour.dto.ts                     │ El error llega como excepción genérica de PostgreSQL en vez  │
+  │     │ restricción solo existe en la DB                               │                                                      │ de un 400 Bad Request descriptivo                            │   
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤ 
+  │ B-3 │ link_pdf en tour sin validación de URL (@IsUrl() faltante)     │ src/tours/dto/create-tour.dto.ts                     │ Se pueden guardar valores arbitrarios que rompan el frontend │   
+  │     │                                                                │                                                      │  al intentar abrir el PDF                                    │   
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ B-4 │ Ausencia de helmet.noSniff(), hsts() explícito verificado en   │ src/main.ts                                          │ Sin HSTS, browsers no fuerzan HTTPS en visitas subsiguientes │   
+  │     │ config actual                                                  │                                                      │  si alguna vez se expone en HTTP                             │   
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤         │   
+  ├─────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ B-6 │ Dockerfile no hace npm ci --only=production en la imagen final │ Dockerfile                                           │ Imagen más pesada de lo necesario; herramientas de           │   
+  │     │  — incluye devDependencies                                     │                                                      │ desarrollo accesibles en el contenedor de producción         │   
+  └─────┴────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
+                                                                                                                                                                                                   
+  ---                                                                                                                                                                                            
+  Resumen por categoría
+
+  SEGURIDAD
+    Crítica  ████░░░░░░  1
+    Alta     ████████░░  5                                                                                                                                                                         
+    Media    ████████░░  6                                                                                                                                                                         
+                                                                                                                                                                                                   
+  RENDIMIENTO                                                                                                                                                                                      
+    Alta     ██████░░░░  3                                                                                                                                                                       
+    Media    ██████████  5
+                                                                                                                                                                                                   
+  CALIDAD
+    Baja     ████████░░  6                                                                                                                                                                         
+                                                                                                                                                                                                 
+  ---
+  Orden de atención sugerido
+                                                                                                                                                                                                   
+  Semana 1 — Críticos + Altos bloqueantes
+    C-1  Desactivar synchronize en producción → migrations                                                                                                                                         
+    C-2  Agregar USER no-root en Dockerfile                                                                                                                                                        
+    A-1  Fix mensaje de error en registro                                                                                                                                                          
+    A-4  Validar env vars al arrancar                                                                                                                                                              
+    A-6  Reescribir calcularCuposUsados con SQL COUNT                                                                                                                                              
+                                                                                                                                                                                                   
+  Semana 2 — Altos de seguridad + rendimiento                                                                                                                                                      
+    A-2  Reducir TTL refresh token + logout con blacklist (Redis)                                                                                                                                  
+    A-3  Igualar validación de contraseña en RegisterDto                                                                                                                                           
+    A-5  Reducir body limit a 1MB                                                                                                                                                                  
+    A-7  Reescribir analytics con agregaciones SQL                                                                                                                                                 
+    A-8  Agregar índices compuestos en entidades                                                                                                                                                   
+                                                                                                                                                                                                   
+  Semana 3 — Medios de seguridad                                                                                                                                                                   
+    M-1  @Throttle estricto en /tours/search                                                                                                                                                     
+    M-2  Bajar límite de login a 3/min                                                                                                                                                             
+    M-3  Extender redact list en logs                                                                                                                                                              
+    M-7  Paralelizar queries en findDetalle                                                                                                                                                        
+                                                                                                                                                                                                   
+  Semana 4 — Medios de rendimiento + bajos                                                                                                                                                         
+    M-8  Cache keys con params de filtro                                                                                                                                                         
+    M-9  Queue para generación de embeddings                                                                                                                                                       
+    M-10 Agregar select() en queries pesadas                                                                                                                                                     
+    B-1..B-6  Hardening y calidad         
+
+
+
+    ==================================
+
+
+
+
  Resumen Ejecutivo de Transferencia — AgenteViajes
                                                                                                                                   
   ---
