@@ -83,6 +83,10 @@ export class ToursMaestro {
   @Column({ name: 'es_borrador', type: 'boolean', default: false })
   es_borrador: boolean;
 
+  @Index()
+  @Column({ name: 'es_finalizado', type: 'boolean', default: false })
+  es_finalizado: boolean;
+
   @Column({ name: 'sede_id', type: 'text', nullable: true })
   sede_id: string | null;
 

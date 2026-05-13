@@ -12,7 +12,7 @@ export class BusLayoutsService {
   ) {}
 
   async create(dto: CreateBusLayoutDto): Promise<BusLayout> {
-    const totalCliente = dto.configuracion.asientos.filter(a => a.tipo === 'normal').length;
+    const totalCliente = this.contarAsientosCliente(dto.configuracion.asientos);
     const layout = this.repo.create({
       nombre: dto.nombre,
       descripcion: dto.descripcion ?? null,
@@ -37,7 +37,7 @@ export class BusLayoutsService {
 
     if (dto.configuracion) {
       layout.configuracion = dto.configuracion;
-      layout.total_asientos_cliente = dto.configuracion.asientos.filter(a => a.tipo === 'normal').length;
+      layout.total_asientos_cliente = this.contarAsientosCliente(dto.configuracion.asientos);
     }
     if (dto.nombre !== undefined)      layout.nombre      = dto.nombre;
     if (dto.descripcion !== undefined) layout.descripcion = dto.descripcion ?? null;
@@ -50,5 +50,13 @@ export class BusLayoutsService {
     await this.findOne(id);
     await this.repo.update(id, { activo: false });
     return { ok: true };
+  }
+
+  // Cuenta solo asientos disponibles para clientes (tipo 'normal')
+  private contarAsientosCliente(
+    asientos: { tipo: string }[],
+  ): number {
+    const tiposNoCliente = new Set(['agente', 'conductor', 'vacio', 'baño', 'entrada']);
+    return asientos.filter((a) => !tiposNoCliente.has(a.tipo)).length;
   }
 }

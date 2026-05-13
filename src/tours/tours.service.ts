@@ -389,7 +389,7 @@ export class ToursService {
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     if (cached) return cached;
 
-    const where = soloActivos ? { is_active: true } : {};
+    const where = soloActivos ? { is_active: true, es_finalizado: false } : {};
     const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
 
     if (tours.length === 0) {
@@ -460,6 +460,42 @@ export class ToursService {
     }));
     await this.cacheManager.set(cacheKey, result, CACHE_TTL);
     return result;
+  }
+
+  async finalizarTour(id: number, usuarioId?: number, usuarioNombre?: string) {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id } });
+    if (!tour) throw new NotFoundException(`Tour con id ${id} no encontrado`);
+    if (tour.es_finalizado) return { mensaje: 'El tour ya estaba finalizado' };
+
+    tour.es_finalizado = true;
+    await this.toursMaestroRepository.save(tour);
+
+    // Eliminar vectores del tour de n8n_vectors
+    const vectors = await this.n8nVectorsRepository
+      .createQueryBuilder('v')
+      .where("v.metadata->>'id' = :id", { id: String(id) })
+      .getMany();
+    if (vectors.length > 0) {
+      await this.n8nVectorsRepository.remove(vectors);
+    }
+
+    await Promise.all([
+      this.cacheManager.del(CACHE_KEY_ACTIVOS),
+      this.cacheManager.del(CACHE_KEY_TODOS),
+    ]);
+
+    if (usuarioId) {
+      await this.auditoriaGeneralService.registrar({
+        modulo: 'tours',
+        operacion: 'ACTUALIZAR',
+        documento_id: id,
+        detalle: { es_finalizado: true },
+        usuario_id: usuarioId,
+        usuario_nombre: usuarioNombre,
+      });
+    }
+
+    return { id, es_finalizado: true, mensaje: 'Tour finalizado correctamente' };
   }
 
   async findOne(id: number) {
@@ -1022,6 +1058,11 @@ export class ToursService {
       .select(['v.id', 'v.text', 'v.metadata', 'v.fileId', 'v.modifiedTime'])
       .addSelect('1 - (v.embedding <=> :embedding::vector)', 'similarity')
       .where('v.embedding IS NOT NULL')
+      .andWhere(`NOT EXISTS (
+        SELECT 1 FROM tours_maestro t
+        WHERE t.id = CAST(v.metadata->>'id' AS integer)
+          AND (t.es_finalizado = true OR t.is_active = false)
+      )`)
       .orderBy('v.embedding <=> :embedding::vector')
       .setParameter('embedding', embeddingSql)
       .limit(limit);

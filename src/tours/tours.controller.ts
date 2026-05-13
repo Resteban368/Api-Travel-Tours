@@ -96,6 +96,12 @@ export class ToursController {
   }
 
   @Version('1')
+  @Patch(':id/finalizar')
+  finalizar(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.toursService.finalizarTour(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @Version('1')
   @Get(':id/detalle')
   findDetalle(@Param('id', ParseIntPipe) id: number) {
     return this.toursService.findDetalle(id);

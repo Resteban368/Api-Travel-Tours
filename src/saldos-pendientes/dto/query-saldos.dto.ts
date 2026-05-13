@@ -14,6 +14,10 @@ export class QuerySaldosDto {
   id_reserva?: string;
 
   @IsOptional()
+  @IsString()
+  tour_nombre?: string;
+
+  @IsOptional()
   @IsNumberString()
   page?: string;
 

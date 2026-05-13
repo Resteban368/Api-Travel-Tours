@@ -1,12 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export type TipoAsiento = 'normal' | 'agente' | 'conductor' | 'vacio' | 'baño';
+export type TipoAsiento = 'normal' | 'agente' | 'conductor' | 'vacio' | 'baño' | 'entrada';
 
 export interface AsientoLayout {
-  numero: string;       // Etiqueta visible (ej. "1A", "2B", "C")
+  numero: string;       // Etiqueta visible (ej. "1A", "2B", "C", "E")
   fila: number;         // Índice fila (0-based)
   columna: number;      // Índice columna (0-based)
-  tipo: TipoAsiento;    // normal=cliente | agente=bloqueado | conductor | vacio=espacio vacío
+  tipo: TipoAsiento;    // normal=cliente | agente=bloqueado | conductor | vacio=espacio vacío | entrada=puerta
 }
 
 export interface BusConfiguracion {
