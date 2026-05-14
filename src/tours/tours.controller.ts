@@ -96,6 +96,18 @@ export class ToursController {
   }
 
   @Version('1')
+  @Get('historico')
+  findHistorico() {
+    return this.toursService.findHistorico();
+  }
+
+  @Version('1')
+  @Post(':id/duplicar')
+  duplicar(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.toursService.duplicarTour(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @Version('1')
   @Patch(':id/finalizar')
   finalizar(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.toursService.finalizarTour(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);

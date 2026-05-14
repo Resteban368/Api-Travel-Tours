@@ -384,6 +384,14 @@ export class ToursService {
     return saved;
   }
 
+  async findHistorico() {
+    const tours = await this.toursMaestroRepository.find({
+      where: { es_finalizado: true },
+      order: { id: 'DESC' },
+    });
+    return tours.map((t) => this.normalize(t));
+  }
+
   async findAll(soloActivos = true) {
     const cacheKey = soloActivos ? CACHE_KEY_ACTIVOS : CACHE_KEY_TODOS;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
@@ -393,7 +401,6 @@ export class ToursService {
     const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
 
     if (tours.length === 0) {
-      await this.cacheManager.set(cacheKey, [], CACHE_TTL);
       return [];
     }
 
@@ -460,6 +467,58 @@ export class ToursService {
     }));
     await this.cacheManager.set(cacheKey, result, CACHE_TTL);
     return result;
+  }
+
+  async duplicarTour(id: number, usuarioId?: number, usuarioNombre?: string) {
+    const original = await this.toursMaestroRepository.findOne({ where: { id } });
+    if (!original) throw new NotFoundException(`Tour con id ${id} no encontrado`);
+
+    const copia = this.toursMaestroRepository.create({
+      nombre_tour:      original.nombre_tour,
+      agencia:          original.agencia,
+      precio:           original.precio,
+      precio_por_pareja: original.precio_por_pareja,
+      punto_partida:    original.punto_partida,
+      hora_partida:     original.hora_partida,
+      llegada:          original.llegada,
+      url_imagen:       original.url_imagen,
+      link_pdf:         original.link_pdf,
+      inclusions:       original.inclusions,
+      exclusions:       original.exclusions,
+      itinerary:        original.itinerary,
+      cupos:            original.cupos,
+      es_promocion:     original.es_promocion,
+      sede_id:          original.sede_id,
+      // campos reseteados
+      id_tour:          null,
+      fecha_inicio:     null,
+      fecha_fin:        null,
+      es_borrador:      true,
+      is_active:        true,
+      es_finalizado:    false,
+      deleted_at:       null,
+      busLayouts:       [],
+    });
+
+    const saved = await this.toursMaestroRepository.save(copia);
+
+    await Promise.all([
+      this.cacheManager.del(CACHE_KEY_ACTIVOS),
+      this.cacheManager.del(CACHE_KEY_TODOS),
+    ]);
+
+    if (usuarioId) {
+      await this.auditoriaGeneralService.registrar({
+        modulo: 'tours',
+        operacion: 'CREAR',
+        documento_id: saved.id,
+        detalle: { duplicado_de: id },
+        usuario_id: usuarioId,
+        usuario_nombre: usuarioNombre,
+      });
+    }
+
+    return { id: saved.id, es_borrador: true, duplicado_de: id, mensaje: 'Tour duplicado como borrador' };
   }
 
   async finalizarTour(id: number, usuarioId?: number, usuarioNombre?: string) {
@@ -670,43 +729,96 @@ export class ToursService {
       order: { fecha_creacion: 'ASC' },
     });
     const reservasConBus = reservas.filter((r) => r.bus_layout_id !== null);
+    const reservasSinBus = reservas.filter((r) => r.bus_layout_id === null);
+
     const asientosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(
       reservasConBus.map((r) => r.id),
     );
 
-    let reservasAsignadas = 0;
+    // ── Construir estado de asientos libres por bus ───────────────────────────
+    type BusState = { busId: number; asientosLibres: any[]; pointer: number };
+    const busStateMap = new Map<number, BusState>();
 
     for (const bus of tour.busLayouts ?? []) {
-      const reservasDeEsteBus = reservasConBus.filter((r) => r.bus_layout_id === bus.id);
-
       const todosAsientos = ((bus.configuracion as any)?.asientos ?? [])
         .filter((a: any) => a.tipo === 'normal')
         .sort((a: any, b: any) => a.fila !== b.fila ? a.fila - b.fila : a.columna - b.columna);
 
       const asientosTomados = new Set<string>();
-      for (const r of reservasDeEsteBus) {
+      for (const r of reservasConBus.filter((r) => r.bus_layout_id === bus.id)) {
         (asientosMap.get(r.id) ?? []).forEach((n) => asientosTomados.add(n));
       }
 
-      const asientosLibres: any[] = todosAsientos.filter((a: any) => !asientosTomados.has(a.numero));
-      let pointer = 0;
+      busStateMap.set(bus.id, {
+        busId: bus.id,
+        asientosLibres: todosAsientos.filter((a: any) => !asientosTomados.has(a.numero)),
+        pointer: 0,
+      });
+    }
 
-      for (const reserva of reservasDeEsteBus) {
-        if ((asientosMap.get(reserva.id) ?? []).length > 0) continue;
-        const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
-        const slice = asientosLibres.slice(pointer, pointer + totalPersonas);
-        pointer += slice.length;
-        if (slice.length > 0) {
-          await this.seleccionAsientosService.confirmarAsientosDirecto(
-            reserva.id,
-            slice.map((a: any) => a.numero),
-          );
-          reservasAsignadas++;
-        }
+    let reservasAsignadas = 0;
+    let reservasAutoAsignadas = 0;
+
+    // ── Asignar asientos a reservas que ya tienen bus ─────────────────────────
+    for (const reserva of reservasConBus) {
+      if ((asientosMap.get(reserva.id) ?? []).length > 0) continue;
+      const state = busStateMap.get(reserva.bus_layout_id!);
+      if (!state) continue;
+      const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+      const slice = state.asientosLibres.slice(state.pointer, state.pointer + totalPersonas);
+      state.pointer += slice.length;
+      if (slice.length > 0) {
+        await this.seleccionAsientosService.confirmarAsientosDirecto(
+          reserva.id,
+          slice.map((a: any) => a.numero),
+        );
+        reservasAsignadas++;
       }
     }
 
-    return { ok: true, reservas_asignadas: reservasAsignadas };
+    // ── Asignar bus + asientos a reservas sin bus ─────────────────────────────
+    for (const reserva of reservasSinBus) {
+      const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+
+      // Elegir el bus con más asientos libres que pueda alojar a esta reserva
+      let bestState: BusState | null = null;
+      let bestDisponibles = 0;
+      for (const state of busStateMap.values()) {
+        const disponibles = state.asientosLibres.length - state.pointer;
+        if (disponibles >= totalPersonas && disponibles > bestDisponibles) {
+          bestState = state;
+          bestDisponibles = disponibles;
+        }
+      }
+
+      if (!bestState) continue; // ningún bus tiene cupo suficiente
+
+      // Persistir bus_layout_id en la reserva
+      reserva.bus_layout_id = bestState.busId;
+      await this.reservaRepository.save(reserva);
+
+      // Asignar asientos
+      const slice = bestState.asientosLibres.slice(bestState.pointer, bestState.pointer + totalPersonas);
+      bestState.pointer += slice.length;
+      if (slice.length > 0) {
+        await this.seleccionAsientosService.confirmarAsientosDirecto(
+          reserva.id,
+          slice.map((a: any) => a.numero),
+        );
+        reservasAsignadas++;
+        reservasAutoAsignadas++;
+      }
+    }
+
+    const sinAsignar = reservasSinBus.filter((r) => r.bus_layout_id === null);
+
+    return {
+      ok: true,
+      reservas_asignadas: reservasAsignadas,
+      reservas_auto_asignadas_a_bus: reservasAutoAsignadas,
+      reservas_sin_cupo: sinAsignar.length,
+      ids_sin_cupo: sinAsignar.map((r) => r.id),
+    };
   }
 
   async liberarAsiento(tourId: number, reservaId: number, numero: string) {
