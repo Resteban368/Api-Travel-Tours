@@ -39,6 +39,9 @@ export class IntegranteReserva {
   })
   precio_aplicado: number | null;
 
+  @Column({ name: 'ocupa_asiento', type: 'boolean', default: true })
+  ocupa_asiento: boolean;
+
   @ManyToOne(() => Reserva, (reserva) => reserva.integrantes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'reserva_id' })
   reserva: Reserva;

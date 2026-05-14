@@ -122,7 +122,7 @@ export class SeleccionAsientosService {
   async getInfoSeleccion(token: string) {
     const { reserva, layout } = await this._resolverToken(token);
 
-    const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+    const totalPersonas = 1 + (reserva.integrantes?.filter(i => i.ocupa_asiento !== false).length ?? 0);
     const now = new Date();
 
     // Asientos confirmados de ESTA reserva
@@ -251,7 +251,7 @@ export class SeleccionAsientosService {
       throw new BadRequestException('Cédula incorrecta');
     }
 
-    const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+    const totalPersonas = 1 + (reserva.integrantes?.filter(i => i.ocupa_asiento !== false).length ?? 0);
     if (asientosElegidos.length !== totalPersonas) {
       throw new BadRequestException(
         `Debes seleccionar exactamente ${totalPersonas} asiento(s). Seleccionaste ${asientosElegidos.length}.`,

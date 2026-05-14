@@ -1287,17 +1287,17 @@
 
   /* ── State ───────────────────────────────────────────── */
   let _flights=[], _hotels=[], _adicionales=[], _cotData={};
-  let _selectedFlights=new Set(), _selectedHotelIdx=-1, _selectedAdicionales=new Set();
+  let _selectedFlights=new Set(), _selectedHotels=new Set(), _selectedAdicionales=new Set();
   let _waNumber='', _waEmpNombre='';
 
   function buildWaLink() {
     const SEP  = '━━━━━━━━━━━━━━━━━━━━';
     const ref  = window.location.pathname.split('/').filter(Boolean).pop().substring(0,8).toUpperCase();
     const selFlights = _flights.filter((_,i) => _selectedFlights.has(i));
-    const hotel = _selectedHotelIdx >= 0 ? _hotels[_selectedHotelIdx] : null;
+    const selectedHotelsList = _hotels.filter((_,i) => _selectedHotels.has(i));
     const selAdc = _adicionales.filter((_,i) => _selectedAdicionales.has(i));
     const total = selFlights.reduce((s,f)=>s+(Number(f.costo)||0),0)
-      + (hotel ? (Number(hotel.precio_total)||0) : 0)
+      + selectedHotelsList.reduce((s,h)=>s+(Number(h.precio_total)||0),0)
       + selAdc.reduce((s,a)=>s+(Number(a.precio)||0),0);
     const lines = [];
     lines.push(`Hola *${_waEmpNombre}!*`);
@@ -1316,14 +1316,16 @@
         if (f.costo>0)      lines.push(`  Precio: ${COP(f.costo)}`);
       });
     }
-    if (hotel) {
+    if (selectedHotelsList.length) {
       lines.push(''); lines.push('*-- ALOJAMIENTO --*');
-      lines.push(`*${hotel.nombre}*`);
-      lines.push(`  Habitacion: ${hotel.tipo_habitacion}`);
-      if (hotel.notas) lines.push(`  Nota: ${hotel.notas}`);
-      if (hotel.fecha_entrada && hotel.fecha_salida)
-        lines.push(`  Fechas: ${fd(hotel.fecha_entrada)} al ${fd(hotel.fecha_salida)}`);
-      if (hotel.precio_total>0) lines.push(`  Precio: ${COP(hotel.precio_total)}`);
+      selectedHotelsList.forEach(h => {
+        lines.push(`*${h.nombre}*`);
+        lines.push(`  Habitacion: ${h.tipo_habitacion}`);
+        if (h.notas) lines.push(`  Nota: ${h.notas}`);
+        if (h.fecha_entrada && h.fecha_salida)
+          lines.push(`  Fechas: ${fd(h.fecha_entrada)} al ${fd(h.fecha_salida)}`);
+        if (h.precio_total>0) lines.push(`  Precio: ${COP(h.precio_total)}`);
+      });
     }
     if (selAdc.length) {
       lines.push(''); lines.push('*-- ADICIONALES --*');
@@ -1346,7 +1348,7 @@
 
   function updateSidebar() {
     const fCost = _flights.reduce((s,f,i)=>_selectedFlights.has(i)?s+(Number(f.costo)||0):s,0);
-    const hCost = _selectedHotelIdx>=0?(Number(_hotels[_selectedHotelIdx]?.precio_total)||0):0;
+    const hCost = _hotels.reduce((s,h,i)=>_selectedHotels.has(i)?s+(Number(h.precio_total)||0):s,0);
     const aCost = _adicionales.reduce((s,a,i)=>_selectedAdicionales.has(i)?s+(Number(a.precio)||0):s,0);
     const calc  = fCost+hCost+aCost;
     const hasAny= _flights.some(f=>f.costo>0)||_hotels.some(h=>h.precio_total>0)||_adicionales.some(a=>a.precio>0);
@@ -1360,11 +1362,10 @@
       if(_selectedFlights.has(i)&&f.costo>0)
         html+=`<div class="ps-option"><div class="ps-opt-name">${f.origen} &#8594; ${f.destino}${f.numero_pasajeros?` <span style="opacity:.55;font-size:11px">(${f.numero_pasajeros} pax)</span>`:''}</div><div class="ps-opt-price">${COP(f.costo)}</div></div>`;
     });
-    if(_selectedHotelIdx>=0){
-      const h=_hotels[_selectedHotelIdx];
-      if(h&&h.precio_total>0)
+    _hotels.forEach((h,i)=>{
+      if(_selectedHotels.has(i)&&h.precio_total>0)
         html+=`<div class="ps-option"><div class="ps-opt-name">${h.nombre}<br><span style="opacity:.5;font-size:11px">${h.tipo_habitacion}</span></div><div class="ps-opt-price">${COP(h.precio_total)}</div></div>`;
-    }
+    });
     _adicionales.forEach((a,i)=>{
       if(_selectedAdicionales.has(i)&&a.precio>0)
         html+=`<div class="ps-option"><div class="ps-opt-name">${a.nombre}</div><div class="ps-opt-price">${COP(a.precio)}</div></div>`;
@@ -1386,7 +1387,7 @@
     });
     document.querySelectorAll('.hotel-select-btn').forEach(btn=>{
       const i=+btn.dataset.hotelIdx;
-      btn.textContent=_selectedHotelIdx===i?'✓ Seleccionado':'Seleccionar esta opción';
+      btn.textContent=_selectedHotels.has(i)?'✓ Seleccionado':'Seleccionar esta opción';
     });
   }
 
@@ -1394,12 +1395,11 @@
     _flights=d.vuelos||[]; _hotels=d.opciones_hotel||[];
     _adicionales=d.adicionales||[]; _cotData=d;
     _selectedFlights=new Set(_flights.map((_,i)=>i));
-    _selectedHotelIdx=_hotels.length>0?0:-1;
+    _selectedHotels=_hotels.length>0?new Set([0]):new Set();
     _selectedAdicionales=new Set(_adicionales.map((_,i)=>i));
 
     _selectedFlights.forEach(i=>document.querySelector(`.bp[data-flight-idx="${i}"]`)?.classList.add('flight-selected'));
-    if(_selectedHotelIdx>=0)
-      document.querySelector(`.hotel-card[data-hotel-idx="${_selectedHotelIdx}"]`)?.classList.add('hotel-selected');
+    _selectedHotels.forEach(i=>document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`)?.classList.add('hotel-selected'));
 
     document.querySelectorAll('.adc-toggle').forEach(btn=>{
       btn.addEventListener('click',e=>{
@@ -1449,9 +1449,9 @@
       btn.addEventListener('click',e=>{
         e.stopPropagation();
         const i=+btn.dataset.hotelIdx;
-        document.querySelectorAll('.hotel-card').forEach(c=>c.classList.remove('hotel-selected'));
-        if(_selectedHotelIdx===i){_selectedHotelIdx=-1;}
-        else{_selectedHotelIdx=i;document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`)?.classList.add('hotel-selected');}
+        const card=document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`);
+        if(_selectedHotels.has(i)){_selectedHotels.delete(i);card?.classList.remove('hotel-selected');}
+        else{_selectedHotels.add(i);card?.classList.add('hotel-selected');}
         updateBtnLabels(); updateSidebar();
       });
     });

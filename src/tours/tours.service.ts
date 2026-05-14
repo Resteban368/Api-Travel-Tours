@@ -764,7 +764,7 @@ export class ToursService {
       if ((asientosMap.get(reserva.id) ?? []).length > 0) continue;
       const state = busStateMap.get(reserva.bus_layout_id!);
       if (!state) continue;
-      const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+      const totalPersonas = 1 + (reserva.integrantes?.filter(i => i.ocupa_asiento !== false).length ?? 0);
       const slice = state.asientosLibres.slice(state.pointer, state.pointer + totalPersonas);
       state.pointer += slice.length;
       if (slice.length > 0) {
@@ -778,7 +778,7 @@ export class ToursService {
 
     // ── Asignar bus + asientos a reservas sin bus ─────────────────────────────
     for (const reserva of reservasSinBus) {
-      const totalPersonas = 1 + (reserva.integrantes?.length ?? 0);
+      const totalPersonas = 1 + (reserva.integrantes?.filter(i => i.ocupa_asiento !== false).length ?? 0);
 
       // Elegir el bus con más asientos libres que pueda alojar a esta reserva
       let bestState: BusState | null = null;

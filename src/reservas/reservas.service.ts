@@ -199,7 +199,8 @@ export class ReservasService {
 
     const queryBuilder = this.reservaRepository.createQueryBuilder('reserva')
       .leftJoinAndSelect('reserva.responsable', 'responsable')
-      .leftJoinAndSelect('reserva.tour', 'tour');
+      .leftJoinAndSelect('reserva.tour', 'tour')
+      .leftJoinAndSelect('reserva.integrantes', 'integrantes');
 
     if (search) {
       queryBuilder.andWhere(
@@ -247,8 +248,13 @@ export class ReservasService {
     const data = await Promise.all(
       reservas.map(async (r) => {
         const agente = r.creado_por_id ? usuarios[r.creado_por_id] || null : null;
-        const base = await this.transformResponseWithSaldo(r, agente, false, valorCanceladoMap);
-        return { ...base, asientos_bus: asientosBatchMap.get(r.id) ?? [] };
+        const {
+          correo, notas, descuento_por_persona, valor_sin_descuento, utilidad,
+          precio_responsable_id, precio_responsable_aplicado, bus_layout_id,
+          creado_por_id, total_personas, valor_cancelado, servicios_adicionales,
+          hoteles, ...base
+        } = await this.transformResponseWithSaldo(r, agente, false, valorCanceladoMap);
+        return base;
       }),
     );
 
@@ -721,7 +727,9 @@ export class ReservasService {
     const usaPreciosCategorias =
       reserva.precio_responsable_aplicado != null ||
       (reserva.integrantes ?? []).some((i) => i.precio_aplicado != null);
-    const useStored = !fullTour && reserva.tipo_reserva !== 'vuelos' && !usaPreciosCategorias;
+    // En modo lista usamos siempre los valores almacenados (calculados al crear/actualizar).
+    // En modo detalle recalculamos solo para vuelos o cuando hay precios por categoría.
+    const useStored = !fullTour || (reserva.tipo_reserva !== 'vuelos' && !usaPreciosCategorias);
     const { valor_sin_descuento, valor_total } = useStored
       ? { valor_sin_descuento: Number(reserva.valor_sin_descuento), valor_total: Number(reserva.valor_total) }
       : this.calcularValorReal(reserva);
@@ -743,9 +751,7 @@ export class ReservasService {
         }))
       : undefined;
 
-    const total_personas = fullTour
-      ? 1 + (reserva.integrantes?.length ?? 0)
-      : undefined;
+    const total_personas = 1 + (reserva.integrantes?.filter(i => i.ocupa_asiento !== false).length ?? 0);
 
     let valor_personas: number | undefined;
     if (fullTour && reserva.tipo_reserva === 'tour' && reserva.tour) {
@@ -761,7 +767,7 @@ export class ReservasService {
       valor_total,
       valor_cancelado,
       saldo_pendiente,
-      ...(total_personas !== undefined && { total_personas }),
+      total_personas,
       ...(valor_personas !== undefined && { valor_personas }),
     };
     return fullTour ? { ...base, pagos_validados: pagosData } : base;
@@ -883,6 +889,7 @@ export class ReservasService {
         documento: i.documento,
         tour_precio_id: i.tour_precio_id,
         precio_aplicado: i.precio_aplicado,
+        ocupa_asiento: i.ocupa_asiento ?? true,
       })),
       hoteles: (reserva.hoteles ?? []).map((h) => ({
         id: h.id,

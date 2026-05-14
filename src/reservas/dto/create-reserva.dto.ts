@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsIn,
@@ -44,6 +45,10 @@ export class IntegranteDto {
   @IsNumber({}, { message: 'precio_aplicado debe ser un número' })
   @IsOptional()
   precio_aplicado?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  ocupa_asiento?: boolean;
 }
 
 export class HotelReservaDto {
