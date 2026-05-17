@@ -678,6 +678,7 @@ export class ToursService {
                     tipo_documento: i.tipo_documento,
                     documento: i.documento,
                     telefono: i.telefono,
+                    ocupa_asiento: i.ocupa_asiento ?? true,
                   })),
                 }
               : null,
@@ -695,11 +696,12 @@ export class ToursService {
       };
     });
 
-    const _personaJson = (p: any) => p ? {
+    const _personaJson = (p: any, esIntegrante = false) => p ? {
       nombre: p.nombre,
       tipo_documento: p.tipo_documento,
       documento: p.documento,
       telefono: p.telefono,
+      ...(esIntegrante && { ocupa_asiento: p.ocupa_asiento ?? true }),
     } : null;
 
     const reservasSinAsientos = reservas
@@ -711,7 +713,7 @@ export class ToursService {
         bus_layout_id: r.bus_layout_id ?? null,
         fecha_creacion: r.fecha_creacion,
         responsable: _personaJson(r.responsable),
-        integrantes: (r.integrantes ?? []).map(_personaJson),
+        integrantes: (r.integrantes ?? []).map((i) => _personaJson(i, true)),
       }));
 
     return { tour: tourInfo, buses, reservas_sin_asientos: reservasSinAsientos };

@@ -37,6 +37,8 @@ import { BusLayoutsModule } from './bus-layouts/bus-layouts.module';
 import { SeleccionAsientosModule } from './seleccion-asientos/seleccion-asientos.module';
 import { SaldosPendientesModule } from './saldos-pendientes/saldos-pendientes.module';
 import { RecordatorioSaldoModule } from './recordatorio-saldo/recordatorio-saldo.module';
+import { ProveedoresModule } from './proveedores/proveedores.module';
+import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.module';
 
 @Module({
   imports: [
@@ -104,6 +106,8 @@ import { RecordatorioSaldoModule } from './recordatorio-saldo/recordatorio-saldo
     SeleccionAsientosModule,
     SaldosPendientesModule,
     RecordatorioSaldoModule,
+    ProveedoresModule,
+    PagosProveedoresModule,
   ],
   controllers: [AppController],
   providers: [

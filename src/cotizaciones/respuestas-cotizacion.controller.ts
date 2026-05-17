@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Version, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Version, Query, Req, DefaultValuePipe } from '@nestjs/common';
 import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
 import { CreateRespuestaCotizacionDto, UpdateRespuestaCotizacionDto } from './dto/create-respuesta-cotizacion.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
@@ -21,13 +21,24 @@ export class RespuestasCotizacionController {
   }
 
   @Version('1')
+  @Get('plantillas')
+  findPlantillas(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.service.findPlantillasPublicas(page, limit);
+  }
+
+  @Version('1')
   @Get()
   findAll(
     @Query('sinCotizacion') sinCotizacion?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
     @Req() req?: any,
   ) {
     const isSinCotizacion = sinCotizacion === 'true';
-    return this.service.findAll(isSinCotizacion, req.user?.id_usuario, req.user?.rol);
+    return this.service.findAll(isSinCotizacion, req.user?.id_usuario, req.user?.rol, page, limit);
   }
 
   @Version('1')

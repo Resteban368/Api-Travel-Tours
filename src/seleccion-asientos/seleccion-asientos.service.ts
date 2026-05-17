@@ -171,7 +171,7 @@ export class SeleccionAsientosService {
       asientos_propios: propios.map((a) => a.numero_asiento),
       asientos_en_hold: holdsActivos.map((a) => a.numero_asiento),
       hold_expires_at: holdsActivos[0]?.hold_expires_at ?? null,
-      confirmado: propios.length > 0,
+      confirmado: propios.length >= totalPersonas,
     };
   }
 

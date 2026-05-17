@@ -62,6 +62,7 @@ export class RespuestasCotizacionService {
       opciones_hotel: dto.opciones_hotel,
       adicionales: dto.adicionales ?? [],
       condiciones_generales: dto.condiciones_generales ?? null,
+      es_publica: dto.es_publica ?? false,
       creado_por_id: usuarioId ?? null,
       creado_por_nombre: usuarioNombre ?? null,
     });
@@ -86,8 +87,9 @@ export class RespuestasCotizacionService {
     return this.withPrecioTotal(saved);
   }
 
-  async findAll(isSinCotizacion?: boolean, usuarioId?: number, rol?: string) {
+  async findAll(isSinCotizacion?: boolean, usuarioId?: number, rol?: string, page = 1, limit = 20) {
     const qb = this.respuestaRepo.createQueryBuilder('respuesta')
+      .where('respuesta.es_publica = false')
       .orderBy('respuesta.anclada', 'DESC')
       .addOrderBy('respuesta.created_at', 'DESC');
 
@@ -95,13 +97,39 @@ export class RespuestasCotizacionService {
       qb.andWhere('respuesta.cotizacion_id IS NULL');
     }
 
-    // Agentes ven las suyas + las públicas; admin ve todas
+    // Agentes solo ven las suyas; admin ve todas (excluyendo públicas)
     if (rol !== 'admin' && usuarioId) {
-      qb.andWhere('(respuesta.creado_por_id = :usuarioId OR respuesta.es_publica = true)', { usuarioId });
+      qb.andWhere('respuesta.creado_por_id = :usuarioId', { usuarioId });
     }
 
-    const rows = await qb.getMany();
-    return rows.map((r) => this.withPrecioTotal(r));
+    const offset = (page - 1) * limit;
+    const [rows, total] = await qb.skip(offset).take(limit).getManyAndCount();
+
+    return {
+      data: rows.map((r) => this.withPrecioTotal(r)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findPlantillasPublicas(page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+    const [rows, total] = await this.respuestaRepo.findAndCount({
+      where: { es_publica: true },
+      order: { anclada: 'DESC', created_at: 'DESC' },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      data: rows.map((r) => this.withPrecioTotal(r)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: number) {

@@ -187,6 +187,10 @@ export class CreateRespuestaCotizacionDto {
   @IsString()
   @IsOptional()
   condiciones_generales?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  es_publica?: boolean;
 }
 
 export class UpdateRespuestaCotizacionDto extends PartialType(CreateRespuestaCotizacionDto) {
