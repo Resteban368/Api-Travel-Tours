@@ -1,6 +1,7 @@
 # Compiled output
 dist/
 api/dist/
+.vercel/output/
 build.log
 
 # Node
