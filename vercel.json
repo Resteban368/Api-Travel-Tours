@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "dist/src/lambda.js",
+      "src": "dist/lambda.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/dist/src/lambda.js"
+      "dest": "/dist/lambda.js"
     }
   ]
 }
