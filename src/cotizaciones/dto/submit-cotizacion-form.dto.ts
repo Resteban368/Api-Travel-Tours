@@ -7,6 +7,7 @@ import {
   IsPositive,
   IsDateString,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 export class SubmitCotizacionFormDto {
@@ -60,4 +61,9 @@ export class SubmitCotizacionFormDto {
   @IsOptional()
   @MaxLength(500)
   especificaciones?: string;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  asesor_id?: number;
 }

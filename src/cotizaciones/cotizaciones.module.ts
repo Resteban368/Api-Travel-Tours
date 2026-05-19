@@ -11,11 +11,13 @@ import { CotizacionFormController } from './cotizacion-form.controller';
 import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
 import { Aerolinea } from '../aerolineas/entities/aerolinea.entity';
 import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
+import { UsuariosModule } from '../usuarios/usuarios.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cotizacion, RespuestaCotizacion, Aerolinea]),
     AuditoriaGeneralModule,
+    UsuariosModule,
   ],
   controllers: [
     CotizacionesController,

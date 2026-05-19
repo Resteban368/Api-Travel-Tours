@@ -621,6 +621,8 @@
           Ocurrió un error al enviar el formulario. Por favor intenta nuevamente.
         </div>
 
+        <div id="asesorBanner" style="display:none;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r-m);padding:10px 14px;font-size:.875rem;font-weight:600;margin-bottom:16px;"></div>
+
         <form id="cotizacionForm" novalidate>
 
           <p class="section-label">Información personal</p>
@@ -828,6 +830,19 @@
     const WEBHOOK_URL = '/v1/cotizacion-form';
     const urlParams   = new URLSearchParams(window.location.search);
     const phone       = urlParams.get('phone') || '';
+    const asesorId    = urlParams.get('asesor') ? parseInt(urlParams.get('asesor')) : null;
+
+    /* Cargar y mostrar nombre del asesor si viene en la URL */
+    if (asesorId) {
+      fetch(`/v1/cotizacion-form/asesor/${asesorId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const el = document.getElementById('asesorBanner');
+          if (el) { el.textContent = `Tu asesor: ${data.nombre}`; el.style.display = 'block'; }
+        })
+        .catch(() => {});
+    }
 
     /* SVG icons for footer links */
     const ICO = {
@@ -974,6 +989,7 @@
             edades_menores:     document.getElementById('menores').value.trim() || null,
             especificaciones:   document.getElementById('especificaciones').value.trim() || null,
             phone,
+            asesor_id:          asesorId,
           })
         });
         if (!res.ok) throw 0;

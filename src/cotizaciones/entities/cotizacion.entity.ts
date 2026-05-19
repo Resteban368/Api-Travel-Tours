@@ -46,6 +46,9 @@ export class Cotizacion {
   @Column({ type: 'text', nullable: true })
   especificaciones: string | null;
 
+  @Column({ name: 'asesor_id', type: 'int', nullable: true })
+  asesor_id: number | null;
+
   @Column({ name: 'respuesta_cotizacion_id', type: 'int', nullable: true })
   respuesta_cotizacion_id: number | null;
 

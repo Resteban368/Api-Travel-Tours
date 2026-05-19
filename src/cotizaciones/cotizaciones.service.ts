@@ -1,18 +1,33 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Cotizacion } from './entities/cotizacion.entity';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
 import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.service';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 
 @Injectable()
 export class CotizacionesService {
   constructor(
     @InjectRepository(Cotizacion)
     private readonly cotizacionRepository: Repository<Cotizacion>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepository: Repository<Usuario>,
     private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
+
+  private async withAsesor<T extends { asesor_id: number | null }>(rows: T[]): Promise<(T & { asesor_nombre: string })[]> {
+    const ids = [...new Set(rows.map((r) => r.asesor_id).filter((id): id is number => id !== null))];
+    const usuarios = ids.length
+      ? await this.usuarioRepository.findBy({ id_usuario: In(ids) })
+      : [];
+    const map = new Map(usuarios.map((u) => [u.id_usuario, u.nombre]));
+    return rows.map((r) => ({
+      ...r,
+      asesor_nombre: r.asesor_id ? (map.get(r.asesor_id) ?? 'Agente IA') : 'Agente IA',
+    }));
+  }
 
   async create(createCotizacionDto: CreateCotizacionDto, usuarioId?: number, usuarioNombre?: string) {
     const newCotizacion = this.cotizacionRepository.create(createCotizacionDto);
@@ -48,7 +63,8 @@ export class CotizacionesService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const enriched = await this.withAsesor(data);
+    return { data: enriched, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number) {
@@ -56,7 +72,8 @@ export class CotizacionesService {
     if (!cotizacion) {
       throw new NotFoundException(`Cotización con id ${id} no encontrada`);
     }
-    return cotizacion;
+    const [enriched] = await this.withAsesor([cotizacion]);
+    return enriched;
   }
 
   async update(id: number, updateCotizacionDto: UpdateCotizacionDto, usuarioId?: number, usuarioNombre?: string) {
