@@ -1,5 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express';
+import {
+  ExpressAdapter,
+  NestExpressApplication,
+} from '@nestjs/platform-express';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
@@ -14,9 +17,13 @@ async function bootstrap(): Promise<ReturnType<typeof express>> {
   const expressApp = express();
   const adapter = new ExpressAdapter(expressApp);
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, adapter, {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule,
+    adapter,
+    {
+      bufferLogs: true,
+    },
+  );
 
   app.useLogger(app.get(Logger));
 
@@ -60,9 +67,9 @@ async function bootstrap(): Promise<ReturnType<typeof express>> {
   return expressApp;
 }
 
-export default async function handler(req: Request, res: Response) {
+module.exports = async (req: Request, res: Response) => {
   if (!cachedApp) {
     cachedApp = await bootstrap();
   }
   cachedApp(req, res);
-}
+};
