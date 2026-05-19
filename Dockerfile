@@ -7,7 +7,7 @@ COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
-RUN npm run build
+RUN rm -f *.tsbuildinfo && npm run build
 
 # Stage 2: Production
 FROM node:22-alpine AS production

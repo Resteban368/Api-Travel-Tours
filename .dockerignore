@@ -10,3 +10,5 @@ coverage
 api/
 tmp/
 test/
+*.tsbuildinfo
+scratch/

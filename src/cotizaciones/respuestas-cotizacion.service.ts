@@ -87,7 +87,7 @@ export class RespuestasCotizacionService {
     return this.withPrecioTotal(saved);
   }
 
-  async findAll(isSinCotizacion?: boolean, usuarioId?: number, rol?: string, page = 1, limit = 20) {
+  async findAll(isSinCotizacion?: boolean, usuarioId?: number, page = 1, limit = 20) {
     const qb = this.respuestaRepo.createQueryBuilder('respuesta')
       .where('respuesta.es_publica = false')
       .orderBy('respuesta.anclada', 'DESC')
@@ -97,8 +97,7 @@ export class RespuestasCotizacionService {
       qb.andWhere('respuesta.cotizacion_id IS NULL');
     }
 
-    // Agentes solo ven las suyas; admin ve todas (excluyendo públicas)
-    if (rol !== 'admin' && usuarioId) {
+    if (usuarioId) {
       qb.andWhere('respuesta.creado_por_id = :usuarioId', { usuarioId });
     }
 
@@ -114,14 +113,18 @@ export class RespuestasCotizacionService {
     };
   }
 
-  async findPlantillasPublicas(page = 1, limit = 20) {
+  async findPlantillas(usuarioId?: number, page = 1, limit = 20) {
+    const qb = this.respuestaRepo.createQueryBuilder('respuesta')
+      .where('respuesta.es_publica = true')
+      .orderBy('respuesta.anclada', 'DESC')
+      .addOrderBy('respuesta.created_at', 'DESC');
+
+    if (usuarioId) {
+      qb.andWhere('respuesta.creado_por_id = :usuarioId', { usuarioId });
+    }
+
     const offset = (page - 1) * limit;
-    const [rows, total] = await this.respuestaRepo.findAndCount({
-      where: { es_publica: true },
-      order: { anclada: 'DESC', created_at: 'DESC' },
-      skip: offset,
-      take: limit,
-    });
+    const [rows, total] = await qb.skip(offset).take(limit).getManyAndCount();
 
     return {
       data: rows.map((r) => this.withPrecioTotal(r)),
