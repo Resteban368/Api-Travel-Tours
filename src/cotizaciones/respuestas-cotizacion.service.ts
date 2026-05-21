@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { RespuestaCotizacion } from './entities/respuesta-cotizacion.entity';
+import { CotizacionRespuestaVista } from './entities/cotizacion-respuesta-vista.entity';
 import { CreateRespuestaCotizacionDto, UpdateRespuestaCotizacionDto } from './dto/create-respuesta-cotizacion.dto';
 import { Cotizacion } from './entities/cotizacion.entity';
 import { Aerolinea } from '../aerolineas/entities/aerolinea.entity';
@@ -39,9 +40,49 @@ export class RespuestasCotizacionService {
     private readonly cotizacionRepo: Repository<Cotizacion>,
     @InjectRepository(Aerolinea)
     private readonly aerolineaRepo: Repository<Aerolinea>,
+    @InjectRepository(CotizacionRespuestaVista)
+    private readonly vistaRepo: Repository<CotizacionRespuestaVista>,
     private readonly configService: ConfigService,
     private readonly auditoriaService: AuditoriaGeneralService,
   ) {}
+
+  async registrarVista(respuestaId: number, ip: string | null, userAgent: string | null): Promise<void> {
+    await this.vistaRepo.save(this.vistaRepo.create({ respuesta_id: respuestaId, ip, user_agent: userAgent }));
+  }
+
+  async getVistas(respuestaId: number) {
+    const vistas = await this.vistaRepo.find({
+      where: { respuesta_id: respuestaId },
+      order: { created_at: 'DESC' },
+    });
+    return {
+      total_vistas: vistas.length,
+      primera_vista: vistas.length ? vistas[vistas.length - 1].created_at : null,
+      ultima_vista:  vistas.length ? vistas[0].created_at : null,
+      vistas,
+    };
+  }
+
+  private async withVistas<T extends { id: number }>(rows: T[]): Promise<(T & { total_vistas: number; primera_vista: Date | null; ultima_vista: Date | null; vistas: CotizacionRespuestaVista[] })[]> {
+    if (!rows.length) return rows.map(r => ({ ...r, total_vistas: 0, primera_vista: null, ultima_vista: null, vistas: [] }));
+    const ids = rows.map(r => r.id);
+    const vistas = await this.vistaRepo.find({ where: { respuesta_id: In(ids) }, order: { created_at: 'ASC' } });
+    const map = new Map<number, CotizacionRespuestaVista[]>();
+    for (const v of vistas) {
+      if (!map.has(v.respuesta_id)) map.set(v.respuesta_id, []);
+      map.get(v.respuesta_id)!.push(v);
+    }
+    return rows.map(r => {
+      const rv = map.get(r.id) ?? [];
+      return {
+        ...r,
+        total_vistas:  rv.length,
+        primera_vista: rv.length ? rv[0].created_at : null,
+        ultima_vista:  rv.length ? rv[rv.length - 1].created_at : null,
+        vistas:        rv.slice().reverse(), // más reciente primero
+      };
+    });
+  }
 
   async create(dto: CreateRespuestaCotizacionDto, usuarioId?: number, usuarioNombre?: string) {
     const token = randomUUID();
@@ -103,9 +144,10 @@ export class RespuestasCotizacionService {
 
     const offset = (page - 1) * limit;
     const [rows, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    const enriched = await this.withVistas(rows.map(r => this.withPrecioTotal(r)));
 
     return {
-      data: rows.map((r) => this.withPrecioTotal(r)),
+      data: enriched,
       total,
       page,
       limit,
@@ -140,7 +182,8 @@ export class RespuestasCotizacionService {
     if (!respuesta) {
       throw new NotFoundException(`Respuesta de cotización con id ${id} no encontrada`);
     }
-    return this.withPrecioTotal(respuesta);
+    const [enriched] = await this.withVistas([this.withPrecioTotal(respuesta)]);
+    return enriched;
   }
 
   async findByCotizacion(cotizacionId: number) {

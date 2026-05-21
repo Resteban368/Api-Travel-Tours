@@ -12,10 +12,11 @@ import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
 import { Aerolinea } from '../aerolineas/entities/aerolinea.entity';
 import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
+import { CotizacionRespuestaVista } from './entities/cotizacion-respuesta-vista.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Cotizacion, RespuestaCotizacion, Aerolinea]),
+    TypeOrmModule.forFeature([Cotizacion, RespuestaCotizacion, Aerolinea, CotizacionRespuestaVista]),
     AuditoriaGeneralModule,
     UsuariosModule,
   ],

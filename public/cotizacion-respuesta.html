@@ -930,6 +930,12 @@
       const empArr = rEmp.ok ? await rEmp.json() : [];
       const empresa = Array.isArray(empArr) ? empArr[0] : empArr;
       render(data, empresa || {});
+
+      // Registrar vista una sola vez por sesión de navegador
+      if (!data._preview && !sessionStorage.getItem(`vista_${token}`)) {
+        sessionStorage.setItem(`vista_${token}`, '1');
+        fetch(`/v1/p/${token}/vista`, { method: 'POST' }).catch(() => {});
+      }
     } catch {
       document.getElementById('app').innerHTML = `
         <div class="state">
@@ -959,7 +965,7 @@
                 <div class="bp-fn">${v.numero_vuelo}</div>
               </div>
             </div>
-            <button class="bp-select-btn" data-flight-idx="${idx}">+ Incluir</button>
+            ${(v.costo > 0) ? `<button class="bp-select-btn" data-flight-idx="${idx}">+ Incluir</button>` : `<span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(5,150,105,.12);border-radius:20px;padding:4px 10px;letter-spacing:.02em">✓ Incluido</span>`}
           </div>
         </div>
         ${v.tiene_escala ? `
@@ -1005,7 +1011,6 @@
             <div class="bp-val">${v.numero_vuelo}</div>
           </div>
           ${v.numero_pasajeros ? `<div class="bp-foot-item"><div class="bp-lbl">Pasajeros</div><div class="bp-val">${v.numero_pasajeros}</div></div>` : ''}
-          ${v.costo != null ? `<div class="bp-foot-item"><div class="bp-lbl">Costo</div><div class="bp-val" style="color:var(--accent)">${COP(v.costo)}</div></div>` : ''}
         </div>
       </div>`;
   }
@@ -1047,6 +1052,7 @@
           </div>
         </div>
         <div class="price-row" style="border-top:1px solid var(--border);">
+          ${(h.precio_adulto != null || h.precio_menor != null) ? `
           <div class="price-cell">
             <div class="price-lbl">Por adulto</div>
             <div class="price-val">${COP(h.precio_adulto)}</div>
@@ -1059,6 +1065,12 @@
             <div class="price-lbl">Total paquete</div>
             <div class="price-val total">${COP(h.precio_total)}</div>
           </div>
+          ` : `
+          <div class="price-cell" style="flex:1;text-align:center">
+            <div class="price-lbl">Precio paquete</div>
+            <div class="price-val total">${COP(h.precio_total)}</div>
+          </div>
+          `}
         </div>
         <button class="hotel-select-btn" data-hotel-idx="${idx}">Seleccionar esta opción</button>
       </div>`;
@@ -1312,7 +1324,7 @@
         lines.push(`${tipo?`*${tipo}:*`:''} ${f.origen} -> ${f.destino}`);
         if (f.fecha)        lines.push(`  Fecha:  ${fd(f.fecha)}`);
         if (f.numero_vuelo) lines.push(`  Vuelo:  ${f.numero_vuelo}`);
-        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala||''} ${f.tiempo_escala?`(${f.tiempo_escala})`:''}`);
+        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala||''} ${f.tiempo_escala?`(${f.tiempo_escala})`:``}`);
         if (f.costo>0)      lines.push(`  Precio: ${COP(f.costo)}`);
       });
     }
@@ -1383,6 +1395,7 @@
   function updateBtnLabels() {
     document.querySelectorAll('.bp-select-btn').forEach(btn=>{
       const i=+btn.dataset.flightIdx;
+      if(!(_flights[i]?.costo>0)) return;
       btn.textContent=_selectedFlights.has(i)?'✓ Incluido':'+ Incluir';
     });
     document.querySelectorAll('.hotel-select-btn').forEach(btn=>{
@@ -1394,7 +1407,7 @@
   function initSelections(d) {
     _flights=d.vuelos||[]; _hotels=d.opciones_hotel||[];
     _adicionales=d.adicionales||[]; _cotData=d;
-    _selectedFlights=new Set(_flights.map((_,i)=>i));
+    _selectedFlights=new Set(_flights.map((_,i)=>i)); // todos incluidos por defecto
     _selectedHotels=_hotels.length>0?new Set([0]):new Set();
     _selectedAdicionales=new Set(_adicionales.map((_,i)=>i));
 
@@ -1421,7 +1434,7 @@
 
     updateBtnLabels();
 
-    const hasSelectables=_flights.length>0||_hotels.length>1;
+    const hasSelectables=_flights.some(f=>f.costo>0)||_hotels.length>1;
     if(hasSelectables){
       const backdrop=document.getElementById('hint-backdrop');
       const closeBtn=document.getElementById('hint-close');
@@ -1438,6 +1451,7 @@
       btn.addEventListener('click',e=>{
         e.stopPropagation();
         const i=+btn.dataset.flightIdx;
+        if(!(_flights[i]?.costo>0)) return; // sin precio = siempre incluido, no se toca
         const card=document.querySelector(`.bp[data-flight-idx="${i}"]`);
         if(_selectedFlights.has(i)){_selectedFlights.delete(i);card?.classList.remove('flight-selected');}
         else{_selectedFlights.add(i);card?.classList.add('flight-selected');}

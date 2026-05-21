@@ -98,11 +98,13 @@ export class OpcionHotelDto {
 
   @IsNumber()
   @Min(0)
-  precio_adulto: number;
+  @IsOptional()
+  precio_adulto?: number;
 
   @IsNumber()
   @Min(0)
-  precio_menor: number;
+  @IsOptional()
+  precio_menor?: number;
 
   @IsNumber()
   @Min(0)

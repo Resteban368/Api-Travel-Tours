@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
+import { Repository, Between, In, IsNull, Not } from 'typeorm';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
 import { RespuestaCotizacion } from '../cotizaciones/entities/respuesta-cotizacion.entity';
+import { CotizacionRespuestaVista } from '../cotizaciones/entities/cotizacion-respuesta-vista.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -23,6 +24,8 @@ export class AnalyticsService {
     private readonly toursRepo: Repository<ToursMaestro>,
     @InjectRepository(RespuestaCotizacion)
     private readonly respuestasRepo: Repository<RespuestaCotizacion>,
+    @InjectRepository(CotizacionRespuestaVista)
+    private readonly vistasRepo: Repository<CotizacionRespuestaVista>,
   ) {}
 
   private getRange(periodo: string): { start: Date; end: Date } {
@@ -91,6 +94,18 @@ export class AnalyticsService {
     const respuestasCotizacion = await this.respuestasRepo.find({
       where: { created_at: dateRange },
     });
+
+    // ── Métricas de respuestas de cotización ──────────────────────────────────
+    const respuestasConCotizacion      = respuestasCotizacion.filter(r => r.cotizacion_id !== null);
+    const respuestasSinCotizacionNoPl  = respuestasCotizacion.filter(r => r.cotizacion_id === null && !r.es_publica);
+    const idsSinCotNoPl                = respuestasSinCotizacionNoPl.map(r => r.id);
+    const vistasSinCotNoPl             = idsSinCotNoPl.length
+      ? await this.vistasRepo.createQueryBuilder('v')
+          .select('DISTINCT v.respuesta_id', 'respuesta_id')
+          .where('v.respuesta_id IN (:...ids)', { ids: idsSinCotNoPl })
+          .getRawMany()
+      : [];
+    const idsLeidas                    = new Set(vistasSinCotNoPl.map(v => Number(v.respuesta_id)));
 
     // ── Todas las reservas del período (tour + vuelo) ─────────────────────────
     const todasReservas = [...reservasTour, ...reservasVuelo];
@@ -484,6 +499,16 @@ export class AnalyticsService {
       tours_proximos: toursProximos,
 
       tours_cupos_criticos: toursCuposCriticos,
+
+      respuestas_cotizacion: {
+        total_en_periodo:              respuestasCotizacion.length,
+        con_cotizacion:                respuestasConCotizacion.length,
+        sin_cotizacion_no_plantilla:   respuestasSinCotizacionNoPl.length,
+        leidas_por_cliente:            idsLeidas.size,
+        porcentaje_leidas:             respuestasSinCotizacionNoPl.length
+          ? Math.round((idsLeidas.size / respuestasSinCotizacionNoPl.length) * 100)
+          : 0,
+      },
     };
   }
 }

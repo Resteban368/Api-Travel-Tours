@@ -13,15 +13,12 @@ import {
 import { HotelesService } from './hoteles.service';
 import { CreateHotelDto } from './dto/create-hotel.dto';
 import { UpdateHotelDto } from './dto/update-hotel.dto';
-import { Roles } from '../auth/decorators/roles.decorator';
-
 @Controller('hoteles')
 export class HotelesController {
   constructor(private readonly hotelesService: HotelesService) {}
 
   @Version('1')
   @Post()
-  @Roles('admin')
   create(@Body() dto: CreateHotelDto, @Req() req: any) {
     return this.hotelesService.create(dto, req.user?.id_usuario, req.user?.nombre);
   }
@@ -40,7 +37,6 @@ export class HotelesController {
 
   @Version('1')
   @Patch(':id')
-  @Roles('admin')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHotelDto, @Req() req: any) {
     return this.hotelesService.update(id, dto, req.user?.id_usuario, req.user?.nombre);
   }

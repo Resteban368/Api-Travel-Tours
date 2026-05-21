@@ -8,9 +8,10 @@ import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
 import { RespuestaCotizacion } from '../cotizaciones/entities/respuesta-cotizacion.entity';
+import { CotizacionRespuestaVista } from '../cotizaciones/entities/cotizacion-respuesta-vista.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PagoRealizado, Reserva, Cotizacion, Usuario, ToursMaestro, RespuestaCotizacion])],
+  imports: [TypeOrmModule.forFeature([PagoRealizado, Reserva, Cotizacion, Usuario, ToursMaestro, RespuestaCotizacion, CotizacionRespuestaVista])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })
