@@ -1,10 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, Query, Version, Req, DefaultValuePipe } from '@nestjs/common';
 import { ProveedoresService } from './proveedores.service';
 import { CreateProveedorDto, UpdateProveedorDto } from './dto/create-proveedor.dto';
-import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('proveedores')
-@RequierePermiso('proveedores')
 export class ProveedoresController {
   constructor(private readonly service: ProveedoresService) {}
 

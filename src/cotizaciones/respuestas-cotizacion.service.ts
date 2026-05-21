@@ -191,7 +191,7 @@ export class RespuestasCotizacionService {
       where: { cotizacion_id: cotizacionId },
       order: { created_at: 'DESC' },
     });
-    return rows.map((r) => this.withPrecioTotal(r));
+    return this.withVistas(rows.map((r) => this.withPrecioTotal(r)));
   }
 
   async update(id: number, dto: UpdateRespuestaCotizacionDto, usuarioId?: number, usuarioNombre?: string) {

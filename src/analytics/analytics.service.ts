@@ -427,7 +427,6 @@ export class AnalyticsService {
           monto: Number(p.monto),
           metodo_pago: p.metodo_pago,
           referencia: p.referencia,
-          proveedor_comercio: p.proveedor_comercio,
           reserva_id: p.reserva_id,
           fecha_creacion: p.fecha_creacion,
         })),

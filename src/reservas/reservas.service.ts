@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, DataSource } from 'typeorm';
+import { Repository, In, DataSource, Or } from 'typeorm';
 import { Reserva } from './entities/reserva.entity';
 import { Servicio } from '../servicios/entities/servicio.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
@@ -469,7 +469,7 @@ export class ReservasService {
       order: { fecha_creacion: 'DESC' },
     });
 
-    // 1 query batch: pagos validados de todas las reservas del cliente
+    // Pagos validados de todas las reservas (para calcular saldo)
     const reservaIds = reservas.map((r) => r.id);
     const todosPagos = reservaIds.length > 0
       ? await this.pagoRepository.find({
@@ -487,6 +487,15 @@ export class ReservasService {
       reservas.map((r) => this.transformResponseWithSaldo(r, null, false, valorCanceladoMap)),
     );
 
+    // Todos los pagos del cliente: por chat_id (teléfono) o por reservas vinculadas
+    const pagosCliente = await this.pagoRepository.find({
+      where: [
+        ...(cliente.telefono ? [{ chat_id: cliente.telefono }] : []),
+        ...(reservaIds.length > 0 ? [{ reserva_id: In(reservaIds) }] : []),
+      ],
+      order: { fecha_creacion: 'DESC' },
+    });
+
     return {
       cliente: {
         id: cliente.id,
@@ -496,6 +505,11 @@ export class ReservasService {
       },
       total_viajes: data.length,
       reservas: data,
+      pagos: pagosCliente,
+      total_pagos: pagosCliente.length,
+      total_pagado: pagosCliente
+        .filter((p) => p.is_validated)
+        .reduce((sum, p) => sum + Number(p.monto), 0),
     };
   }
 
@@ -741,8 +755,6 @@ export class ReservasService {
           id_pago: p.id_pago,
           monto: Number(p.monto),
           tipo_documento: p.tipo_documento,
-          proveedor_comercio: p.proveedor_comercio,
-          nit: p.nit,
           metodo_pago: p.metodo_pago,
           referencia: p.referencia,
           fecha_documento: p.fecha_documento,

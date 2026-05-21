@@ -2,9 +2,11 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, FindOptionsWhere, DataSource } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { PagoRealizado } from './entities/pago-realizado.entity';
 import { AuditoriaPago } from './entities/auditoria-pago.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
@@ -15,10 +17,8 @@ import { AuditoriaGeneralService } from '../auditoria-general/auditoria-general.
 /** Campos que se auditan campo-a-campo en cada PATCH */
 const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
   'chat_id',
-  'tipo_documento',
+  'entidad_tipo',
   'monto',
-  'proveedor_comercio',
-  'nit',
   'metodo_pago',
   'referencia',
   'fecha_documento',
@@ -27,6 +27,10 @@ const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
   'motivo_rechazo',
   'url_imagen',
   'reserva_id',
+  'proveedor_id',
+  'concepto',
+  'cliente_nombre',
+  'cliente_identificacion',
 ];
 
 @Injectable()
@@ -48,6 +52,29 @@ export class PagosRealizadosService {
   // ─── CREATE ───────────────────────────────────────────────────────────────
 
   async create(createDto: CreatePagoRealizadoDto, realizadoPor?: string, usuarioId?: number): Promise<PagoRealizado> {
+    // Validación de referencia según método de pago
+    if (createDto.metodo_pago !== 'efectivo' && !createDto.referencia) {
+      throw new BadRequestException('referencia es obligatoria cuando el método de pago no es efectivo');
+    }
+    if (!createDto.referencia) {
+      createDto.referencia = `EFE-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    }
+
+    // Pagos creados directamente via API quedan validados por defecto
+    createDto.is_validated = true;
+
+    // Validaciones condicionales por entidad_tipo
+    if (createDto.entidad_tipo === 'reserva') {
+      if (!createDto.reserva_id) {
+        throw new BadRequestException('reserva_id es obligatorio cuando entidad_tipo es "reserva"');
+      }
+      createDto.concepto = 'reserva';
+    } else if (createDto.entidad_tipo === 'proveedor') {
+      if (!createDto.proveedor_id) {
+        throw new BadRequestException('proveedor_id es obligatorio cuando entidad_tipo es "proveedor"');
+      }
+    }
+
     const existing = await this.pagosRepository.findOne({
       where: { referencia: createDto.referencia },
     });
@@ -58,11 +85,14 @@ export class PagosRealizadosService {
       );
     }
 
-    // Separar la FK de reserva_id para evitar conflicto con el objeto de relación en TypeORM
-    const { reserva_id, ...rest } = createDto;
+    // Separar las FKs para evitar conflicto con los objetos de relación en TypeORM
+    const { reserva_id, proveedor_id, ...rest } = createDto;
     const pago = this.pagosRepository.create(rest);
     if (reserva_id !== undefined) {
       pago.reserva_id = reserva_id ?? null;
+    }
+    if (proveedor_id !== undefined) {
+      pago.proveedor_id = proveedor_id ?? null;
     }
     const pagoCreado = await this.pagosRepository.save(pago);
 
@@ -78,7 +108,7 @@ export class PagosRealizadosService {
       modulo: 'pagos-realizados',
       operacion: 'CREAR',
       documento_id: pagoCreado.id_pago,
-      detalle: { referencia: pagoCreado.referencia, monto: pagoCreado.monto, metodo_pago: pagoCreado.metodo_pago, reserva_id: pagoCreado.reserva_id },
+      detalle: { referencia: pagoCreado.referencia, monto: pagoCreado.monto, metodo_pago: pagoCreado.metodo_pago, entidad_tipo: pagoCreado.entidad_tipo, reserva_id: pagoCreado.reserva_id, proveedor_id: pagoCreado.proveedor_id },
     });
 
     return pagoCreado;
@@ -103,8 +133,17 @@ export class PagosRealizadosService {
     }
 
     if (search) {
+      queryBuilder.leftJoin('proveedores', 'prov', 'prov.id = pago.proveedor_id');
       queryBuilder.andWhere(
-        '(pago.referencia ILIKE :search OR pago.proveedor_comercio ILIKE :search OR pago.nit ILIKE :search OR pago.tipo_documento ILIKE :search OR pago.metodo_pago ILIKE :search OR pago.chat_id ILIKE :search)',
+        `(pago.referencia ILIKE :search
+          OR pago.metodo_pago ILIKE :search
+          OR pago.chat_id ILIKE :search
+          OR pago.cliente_nombre ILIKE :search
+          OR pago.cliente_identificacion ILIKE :search
+          OR pago.concepto ILIKE :search
+          OR pago.entidad_tipo ILIKE :search
+          OR prov.nombre ILIKE :search
+          OR prov.nit ILIKE :search)`,
         { search: `%${search}%` },
       );
     }
@@ -175,14 +214,26 @@ export class PagosRealizadosService {
       }
     }
 
+    // Validaciones condicionales por entidad_tipo en update
+    if (updateDto.entidad_tipo === 'reserva' && updateDto.reserva_id === undefined && !pago.reserva_id) {
+      throw new BadRequestException('reserva_id es obligatorio cuando entidad_tipo es "reserva"');
+    }
+    if (updateDto.entidad_tipo === 'proveedor' && updateDto.proveedor_id === undefined && !pago.proveedor_id) {
+      throw new BadRequestException('proveedor_id es obligatorio cuando entidad_tipo es "proveedor"');
+    }
+    if (updateDto.entidad_tipo === 'reserva') {
+      updateDto.concepto = 'reserva';
+    }
+
     // Construir objeto de actualización sólo con los campos presentes en el DTO
     // Se usa repository.update() (SQL directo) para evitar que TypeORM sobreescriba
     // la FK reserva_id a null al hacer save() con la relación no cargada.
     const updatePayload: Partial<PagoRealizado> = {};
     const columnasDirectas: (keyof UpdatePagoRealizadoDto)[] = [
-      'chat_id', 'tipo_documento', 'monto', 'proveedor_comercio',
-      'nit', 'metodo_pago', 'referencia', 'fecha_documento',
-      'is_validated', 'is_rechazado', 'motivo_rechazo', 'url_imagen', 'reserva_id',
+      'chat_id', 'entidad_tipo', 'monto',
+      'metodo_pago', 'referencia', 'fecha_documento',
+      'is_validated', 'is_rechazado', 'motivo_rechazo', 'url_imagen',
+      'reserva_id', 'proveedor_id', 'concepto', 'cliente_nombre', 'cliente_identificacion',
     ];
     for (const campo of columnasDirectas) {
       if (campo in updateDto && updateDto[campo] !== undefined) {

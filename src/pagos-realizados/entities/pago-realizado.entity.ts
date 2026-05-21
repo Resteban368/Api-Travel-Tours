@@ -14,23 +14,17 @@ export class PagoRealizado {
   @PrimaryGeneratedColumn({ name: 'id_pago' })
   id_pago: number;
 
-  @Column({ name: 'chat_id', type: 'text' })
-  chat_id: string;
+  @Column({ name: 'chat_id', type: 'text', nullable: true })
+  chat_id: string | null;
 
   @CreateDateColumn({ name: 'fecha_creacion', type: 'timestamptz' })
   fecha_creacion: Date;
 
-  @Column({ name: 'tipo_documento', type: 'text' })
-  tipo_documento: string;
+  @Column({ name: 'tipo_documento', type: 'text', nullable: true })
+  tipo_documento: string | null;
 
   @Column({ name: 'monto', type: 'numeric', precision: 10, scale: 2 })
   monto: number;
-
-  @Column({ name: 'proveedor_comercio', type: 'text' })
-  proveedor_comercio: string;
-
-  @Column({ name: 'nit', type: 'text', nullable: true })
-  nit: string | null;
 
   @Column({ name: 'metodo_pago', type: 'text' })
   metodo_pago: string;
@@ -61,4 +55,19 @@ export class PagoRealizado {
   @Index()
   @Column({ name: 'reserva_id', type: 'integer', nullable: true })
   reserva_id: number | null;
+
+  @Column({ name: 'cliente_nombre', type: 'text', nullable: true })
+  cliente_nombre: string | null;
+
+  @Column({ name: 'cliente_identificacion', type: 'text', nullable: true })
+  cliente_identificacion: string | null;
+
+  @Column({ name: 'concepto', type: 'text', nullable: true })
+  concepto: string | null;
+
+  @Column({ name: 'entidad_tipo', type: 'text', nullable: true })
+  entidad_tipo: string | null;
+
+  @Column({ name: 'proveedor_id', type: 'integer', nullable: true })
+  proveedor_id: number | null;
 }

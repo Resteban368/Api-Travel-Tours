@@ -229,7 +229,6 @@ export class SaldosPendientesService {
           referencia: p.referencia,
           fecha_documento: p.fecha_documento,
           fecha_creacion: p.fecha_creacion,
-          proveedor_comercio: p.proveedor_comercio,
           is_validated: p.is_validated,
           is_rechazado: p.is_rechazado,
           motivo_rechazo: p.motivo_rechazo,

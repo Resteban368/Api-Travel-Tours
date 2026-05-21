@@ -95,8 +95,6 @@ OPENAI_API_KEY      # For text-embedding-3-large
 JWT_SECRET          # Access token signing
 JWT_REFRESH_SECRET  # Refresh token signing
 PORT                # Server port (default 3001)
-YCLOUD_API_KEY      # WhatsApp provider
-YCLOUD_WHATSAPP_FROM # WhatsApp sender number
 SEED_ADMIN_EMAIL    # Admin user for seed script
 SEED_ADMIN_PASSWORD # Admin user for seed script
 ```
