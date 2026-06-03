@@ -5,6 +5,7 @@ import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
 import { TourPrecio } from './entities/tour-precio.entity';
+import { TourPrecioGrupal } from './entities/tour-precio-grupal.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
@@ -28,6 +29,8 @@ export class ToursService {
     private readonly toursMaestroRepository: Repository<ToursMaestro>,
     @InjectRepository(TourPrecio)
     private readonly tourPrecioRepository: Repository<TourPrecio>,
+    @InjectRepository(TourPrecioGrupal)
+    private readonly tourPrecioGrupalRepository: Repository<TourPrecioGrupal>,
     @InjectRepository(N8nVector)
     private readonly n8nVectorsRepository: Repository<N8nVector>,
     @InjectRepository(AuditoriaTour)
@@ -58,11 +61,14 @@ export class ToursService {
       hora_partida: dto.hora_partida ?? null,
       llegada: dto.llegada ?? null,
       url_imagen: dto.url_imagen ?? null,
+      imagenes: dto.imagenes ?? null,
       link_pdf: dto.link_pdf ?? null,
       inclusions: dto.inclusions ?? null,
       exclusions: dto.exclusions ?? null,
       itinerary: dto.itinerary ?? null,
       cupos: dto.cupos ?? null,
+      tipo_tour: dto.tipo_tour,
+      modo_precio: dto.modo_precio ?? 'individual',
       es_promocion: dto.es_promocion ?? false,
       is_active: dto.is_active ?? true,
       es_borrador: dto.es_borrador ?? false,
@@ -93,6 +99,20 @@ export class ToursService {
       savedPrecios = await this.tourPrecioRepository.save(preciosEntidades);
     }
 
+    if (dto.precios_grupales && dto.precios_grupales.length > 0) {
+      const grupalesEntidades = dto.precios_grupales.map((pg) =>
+        this.tourPrecioGrupalRepository.create({
+          tour: saved,
+          min_personas: pg.min_personas,
+          max_personas: pg.max_personas,
+          precio: pg.precio,
+          descripcion: pg.descripcion ?? null,
+          activo: pg.activo ?? true,
+        }),
+      );
+      await this.tourPrecioGrupalRepository.save(grupalesEntidades);
+    }
+
     await this.auditoriaTourService.registrarCreacion(saved).catch(() => null);
     await this.auditoriaGeneralService.registrar({
       usuario_id: usuarioId ?? null,
@@ -104,7 +124,9 @@ export class ToursService {
         nombre_tour: saved.nombre_tour,
         agencia: saved.agencia,
         precio: saved.precio,
+        modo_precio: saved.modo_precio,
         precios: savedPrecios.length,
+        precios_grupales: dto.precios_grupales?.length ?? 0,
         cupos: saved.cupos,
         es_borrador: saved.es_borrador,
       },
@@ -206,6 +228,7 @@ export class ToursService {
     if (dto.hora_partida !== undefined) tour.hora_partida = dto.hora_partida;
     if (dto.llegada !== undefined) tour.llegada = dto.llegada;
     if (dto.url_imagen !== undefined) tour.url_imagen = dto.url_imagen;
+    if (dto.imagenes !== undefined) tour.imagenes = dto.imagenes;
     if (dto.link_pdf !== undefined) tour.link_pdf = dto.link_pdf;
     if (dto.inclusions !== undefined) tour.inclusions = dto.inclusions;
     if (dto.exclusions !== undefined) tour.exclusions = dto.exclusions;
@@ -218,6 +241,10 @@ export class ToursService {
     }
     track('cupos', tour.cupos, dto.cupos);
     if (dto.cupos !== undefined) tour.cupos = dto.cupos ?? null;
+    track('tipo_tour', tour.tipo_tour, dto.tipo_tour);
+    if (dto.tipo_tour !== undefined) tour.tipo_tour = dto.tipo_tour;
+    track('modo_precio', tour.modo_precio, dto.modo_precio);
+    if (dto.modo_precio !== undefined) tour.modo_precio = dto.modo_precio;
     track('es_borrador', tour.es_borrador, dto.es_borrador);
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
@@ -264,6 +291,24 @@ export class ToursService {
           }),
         );
         await this.tourPrecioRepository.save(preciosEntidades);
+      }
+    }
+
+    // Reemplazar precios grupales si se enviaron en el DTO
+    if (dto.precios_grupales !== undefined) {
+      await this.tourPrecioGrupalRepository.delete({ tour: { id: saved.id } });
+      if (dto.precios_grupales.length > 0) {
+        const grupalesEntidades = dto.precios_grupales.map((pg) =>
+          this.tourPrecioGrupalRepository.create({
+            tour: saved,
+            min_personas: pg.min_personas,
+            max_personas: pg.max_personas,
+            precio: pg.precio,
+            descripcion: pg.descripcion ?? null,
+            activo: pg.activo ?? true,
+          }),
+        );
+        await this.tourPrecioGrupalRepository.save(grupalesEntidades);
       }
     }
 
@@ -422,7 +467,7 @@ export class ToursService {
         .addSelect('t.id', 'tour_id')
         .addSelect('COUNT(i.id)', 'integrantes_count')
         .where('t.id IN (:...tourIds)', { tourIds })
-        .andWhere('r.estado != :cancelado', { cancelado: 'cancelado' })
+        .andWhere('r.estado NOT IN (:...estadosCancelados)', { estadosCancelados: ['cancelado', 'cancelada'] })
         .groupBy('r.id')
         .addGroupBy('r.estado')
         .addGroupBy('t.id')
@@ -582,7 +627,7 @@ export class ToursService {
       .addSelect('COUNT(r.id)', 'count')
       .innerJoin('r.tour', 't')
       .where('t.id = :tourId', { tourId })
-      .andWhere('r.estado != :estado', { estado: 'cancelado' })
+      .andWhere('r.estado NOT IN (:...estadosCancelados)', { estadosCancelados: ['cancelado', 'cancelada'] })
       .andWhere('r.bus_layout_id IS NOT NULL')
       .groupBy('r.bus_layout_id')
       .getRawMany();
@@ -901,7 +946,8 @@ export class ToursService {
     const reservasDetalle = reservas.map((r) => {
         const valor_cancelado = montoPorReserva.get(r.id) ?? 0;
         const tienePageValidado = reservasConPago.has(r.id);
-        const ocupaCupo = r.estado === 'al dia' || (r.estado !== 'cancelado' && tienePageValidado);
+        const esCancelada = ['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? '');
+        const ocupaCupo = r.estado === 'al dia' || (!esCancelada && tienePageValidado);
 
         const valor_total = Number(r.valor_total);
         const costo_servicios = (r.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
@@ -984,7 +1030,7 @@ export class ToursService {
     // Calcular asientos ocupados por bus usando asientos confirmados reales
     const busReservaIds = new Map<number, number[]>();
     for (const r of reservas) {
-      if (r.bus_layout_id && r.estado !== 'cancelado') {
+      if (r.bus_layout_id && !['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? '')) {
         const ids = busReservaIds.get(r.bus_layout_id) ?? [];
         ids.push(r.id);
         busReservaIds.set(r.bus_layout_id, ids);
@@ -1022,7 +1068,7 @@ export class ToursService {
       where: { tour: { id: tourId } },
     });
 
-    const activas = reservas.filter((r) => r.estado !== 'cancelado');
+    const activas = reservas.filter((r) => !['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? ''));
     if (activas.length === 0) return 0;
 
     // Una sola query: reservas pendientes que tienen al menos un pago validado
@@ -1187,4 +1233,5 @@ export class ToursService {
       similarity: parseFloat(String(raw.raw[i]?.similarity ?? '0')),
     }));
   }
+
 }

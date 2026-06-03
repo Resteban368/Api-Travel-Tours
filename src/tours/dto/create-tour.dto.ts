@@ -10,9 +10,32 @@ import {
   ArrayMinSize,
   IsISO8601,
   IsInt,
+  IsIn,
   Min,
   ValidateNested,
 } from 'class-validator';
+
+export class TourPrecioGrupalDto {
+  @IsInt({ message: 'min_personas debe ser un número entero' })
+  @Min(1, { message: 'min_personas debe ser al menos 1' })
+  min_personas: number;
+
+  @IsInt({ message: 'max_personas debe ser un número entero' })
+  @Min(1, { message: 'max_personas debe ser al menos 1' })
+  max_personas: number;
+
+  @IsNumber({}, { message: 'precio debe ser un número' })
+  @Min(0, { message: 'precio debe ser mayor o igual a 0' })
+  precio: number;
+
+  @IsString({ message: 'descripcion debe ser un texto' })
+  @IsOptional()
+  descripcion?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  activo?: boolean;
+}
 
 export class TourPrecioDto {
   @IsString({ message: 'La descripción del precio debe ser un texto' })
@@ -68,6 +91,13 @@ export class CreateTourDto {
   })
   nombre_tour: string;
 
+  @IsString()
+  @IsIn(['terrestre', 'pasadia', 'aereo', 'combinado'], {
+    message: 'tipo_tour debe ser: terrestre, pasadia, aereo o combinado',
+  })
+  @IsNotEmpty({ message: 'El tipo de tour es obligatorio' })
+  tipo_tour: string;
+
   @IsString({ message: 'La agencia debe ser un texto' })
   @IsOptional()
   agencia?: string;
@@ -103,6 +133,11 @@ export class CreateTourDto {
   @IsString({ message: 'La URL de la imagen debe ser un texto' })
   @IsOptional()
   url_imagen?: string;
+
+  @IsArray({ message: 'imagenes debe ser un arreglo' })
+  @IsString({ each: true, message: 'Cada imagen debe ser un texto' })
+  @IsOptional()
+  imagenes?: string[];
 
   @IsString({ message: 'El link del PDF debe ser un texto' })
   @IsNotEmpty({ message: 'El link del PDF es obligatorio' })
@@ -156,4 +191,17 @@ export class CreateTourDto {
   @IsInt({ each: true, message: 'Cada bus_layout_id debe ser un número entero' })
   @IsOptional()
   bus_layout_ids?: number[];
+
+  @IsString()
+  @IsIn(['individual', 'grupal', 'pareja'], {
+    message: 'modo_precio debe ser: individual, grupal o pareja',
+  })
+  @IsOptional()
+  modo_precio?: 'individual' | 'grupal' | 'pareja';
+
+  @IsArray({ message: 'precios_grupales debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => TourPrecioGrupalDto)
+  @IsOptional()
+  precios_grupales?: TourPrecioGrupalDto[];
 }

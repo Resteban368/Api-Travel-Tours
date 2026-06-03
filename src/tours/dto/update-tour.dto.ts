@@ -5,14 +5,16 @@ import {
   IsNumber,
   IsBoolean,
   IsInt,
+  IsIn,
   MaxLength,
   IsArray,
   IsNotEmpty,
   ArrayMinSize,
   IsISO8601,
   ValidateNested,
+  Min,
 } from 'class-validator';
-import { ItineraryDayDto, TourPrecioDto } from './create-tour.dto';
+import { ItineraryDayDto, TourPrecioDto, TourPrecioGrupalDto } from './create-tour.dto';
 
 export class UpdateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
@@ -25,6 +27,13 @@ export class UpdateTourDto {
     message: 'El nombre del tour no puede superar los 500 caracteres',
   })
   nombre_tour?: string;
+
+  @IsString()
+  @IsIn(['terrestre', 'pasadia', 'aereo', 'combinado'], {
+    message: 'tipo_tour debe ser: terrestre, pasadia, aereo o combinado',
+  })
+  @IsOptional()
+  tipo_tour?: string;
 
   @IsString({ message: 'La agencia debe ser un texto' })
   @IsOptional()
@@ -61,6 +70,11 @@ export class UpdateTourDto {
   @IsString({ message: 'La URL de la imagen debe ser un texto' })
   @IsOptional()
   url_imagen?: string;
+
+  @IsArray({ message: 'imagenes debe ser un arreglo' })
+  @IsString({ each: true, message: 'Cada imagen debe ser un texto' })
+  @IsOptional()
+  imagenes?: string[];
 
   @IsString({ message: 'El link del PDF debe ser un texto' })
   @IsOptional()
@@ -112,4 +126,17 @@ export class UpdateTourDto {
   @IsInt({ each: true, message: 'Cada bus_layout_id debe ser un número entero' })
   @IsOptional()
   bus_layout_ids?: number[];
+
+  @IsString()
+  @IsIn(['individual', 'grupal', 'pareja'], {
+    message: 'modo_precio debe ser: individual, grupal o pareja',
+  })
+  @IsOptional()
+  modo_precio?: 'individual' | 'grupal' | 'pareja';
+
+  @IsArray({ message: 'precios_grupales debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => TourPrecioGrupalDto)
+  @IsOptional()
+  precios_grupales?: TourPrecioGrupalDto[];
 }

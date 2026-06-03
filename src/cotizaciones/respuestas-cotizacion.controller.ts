@@ -27,7 +27,7 @@ export class RespuestasCotizacionController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Req() req?: any,
   ) {
-    return this.service.findPlantillas(req.user?.id_usuario, page, limit);
+    return this.service.findPlantillas(req.user?.id_usuario, page, limit, req.user?.rol);
   }
 
   @Version('1')
@@ -39,7 +39,7 @@ export class RespuestasCotizacionController {
     @Req() req?: any,
   ) {
     const isSinCotizacion = sinCotizacion === 'true';
-    return this.service.findAll(isSinCotizacion, req.user?.id_usuario, page, limit);
+    return this.service.findAll(isSinCotizacion, req.user?.id_usuario, page, limit, req.user?.rol);
   }
 
   @Version('1')

@@ -128,7 +128,7 @@ export class RespuestasCotizacionService {
     return this.withPrecioTotal(saved);
   }
 
-  async findAll(isSinCotizacion?: boolean, usuarioId?: number, page = 1, limit = 20) {
+  async findAll(isSinCotizacion?: boolean, usuarioId?: number, page = 1, limit = 20, rol?: string) {
     const qb = this.respuestaRepo.createQueryBuilder('respuesta')
       .where('respuesta.es_publica = false')
       .orderBy('respuesta.anclada', 'DESC')
@@ -138,7 +138,7 @@ export class RespuestasCotizacionService {
       qb.andWhere('respuesta.cotizacion_id IS NULL');
     }
 
-    if (usuarioId) {
+    if (usuarioId && rol !== 'admin') {
       qb.andWhere('respuesta.creado_por_id = :usuarioId', { usuarioId });
     }
 
@@ -155,13 +155,13 @@ export class RespuestasCotizacionService {
     };
   }
 
-  async findPlantillas(usuarioId?: number, page = 1, limit = 20) {
+  async findPlantillas(usuarioId?: number, page = 1, limit = 20, rol?: string) {
     const qb = this.respuestaRepo.createQueryBuilder('respuesta')
       .where('respuesta.es_publica = true')
       .orderBy('respuesta.anclada', 'DESC')
       .addOrderBy('respuesta.created_at', 'DESC');
 
-    if (usuarioId) {
+    if (usuarioId && rol !== 'admin') {
       qb.andWhere('respuesta.creado_por_id = :usuarioId', { usuarioId });
     }
 

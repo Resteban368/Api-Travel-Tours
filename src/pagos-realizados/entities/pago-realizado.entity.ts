@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { Reserva } from '../../reservas/entities/reserva.entity';
+import { Sede } from '../../sedes/entities/sede.entity';
 
 @Entity('pagos_realizados')
 export class PagoRealizado {
@@ -70,4 +71,12 @@ export class PagoRealizado {
 
   @Column({ name: 'proveedor_id', type: 'integer', nullable: true })
   proveedor_id: number | null;
+
+  @Index()
+  @Column({ name: 'sede_id', type: 'integer', nullable: true })
+  sede_id: number | null;
+
+  @ManyToOne(() => Sede, { nullable: true, eager: false })
+  @JoinColumn({ name: 'sede_id' })
+  sede: Sede | null;
 }

@@ -1359,7 +1359,7 @@
       // ── Init ─────────────────────────────────────────────────────────────
       async function init() {
         // Info empresa para navbar
-        fetch('/v1/info-empresa')
+        fetch('/v1/info-empresa/publica')
           .then((r) => r.json())
           .then((d) => {
             if (d.nombre)

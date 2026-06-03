@@ -31,6 +31,7 @@ const CAMPOS_AUDITABLES: (keyof UpdatePagoRealizadoDto)[] = [
   'concepto',
   'cliente_nombre',
   'cliente_identificacion',
+  'sede_id',
 ];
 
 @Injectable()
@@ -86,14 +87,11 @@ export class PagosRealizadosService {
     }
 
     // Separar las FKs para evitar conflicto con los objetos de relación en TypeORM
-    const { reserva_id, proveedor_id, ...rest } = createDto;
+    const { reserva_id, proveedor_id, sede_id, ...rest } = createDto;
     const pago = this.pagosRepository.create(rest);
-    if (reserva_id !== undefined) {
-      pago.reserva_id = reserva_id ?? null;
-    }
-    if (proveedor_id !== undefined) {
-      pago.proveedor_id = proveedor_id ?? null;
-    }
+    if (reserva_id !== undefined) pago.reserva_id = reserva_id ?? null;
+    if (proveedor_id !== undefined) pago.proveedor_id = proveedor_id ?? null;
+    if (sede_id !== undefined) pago.sede_id = sede_id ?? null;
     const pagoCreado = await this.pagosRepository.save(pago);
 
     // Auditoría de CREACIÓN
@@ -116,10 +114,12 @@ export class PagosRealizadosService {
 
   // ─── READ ─────────────────────────────────────────────────────────────────
 
-  async findAll(startDate?: string, endDate?: string, page = 1, limit = 50, search?: string) {
+  async findAll(startDate?: string, endDate?: string, page = 1, limit = 50, search?: string, fechaDocDesde?: string, fechaDocHasta?: string) {
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.pagosRepository.createQueryBuilder('pago');
+    const queryBuilder = this.pagosRepository
+      .createQueryBuilder('pago')
+      .leftJoinAndSelect('pago.sede', 'sede');
 
     if (startDate && endDate) {
       queryBuilder.andWhere('pago.fecha_creacion BETWEEN :start AND :end', {
@@ -130,6 +130,14 @@ export class PagosRealizadosService {
       queryBuilder.andWhere('pago.fecha_creacion >= :start', {
         start: new Date(startDate),
       });
+    }
+
+    if (fechaDocDesde) {
+      queryBuilder.andWhere('pago.fecha_documento >= :fechaDocDesde', { fechaDocDesde });
+    }
+
+    if (fechaDocHasta) {
+      queryBuilder.andWhere('pago.fecha_documento <= :fechaDocHasta', { fechaDocHasta });
     }
 
     if (search) {
@@ -159,6 +167,7 @@ export class PagosRealizadosService {
   async findOne(id: number): Promise<PagoRealizado> {
     const pago = await this.pagosRepository.findOne({
       where: { id_pago: id },
+      relations: ['sede'],
     });
     if (!pago) {
       throw new NotFoundException(`Pago con ID ${id} no encontrado`);
@@ -234,6 +243,7 @@ export class PagosRealizadosService {
       'metodo_pago', 'referencia', 'fecha_documento',
       'is_validated', 'is_rechazado', 'motivo_rechazo', 'url_imagen',
       'reserva_id', 'proveedor_id', 'concepto', 'cliente_nombre', 'cliente_identificacion',
+      'sede_id',
     ];
     for (const campo of columnasDirectas) {
       if (campo in updateDto && updateDto[campo] !== undefined) {

@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { Sede } from '../../sedes/entities/sede.entity';
 import { TourPrecio } from './tour-precio.entity';
+import { TourPrecioGrupal } from './tour-precio-grupal.entity';
 import { BusLayout } from '../../bus-layouts/entities/bus-layout.entity';
 
 @Entity('tours_maestro')
@@ -58,6 +59,9 @@ export class ToursMaestro {
   @Column({ name: 'url_imagen', type: 'text', nullable: true })
   url_imagen: string | null;
 
+  @Column({ name: 'imagenes', type: 'jsonb', nullable: true, default: null })
+  imagenes: string[] | null;
+
   @Column({ name: 'link_pdf', type: 'text', nullable: true })
   link_pdf: string | null;
 
@@ -72,6 +76,13 @@ export class ToursMaestro {
 
   @Column({ name: 'cupos', type: 'int', nullable: true, default: null })
   cupos: number | null;
+
+  @Column({ name: 'tipo_tour', type: 'text', nullable: true, default: null })
+  tipo_tour: string | null;
+
+  // 'individual' = precio por persona | 'pareja' = precio por pareja | 'grupal' = precio fijo por rango
+  @Column({ name: 'modo_precio', type: 'text', default: 'individual' })
+  modo_precio: 'individual' | 'grupal' | 'pareja';
 
   @Column({ name: 'es_promocion', type: 'boolean', default: false })
   es_promocion: boolean;
@@ -112,4 +123,7 @@ export class ToursMaestro {
 
   @OneToMany(() => TourPrecio, (precio) => precio.tour, { eager: true, cascade: true })
   precios: TourPrecio[];
+
+  @OneToMany(() => TourPrecioGrupal, (pg) => pg.tour, { eager: true, cascade: true })
+  precios_grupales: TourPrecioGrupal[];
 }

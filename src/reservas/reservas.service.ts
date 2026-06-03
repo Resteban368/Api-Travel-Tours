@@ -57,7 +57,10 @@ export class ReservasService {
     let tour: ToursMaestro | null = null;
     if (tipoReserva === 'tour') {
       if (!dto.id_tour) throw new BadRequestException('id_tour es requerido para reservas de tipo tour');
-      tour = await this.tourRepository.findOne({ where: { id: dto.id_tour } });
+      tour = await this.tourRepository.findOne({
+        where: { id: dto.id_tour },
+        relations: ['precios_grupales'],
+      });
       if (!tour) throw new NotFoundException(`Tour con ID ${dto.id_tour} no encontrado`);
     }
 
@@ -88,19 +91,33 @@ export class ReservasService {
 
     if (tipoReserva === 'tour' && tour) {
       const costoServicios = serviciosAdicionales.reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+      // Backward compat: si no tiene modo_precio explícito, inferir del flag legacy
+      const modoPrecio = tour.modo_precio ?? (tour.precio_por_pareja ? 'pareja' : 'individual');
       const usaPreciosCategorias =
         dto.precio_responsable_aplicado != null ||
         (dto.integrantes ?? []).some((i) => i.precio_aplicado != null);
 
-      if (usaPreciosCategorias) {
+      if (modoPrecio === 'grupal') {
+        const grupoActivo = (tour.precios_grupales ?? [])
+          .filter((pg) => pg.activo)
+          .find((pg) => totalPersonas >= pg.min_personas && totalPersonas <= pg.max_personas);
+
+        if (!grupoActivo) {
+          throw new BadRequestException(
+            `El tour no tiene un precio grupal definido para ${totalPersonas} persona(s). Verifica los rangos del tour.`,
+          );
+        }
+        valorSinDescuento = Number(grupoActivo.precio) + costoServicios;
+        if (!dto.valor_total || dto.valor_total <= 0) {
+          valorTotalCalculado = valorSinDescuento;
+        }
+      } else if (usaPreciosCategorias) {
         const precioResp = dto.precio_responsable_aplicado ?? 0;
         const ints = dto.integrantes ?? [];
         let precioTotal: number;
         let unidades: number;
 
-        if (tour.precio_por_pareja) {
-          // Responsable + integrante[0] = pareja 1 → precio_responsable_aplicado
-          // integrante[1] + integrante[2] = pareja 2 → integrante[1].precio_aplicado, etc.
+        if (modoPrecio === 'pareja') {
           unidades = Math.ceil(totalPersonas / 2);
           precioTotal = precioResp;
           for (let i = 1; i < ints.length; i += 2) {
@@ -117,7 +134,7 @@ export class ReservasService {
         }
       } else {
         const precio = Number(tour.precio ?? 0);
-        const unidades = tour.precio_por_pareja ? Math.ceil(totalPersonas / 2) : totalPersonas;
+        const unidades = modoPrecio === 'pareja' ? Math.ceil(totalPersonas / 2) : totalPersonas;
         valorSinDescuento = precio * unidades + costoServicios;
         if (!dto.valor_total || dto.valor_total <= 0) {
           valorTotalCalculado = valorSinDescuento - descuentoPorPersona * unidades;
@@ -194,13 +211,27 @@ export class ReservasService {
     return advertencia_cupos ? { ...full, advertencia_cupos } : full;
   }
 
-  async findAll(page = 1, limit = 50, search?: string) {
+  async findAll(page = 1, limit = 50, search?: string, estado?: string, fechaDesde?: string, fechaHasta?: string) {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.reservaRepository.createQueryBuilder('reserva')
       .leftJoinAndSelect('reserva.responsable', 'responsable')
       .leftJoinAndSelect('reserva.tour', 'tour')
       .leftJoinAndSelect('reserva.integrantes', 'integrantes');
+
+    if (estado) {
+      queryBuilder.andWhere('reserva.estado = :estado', { estado });
+    }
+
+    if (fechaDesde) {
+      queryBuilder.andWhere('reserva.fecha_creacion >= :fechaDesde', { fechaDesde: new Date(fechaDesde) });
+    }
+
+    if (fechaHasta) {
+      const hasta = new Date(fechaHasta);
+      hasta.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('reserva.fecha_creacion <= :fechaHasta', { fechaHasta: hasta });
+    }
 
     if (search) {
       queryBuilder.andWhere(
@@ -513,6 +544,103 @@ export class ReservasService {
     };
   }
 
+  async removeIntegrante(reservaId: number, integranteId: number, realizadoPor?: string, usuarioId?: number) {
+    const reserva = await this.reservaRepository.findOne({
+      where: { id: reservaId },
+      relations: ['integrantes', 'tour', 'servicios', 'vuelos', 'hoteles'],
+    });
+    if (!reserva) throw new NotFoundException(`Reserva con ID ${reservaId} no encontrada`);
+
+    const integrante = await this.integranteRepository.findOne({
+      where: { id: integranteId, reserva: { id: reservaId } },
+    });
+    if (!integrante) throw new NotFoundException(`Integrante con ID ${integranteId} no encontrado en esta reserva`);
+
+    const nombreIntegrante = integrante.nombre;
+    const ocupabaAsiento = integrante.ocupa_asiento !== false;
+
+    // Calcular nuevos valores ANTES de iniciar la transacción (solo lectura)
+    const integrantes = (reserva.integrantes ?? []).filter((i) => i.id !== integranteId);
+    const newPersonas = 1 + integrantes.length;
+    let nuevoValorSinDescuento = Number(reserva.valor_sin_descuento);
+    let nuevoValorTotal = Number(reserva.valor_total);
+
+    if (reserva.tipo_reserva === 'tour' && reserva.tour) {
+      const precioPorPareja = reserva.tour.precio_por_pareja ?? false;
+      const newUnits = precioPorPareja ? Math.ceil(newPersonas / 2) : newPersonas;
+      const oldPersonas = 1 + (reserva.integrantes?.length ?? 0);
+      const oldUnits = precioPorPareja ? Math.ceil(oldPersonas / 2) : oldPersonas;
+      const serviciosCost = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+
+      const usaPreciosCategorias =
+        reserva.precio_responsable_aplicado != null ||
+        integrantes.some((i) => i.precio_aplicado != null);
+
+      if (usaPreciosCategorias) {
+        const precioResp = Number(reserva.precio_responsable_aplicado ?? 0);
+        let precioTotal: number;
+        let unidades: number;
+        if (precioPorPareja) {
+          unidades = Math.ceil(newPersonas / 2);
+          precioTotal = precioResp;
+          for (let i = 1; i < integrantes.length; i += 2) {
+            precioTotal += Number(integrantes[i].precio_aplicado ?? 0);
+          }
+        } else {
+          unidades = newPersonas;
+          precioTotal = precioResp + integrantes.reduce((sum, i) => sum + Number(i.precio_aplicado ?? 0), 0);
+        }
+        const descuento = Number(reserva.descuento_por_persona ?? 0);
+        nuevoValorSinDescuento = precioTotal + serviciosCost;
+        nuevoValorTotal = nuevoValorSinDescuento - descuento * unidades;
+      } else {
+        const tourSubtotalSnapshot = Number(reserva.valor_sin_descuento) - serviciosCost;
+        const precioUnitSnapshot = oldUnits > 0 ? tourSubtotalSnapshot / oldUnits : Number(reserva.tour.precio ?? 0);
+        const descuento = Number(reserva.descuento_por_persona ?? 0);
+        nuevoValorSinDescuento = precioUnitSnapshot * newUnits + serviciosCost;
+        nuevoValorTotal = nuevoValorSinDescuento - descuento * newUnits;
+      }
+    } else if (reserva.tipo_reserva === 'vuelos') {
+      const totalVuelos = (reserva.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
+      const totalHoteles = (reserva.hoteles ?? []).reduce((sum, h) => sum + Number((h as any).valor ?? 0), 0);
+      const totalServicios = (reserva.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+      nuevoValorSinDescuento = totalVuelos + totalHoteles + totalServicios;
+      nuevoValorTotal = nuevoValorSinDescuento;
+    }
+
+    // Transacción: eliminar integrante y actualizar totales son atómicos.
+    // Si el servidor cae entre los dos, ninguno queda a medias.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.remove(integrante);
+      await manager.update(Reserva, { id: reservaId }, {
+        valor_total: nuevoValorTotal,
+        valor_sin_descuento: nuevoValorSinDescuento,
+      });
+    });
+
+    // Liberar asiento más lejano (fuera de la tx: si falla, el valor_total ya está correcto
+    // y el asiento extra se puede corregir manualmente sin riesgo financiero)
+    let asiento_liberado: string | null = null;
+    if (ocupabaAsiento) {
+      asiento_liberado = await this.seleccionAsientosService.liberarAsientoMasLejano(reservaId);
+    }
+
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: usuarioId ?? null,
+      usuario_nombre: realizadoPor ?? null,
+      modulo: 'reservas',
+      operacion: 'ACTUALIZAR',
+      documento_id: reservaId,
+      detalle: { accion: 'eliminar_integrante', integrante: nombreIntegrante, nuevo_valor_total: nuevoValorTotal, asiento_liberado },
+    });
+
+    return {
+      message: `Integrante "${nombreIntegrante}" eliminado correctamente`,
+      nuevo_valor_total: nuevoValorTotal,
+      asiento_liberado,
+    };
+  }
+
   async cambiarEstado(id: number, nuevoEstado: string, realizadoPor?: string) {
     const reserva = await this.reservaRepository.findOne({ where: { id } });
     if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
@@ -520,6 +648,13 @@ export class ReservasService {
     const estadoAnterior = reserva.estado;
     reserva.estado = nuevoEstado;
     const saved = await this.reservaRepository.save(reserva);
+
+    // Al cancelar, liberar todos los asientos para que queden disponibles en el bus
+    const esCancelacion = ['cancelada', 'cancelado'].includes(nuevoEstado.toLowerCase());
+    if (esCancelacion) {
+      await this.seleccionAsientosService.limpiarAsientos(id);
+    }
+
     await this.auditoriaService.registrarCambioEstado(saved, estadoAnterior, nuevoEstado, realizadoPor);
     await this.auditoriaGeneralService.registrar({
       usuario_id: null,
@@ -530,6 +665,7 @@ export class ReservasService {
       detalle: {
         antes: { id_reserva: reserva.id_reserva, estado: estadoAnterior },
         despues: { id_reserva: saved.id_reserva, estado: nuevoEstado },
+        asientos_liberados: esCancelacion,
       },
     });
     return this.transformResponseWithSaldo(saved);
@@ -587,7 +723,7 @@ export class ReservasService {
     const reservas = await this.reservaRepository.find({
       where: { tour: { id: tourId } },
     });
-    const activas = reservas.filter((r) => r.estado !== 'cancelado');
+    const activas = reservas.filter((r) => !['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? ''));
     if (activas.length === 0) return 0;
 
     const pendientesIds = activas

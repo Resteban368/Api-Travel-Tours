@@ -28,6 +28,9 @@ export class Servicio {
   @Column({ name: 'id_sede', type: 'integer' })
   id_sede: number;
 
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  imagenes: string[] | null;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

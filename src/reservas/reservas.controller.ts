@@ -38,8 +38,11 @@ export class ReservasController {
     @Query('page') page = '1',
     @Query('limit') limit = '50',
     @Query('search') search?: string,
+    @Query('estado') estado?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
   ) {
-    return this.reservasService.findAll(parseInt(page), parseInt(limit), search);
+    return this.reservasService.findAll(parseInt(page), parseInt(limit), search, estado, fechaDesde, fechaHasta);
   }
 
   @Version('1')
@@ -102,6 +105,16 @@ export class ReservasController {
   @Get(':id/auditoria')
   obtenerAuditoria(@Param('id', ParseIntPipe) id: number) {
     return this.reservasService.obtenerAuditoria(id);
+  }
+
+  @Version('1')
+  @Delete(':id/integrantes/:integranteId')
+  removeIntegrante(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('integranteId', ParseIntPipe) integranteId: number,
+    @Req() req: any,
+  ) {
+    return this.reservasService.removeIntegrante(id, integranteId, req.user?.nombre || req.user?.email, req.user?.id_usuario);
   }
 
   @Version('1')

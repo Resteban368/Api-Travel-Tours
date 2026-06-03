@@ -4,6 +4,8 @@ import {
   IsNumber,
   IsOptional,
   IsBoolean,
+  IsArray,
+  IsUrl,
 } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 
@@ -23,6 +25,11 @@ export class CreateServicioDto {
   @IsNumber({}, { message: 'El ID de la sede debe ser un número' })
   @IsNotEmpty({ message: 'El ID de la sede es obligatorio' })
   id_sede: number;
+
+  @IsArray({ message: 'imagenes debe ser un arreglo' })
+  @IsUrl({}, { each: true, message: 'Cada imagen debe ser una URL válida' })
+  @IsOptional()
+  imagenes?: string[];
 
   @IsBoolean({ message: 'El estado activo debe ser un booleano' })
   @IsOptional()

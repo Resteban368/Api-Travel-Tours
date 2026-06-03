@@ -15,7 +15,14 @@ export class HotelesService {
   ) {}
 
   async create(dto: CreateHotelDto, usuarioId?: number, usuarioNombre?: string): Promise<Hotel> {
-    const hotel = this.hotelesRepository.create(dto);
+    const hotel = this.hotelesRepository.create({
+      nombre: dto.nombre,
+      telefono: dto.telefono ?? null,
+      ciudad: dto.ciudad,
+      direccion: dto.direccion ?? null,
+      imagenes: dto.imagenes ?? null,
+      habitaciones: dto.habitaciones ?? null,
+    });
     const saved = await this.hotelesRepository.save(hotel);
     await this.auditoriaService.registrar({
       usuario_id: usuarioId,
@@ -23,7 +30,7 @@ export class HotelesService {
       modulo: 'hoteles',
       operacion: 'CREAR',
       documento_id: saved.id,
-      detalle: { nombre: saved.nombre, ciudad: saved.ciudad, telefono: saved.telefono, direccion: saved.direccion },
+      detalle: { nombre: saved.nombre, ciudad: saved.ciudad },
     });
     return saved;
   }
@@ -43,17 +50,22 @@ export class HotelesService {
 
   async update(id: number, dto: UpdateHotelDto, usuarioId?: number, usuarioNombre?: string): Promise<Hotel> {
     const hotel = await this.findOne(id);
-    const antes = { nombre: hotel.nombre, ciudad: hotel.ciudad, telefono: hotel.telefono, direccion: hotel.direccion, is_active: hotel.is_active };
-    Object.assign(hotel, dto);
+    const antes = { nombre: hotel.nombre, ciudad: hotel.ciudad, is_active: hotel.is_active };
+    if (dto.nombre !== undefined) hotel.nombre = dto.nombre;
+    if (dto.telefono !== undefined) hotel.telefono = dto.telefono;
+    if (dto.ciudad !== undefined) hotel.ciudad = dto.ciudad;
+    if (dto.direccion !== undefined) hotel.direccion = dto.direccion;
+    if (dto.imagenes !== undefined) hotel.imagenes = dto.imagenes;
+    if (dto.habitaciones !== undefined) hotel.habitaciones = dto.habitaciones;
+    if (dto.is_active !== undefined) hotel.is_active = dto.is_active;
     const saved = await this.hotelesRepository.save(hotel);
-    const despues = { nombre: saved.nombre, ciudad: saved.ciudad, telefono: saved.telefono, direccion: saved.direccion, is_active: saved.is_active };
     await this.auditoriaService.registrar({
       usuario_id: usuarioId,
       usuario_nombre: usuarioNombre,
       modulo: 'hoteles',
       operacion: 'ACTUALIZAR',
       documento_id: id,
-      detalle: { antes, despues },
+      detalle: { antes, despues: { nombre: saved.nombre, ciudad: saved.ciudad, is_active: saved.is_active } },
     });
     return saved;
   }

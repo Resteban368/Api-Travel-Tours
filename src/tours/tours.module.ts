@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ToursMaestro } from './entities/tours-maestro.entity';
 import { TourPrecio } from './entities/tour-precio.entity';
+import { TourPrecioGrupal } from './entities/tour-precio-grupal.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
@@ -16,7 +17,7 @@ import { SeleccionAsientosModule } from '../seleccion-asientos/seleccion-asiento
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout]),
+    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, TourPrecioGrupal, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout]),
     EmbeddingsModule,
     AuditoriaGeneralModule,
     SeleccionAsientosModule,

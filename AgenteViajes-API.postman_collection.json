@@ -1,0 +1,1885 @@
+{
+  "info": {
+    "name": "Agente Viajes API",
+    "description": "Colección completa de la API REST para la agencia de viajes. Base URL: {{baseUrl}}/v1\n\n**Autenticación:** Bearer Token. Ejecuta POST /v1/auth/login y guarda el access_token en la variable de entorno `token`.\n\n**Rutas públicas:** auth/login, auth/refresh, info-empresa/publica, cotizacion-form, seleccion, p/:token",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "Access token JWT (se obtiene con POST /v1/auth/login)"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Refresh token (se obtiene con POST /v1/auth/login)"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.access_token) {",
+                  "  pm.collectionVariables.set('token', res.access_token);",
+                  "}",
+                  "if (res.refresh_token) {",
+                  "  pm.collectionVariables.set('refreshToken', res.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@agencia.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "login"] },
+            "description": "Autenticación. Rate limit: 5 intentos/min. El script guarda automáticamente el token en las variables de colección."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "refresh"] },
+            "description": "Renueva el access_token usando el refresh_token. Rate limit: 10/min."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "logout"] },
+            "description": "Invalida todos los tokens del usuario autenticado."
+          }
+        },
+        {
+          "name": "Mi Perfil (me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "me"] },
+            "description": "Devuelve los datos del usuario autenticado."
+          }
+        },
+        {
+          "name": "Cambiar Contraseña",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"oldPassword123\",\n  \"new_password\": \"newPassword456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/change-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "change-password"] }
+          }
+        },
+        {
+          "name": "Registrar Usuario (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan Pérez\",\n  \"email\": \"juan@agencia.com\",\n  \"password\": \"password123\",\n  \"rol\": \"agente\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "register"] },
+            "description": "Solo admin. rol: admin | agente"
+          }
+        },
+        {
+          "name": "Historial Sesiones por Usuario (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/auth/sesiones/1", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "sesiones", "1"] },
+            "description": "Solo admin. Historial de sesiones de un usuario específico."
+          }
+        },
+        {
+          "name": "Sesiones del Día (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/sesiones?fecha=2026-06-03",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "sesiones"],
+              "query": [{ "key": "fecha", "value": "2026-06-03", "description": "Opcional. Formato YYYY-MM-DD" }]
+            },
+            "description": "Solo admin. Lista sesiones de todos los usuarios filtradas por fecha."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗺️ Tours",
+      "item": [
+        {
+          "name": "Crear Tour",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_tour\": 1001,\n  \"nombre_tour\": \"Tour Cartagena 5 Días\",\n  \"tipo_tour\": \"terrestre\",\n  \"agencia\": \"Agencia XYZ\",\n  \"fecha_inicio\": \"2026-07-15\",\n  \"fecha_fin\": \"2026-07-20\",\n  \"precio\": 1500000,\n  \"punto_partida\": \"Bogotá\",\n  \"hora_partida\": \"06:00\",\n  \"llegada\": \"Cartagena\",\n  \"url_imagen\": \"https://ejemplo.com/img.jpg\",\n  \"imagenes\": [\"https://ejemplo.com/img1.jpg\"],\n  \"link_pdf\": \"https://ejemplo.com/tour.pdf\",\n  \"inclusions\": [\"Transporte\", \"Hotel\", \"Desayunos\"],\n  \"exclusions\": [\"Vuelos\", \"Cenas\"],\n  \"itinerary\": [\n    { \"dia_numero\": 1, \"titulo\": \"Llegada\", \"descripcion\": \"Llegada y bienvenida\" },\n    { \"dia_numero\": 2, \"titulo\": \"Ciudad Amurallada\", \"descripcion\": \"Recorrido histórico\" }\n  ],\n  \"cupos\": 30,\n  \"es_promocion\": false,\n  \"is_active\": true,\n  \"es_borrador\": false,\n  \"sede_id\": \"1\",\n  \"modo_precio\": \"individual\",\n  \"precios\": [\n    { \"descripcion\": \"Adulto\", \"precio\": 1500000, \"activo\": true },\n    { \"descripcion\": \"Niño (2-11)\", \"edad_min\": 2, \"edad_max\": 11, \"precio\": 1000000, \"activo\": true }\n  ],\n  \"bus_layout_ids\": [1]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/tours", "host": ["{{baseUrl}}"], "path": ["v1", "tours"] },
+            "description": "tipo_tour: terrestre | pasadia | aereo | combinado\nmodo_precio: individual | grupal | pareja"
+          }
+        },
+        {
+          "name": "Listar Tours",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/tours?todos=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "tours"],
+              "query": [{ "key": "todos", "value": "false", "description": "true = incluye inactivos" }]
+            }
+          }
+        },
+        {
+          "name": "Tours Histórico",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/tours/historico", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "historico"] },
+            "description": "Devuelve tours finalizados/históricos."
+          }
+        },
+        {
+          "name": "Buscar por Embedding (Semántico)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"embedding\": [0.1, 0.2, 0.0]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tours/search?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "tours", "search"],
+              "query": [{ "key": "limit", "value": "10", "description": "1-50, default 10" }]
+            },
+            "description": "Búsqueda semántica con pgvector. Requiere embedding de 3072 dimensiones (text-embedding-3-large)."
+          }
+        },
+        {
+          "name": "Obtener Tour",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1"] }
+          }
+        },
+        {
+          "name": "Detalle Completo del Tour",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/detalle", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "detalle"] },
+            "description": "Devuelve el tour con todos sus datos relacionados (precios, buses, etc.)."
+          }
+        },
+        {
+          "name": "Actualizar Tour",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_tour\": \"Tour Cartagena Premium\",\n  \"precio\": 1800000,\n  \"cupos\": 25\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/tours/1", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1"] }
+          }
+        },
+        {
+          "name": "Finalizar Tour",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/finalizar", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "finalizar"] },
+            "description": "Marca el tour como finalizado."
+          }
+        },
+        {
+          "name": "Duplicar Tour",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/duplicar", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "duplicar"] },
+            "description": "Crea una copia del tour con nuevo ID."
+          }
+        },
+        {
+          "name": "Buses Disponibilidad",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/buses-disponibilidad", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "buses-disponibilidad"] },
+            "description": "Estado de disponibilidad de asientos por bus para el tour."
+          }
+        },
+        {
+          "name": "Buses Manifiesto",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/buses-manifiesto", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "buses-manifiesto"] },
+            "description": "Manifiesto completo de pasajeros por bus."
+          }
+        },
+        {
+          "name": "Auto Asignar Asientos",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/auto-asignar-asientos", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "auto-asignar-asientos"] },
+            "description": "Asigna automáticamente asientos a todas las reservas del tour."
+          }
+        },
+        {
+          "name": "Liberar Asiento",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reserva_id\": 5,\n  \"numero_asiento\": \"A3\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/liberar-asiento", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "liberar-asiento"] }
+          }
+        },
+        {
+          "name": "Mover Asiento",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bus_layout_id\": 1,\n  \"reserva_id_origen\": 5,\n  \"asiento_origen\": \"A3\",\n  \"asiento_destino\": \"B5\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/tours/1/mover-asiento", "host": ["{{baseUrl}}"], "path": ["v1", "tours", "1", "mover-asiento"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Reservas",
+      "item": [
+        {
+          "name": "Crear Reserva",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_reserva\": \"tour\",\n  \"id_tour\": 1001,\n  \"correo\": \"cliente@email.com\",\n  \"estado\": \"pendiente\",\n  \"notas\": \"Cliente solicita asiento ventana\",\n  \"valor_total\": 3000000,\n  \"utilidad\": 300000,\n  \"descuento_por_persona\": 0,\n  \"id_responsable\": 10,\n  \"precio_responsable_id\": 1,\n  \"precio_responsable_aplicado\": 1500000,\n  \"bus_layout_id\": 1,\n  \"servicios_ids\": [1, 2],\n  \"integrantes\": [\n    {\n      \"nombre\": \"María García\",\n      \"telefono\": \"3001234567\",\n      \"fecha_nacimiento\": \"1990-05-15\",\n      \"tipo_documento\": \"CC\",\n      \"documento\": \"1234567890\",\n      \"tour_precio_id\": 1,\n      \"precio_aplicado\": 1500000,\n      \"ocupa_asiento\": true\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/reservas", "host": ["{{baseUrl}}"], "path": ["v1", "reservas"] },
+            "description": "tipo_reserva: tour | vuelos\nestado: al dia | pendiente | cancelado"
+          }
+        },
+        {
+          "name": "Listar Reservas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/reservas?page=1&limit=50&search=&estado=&fechaDesde=&fechaHasta=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "reservas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" },
+                { "key": "search", "value": "", "description": "Búsqueda por nombre/email" },
+                { "key": "estado", "value": "", "description": "al dia | pendiente | cancelado" },
+                { "key": "fechaDesde", "value": "", "description": "YYYY-MM-DD" },
+                { "key": "fechaHasta", "value": "", "description": "YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Historial por Cliente",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/cliente/10", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "cliente", "10"] }
+          }
+        },
+        {
+          "name": "Obtener Reserva",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1"] }
+          }
+        },
+        {
+          "name": "Link Selección de Asientos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1/seleccion-link", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1", "seleccion-link"] },
+            "description": "Genera/devuelve el token de selección de asientos para el cliente."
+          }
+        },
+        {
+          "name": "Actualizar Reserva",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notas\": \"Actualizado por agente\",\n  \"valor_total\": 3500000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1"] }
+          }
+        },
+        {
+          "name": "Cambiar Estado Reserva",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"al dia\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1/estado", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1", "estado"] },
+            "description": "estado: al dia | pendiente | cancelado"
+          }
+        },
+        {
+          "name": "Actualizar Info Reserva",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"nuevo@email.com\",\n  \"notas\": \"Notas adicionales\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1/info", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1", "info"] }
+          }
+        },
+        {
+          "name": "Auditoría Reserva",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1/auditoria", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1", "auditoria"] },
+            "description": "Historial de cambios de la reserva."
+          }
+        },
+        {
+          "name": "Eliminar Integrante",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1/integrantes/5", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1", "integrantes", "5"] }
+          }
+        },
+        {
+          "name": "Eliminar Reserva",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/reservas/1", "host": ["{{baseUrl}}"], "path": ["v1", "reservas", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Cotizaciones",
+      "item": [
+        {
+          "name": "Crear Cotización",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chat_id\": \"whatsapp:+573001234567\",\n  \"nombre_completo\": \"Carlos López\",\n  \"correo_electronico\": \"carlos@email.com\",\n  \"telefono\": \"3001234567\",\n  \"detalles_plan\": \"Viaje a San Andrés para 2 personas\",\n  \"numero_pasajeros\": 2,\n  \"fecha_salida\": \"2026-08-01\",\n  \"fecha_regreso\": \"2026-08-07\",\n  \"origen\": \"Bogotá\",\n  \"destino\": \"San Andrés\",\n  \"edades_menores\": \"\",\n  \"especificaciones\": \"Preferimos hotel frente al mar\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/cotizaciones", "host": ["{{baseUrl}}"], "path": ["v1", "cotizaciones"] }
+          }
+        },
+        {
+          "name": "Listar Cotizaciones",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/cotizaciones?page=1&limit=20&estado=&estadoNot=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "cotizaciones"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "estado", "value": "", "description": "Filtrar por estado" },
+                { "key": "estadoNot", "value": "", "description": "Excluir este estado" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Cotización",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/cotizaciones/1", "host": ["{{baseUrl}}"], "path": ["v1", "cotizaciones", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Cotización",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"detalles_plan\": \"Plan actualizado - 3 noches\",\n  \"numero_pasajeros\": 3\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/cotizaciones/1", "host": ["{{baseUrl}}"], "path": ["v1", "cotizaciones", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Cotización",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/cotizaciones/1", "host": ["{{baseUrl}}"], "path": ["v1", "cotizaciones", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Respuestas Cotización",
+      "item": [
+        {
+          "name": "Crear Respuesta",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cotizacion_id\": 1,\n  \"titulo\": \"Propuesta Cartagena 5 días\",\n  \"contenido\": \"<p>Estimado cliente...</p>\",\n  \"precio_total\": 3000000,\n  \"es_plantilla\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion"] }
+          }
+        },
+        {
+          "name": "Preview Respuesta (sin guardar)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cotizacion_id\": 1,\n  \"titulo\": \"Preview\",\n  \"contenido\": \"<p>Preview del contenido</p>\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/preview", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "preview"] }
+          }
+        },
+        {
+          "name": "Listar Plantillas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/respuestas-cotizacion/plantillas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "respuestas-cotizacion", "plantillas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Respuestas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/respuestas-cotizacion?page=1&limit=20&sinCotizacion=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "respuestas-cotizacion"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "sinCotizacion", "value": "false", "description": "true = solo plantillas sin cotización asociada" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Respuestas por Cotización",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/cotizacion/1", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "cotizacion", "1"] }
+          }
+        },
+        {
+          "name": "Obtener Respuesta",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/1", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Respuesta",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Propuesta actualizada\",\n  \"contenido\": \"<p>Nuevo contenido</p>\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/1", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "1"] }
+          }
+        },
+        {
+          "name": "Toggle Anclar Respuesta",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/1/anclar", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "1", "anclar"] },
+            "description": "Ancla/desancla la respuesta (toggle)."
+          }
+        },
+        {
+          "name": "Eliminar Respuesta",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/respuestas-cotizacion/1", "host": ["{{baseUrl}}"], "path": ["v1", "respuestas-cotizacion", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌐 Público - Cotizaciones",
+      "item": [
+        {
+          "name": "Ver Cotización por Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/p/TOKEN_AQUI", "host": ["{{baseUrl}}"], "path": ["v1", "p", "TOKEN_AQUI"] },
+            "description": "Endpoint público. El cliente accede con el token único enviado por WhatsApp."
+          }
+        },
+        {
+          "name": "Registrar Vista",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/p/TOKEN_AQUI/vista", "host": ["{{baseUrl}}"], "path": ["v1", "p", "TOKEN_AQUI", "vista"] },
+            "description": "Registra que el cliente abrió la propuesta. Responde 204 No Content."
+          }
+        },
+        {
+          "name": "Form Cotización - Obtener Asesor",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/cotizacion-form/asesor/1", "host": ["{{baseUrl}}"], "path": ["v1", "cotizacion-form", "asesor", "1"] },
+            "description": "Devuelve nombre del asesor para mostrar en el formulario público."
+          }
+        },
+        {
+          "name": "Form Cotización - Enviar Solicitud",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Martínez\",\n  \"telefono\": \"3009876543\",\n  \"destino\": \"Cancún\",\n  \"fecha_viaje\": \"2026-09-01\",\n  \"num_personas\": 2,\n  \"mensaje\": \"Me interesa un paquete todo incluido\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/cotizacion-form", "host": ["{{baseUrl}}"], "path": ["v1", "cotizacion-form"] },
+            "description": "Formulario público de solicitud de cotización. Rate limit: 5/min. Envía al webhook de n8n."
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Pagos Realizados",
+      "item": [
+        {
+          "name": "Registrar Pago",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entidad_tipo\": \"reserva\",\n  \"reserva_id\": 1,\n  \"monto\": 500000,\n  \"metodo_pago\": \"Transferencia Bancaria\",\n  \"referencia\": \"REF-2026-001\",\n  \"fecha_documento\": \"2026-06-03\",\n  \"url_imagen\": \"https://drive.google.com/comprobante.jpg\",\n  \"concepto\": \"Abono reserva\",\n  \"cliente_nombre\": \"Carlos López\",\n  \"cliente_identificacion\": \"1234567890\",\n  \"sede_id\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/pagos-realizados", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-realizados"] },
+            "description": "entidad_tipo: reserva | proveedor | servicio"
+          }
+        },
+        {
+          "name": "Listar Pagos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/pagos-realizados?page=1&limit=50&startDate=&endDate=&fechaDocDesde=&fechaDocHasta=&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "pagos-realizados"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50", "description": "Máximo 100" },
+                { "key": "startDate", "value": "", "description": "ISO 8601 — fecha creación desde" },
+                { "key": "endDate", "value": "", "description": "ISO 8601 — fecha creación hasta" },
+                { "key": "fechaDocDesde", "value": "", "description": "ISO 8601 — fecha documento desde" },
+                { "key": "fechaDocHasta", "value": "", "description": "ISO 8601 — fecha documento hasta" },
+                { "key": "search", "value": "", "description": "Búsqueda por referencia/cliente" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Auditoría de Pagos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/pagos-realizados/auditoria?id_pago=&startDate=&endDate=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "pagos-realizados", "auditoria"],
+              "query": [
+                { "key": "id_pago", "value": "", "description": "Opcional — ID del pago" },
+                { "key": "startDate", "value": "", "description": "ISO 8601" },
+                { "key": "endDate", "value": "", "description": "ISO 8601" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Pago",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/pagos-realizados/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-realizados", "1"] }
+          }
+        },
+        {
+          "name": "Cambiar Estado Pago (Validar/Rechazar)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accion\": \"validar\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/pagos-realizados/1/estado", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-realizados", "1", "estado"] },
+            "description": "accion: validar | rechazar | resetear\nSi accion=rechazar, enviar también motivo_rechazo"
+          }
+        },
+        {
+          "name": "Actualizar Pago",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 600000,\n  \"referencia\": \"REF-2026-002\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/pagos-realizados/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-realizados", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Pago",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/pagos-realizados/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-realizados", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Clientes",
+      "item": [
+        {
+          "name": "Crear Cliente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Luis Rodríguez\",\n  \"email\": \"luis@email.com\",\n  \"telefono\": \"3151234567\",\n  \"documento\": \"12345678\",\n  \"tipo_documento\": \"CC\",\n  \"ciudad\": \"Medellín\",\n  \"fecha_nacimiento\": \"1985-03-20\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/clientes", "host": ["{{baseUrl}}"], "path": ["v1", "clientes"] }
+          }
+        },
+        {
+          "name": "Listar Clientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/clientes?page=1&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "clientes"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "search", "value": "", "description": "Búsqueda por nombre/email/documento" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Cliente",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/clientes/1", "host": ["{{baseUrl}}"], "path": ["v1", "clientes", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Cliente",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3209876543\",\n  \"ciudad\": \"Bogotá\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/clientes/1", "host": ["{{baseUrl}}"], "path": ["v1", "clientes", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Cliente",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/clientes/1", "host": ["{{baseUrl}}"], "path": ["v1", "clientes", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Usuarios (Admin)",
+      "item": [
+        {
+          "name": "Crear Usuario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Pedro Agente\",\n  \"email\": \"pedro@agencia.com\",\n  \"password\": \"password123\",\n  \"rol\": \"agente\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/usuarios", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios"] }
+          }
+        },
+        {
+          "name": "Crear Agente (shortcut)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sandra Agente\",\n  \"email\": \"sandra@agencia.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/usuarios/agente", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios", "agente"] },
+            "description": "Crea un usuario con rol agente directamente."
+          }
+        },
+        {
+          "name": "Listar Usuarios",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/usuarios", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios"] }
+          }
+        },
+        {
+          "name": "Obtener Usuario",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/usuarios/1", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Pedro Agente Actualizado\",\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/usuarios/1", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Usuario",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/usuarios/1", "host": ["{{baseUrl}}"], "path": ["v1", "usuarios", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧑‍💼 Agentes (Admin)",
+      "item": [
+        {
+          "name": "Crear Agente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Laura Agente\",\n  \"email\": \"laura@agencia.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/agentes", "host": ["{{baseUrl}}"], "path": ["v1", "agentes"] }
+          }
+        },
+        {
+          "name": "Listar Agentes con Permisos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/agentes", "host": ["{{baseUrl}}"], "path": ["v1", "agentes"] },
+            "description": "Devuelve agentes con sus permisos de módulos."
+          }
+        },
+        {
+          "name": "Obtener Agente con Permisos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/agentes/1", "host": ["{{baseUrl}}"], "path": ["v1", "agentes", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Agente",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Laura Gómez\",\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/agentes/1", "host": ["{{baseUrl}}"], "path": ["v1", "agentes", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Agente",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/agentes/1", "host": ["{{baseUrl}}"], "path": ["v1", "agentes", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔑 Roles (Admin)",
+      "item": [
+        {
+          "name": "Crear Rol",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"supervisor\",\n  \"descripcion\": \"Supervisor de agentes\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/roles", "host": ["{{baseUrl}}"], "path": ["v1", "roles"] }
+          }
+        },
+        {
+          "name": "Listar Roles",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/roles", "host": ["{{baseUrl}}"], "path": ["v1", "roles"] }
+          }
+        },
+        {
+          "name": "Obtener Rol",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/roles/1", "host": ["{{baseUrl}}"], "path": ["v1", "roles", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Rol",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Descripción actualizada\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/roles/1", "host": ["{{baseUrl}}"], "path": ["v1", "roles", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Rol",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/roles/1", "host": ["{{baseUrl}}"], "path": ["v1", "roles", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏨 Hoteles",
+      "item": [
+        {
+          "name": "Crear Hotel",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Hotel Caribe Resort\",\n  \"ciudad\": \"Cartagena\",\n  \"telefono\": \"6056789012\",\n  \"direccion\": \"Av. El Laguito #1-234\",\n  \"imagenes\": [\"https://ejemplo.com/hotel.jpg\"],\n  \"habitaciones\": [\n    {\n      \"tipo_cama\": \"Doble\",\n      \"cantidad\": 10,\n      \"precio\": 250000,\n      \"imagenes\": [],\n      \"servicios\": [\"WiFi\", \"Aire acondicionado\"],\n      \"observaciones\": \"Vista al mar\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/hoteles", "host": ["{{baseUrl}}"], "path": ["v1", "hoteles"] }
+          }
+        },
+        {
+          "name": "Listar Hoteles",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/hoteles", "host": ["{{baseUrl}}"], "path": ["v1", "hoteles"] }
+          }
+        },
+        {
+          "name": "Obtener Hotel",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/hoteles/1", "host": ["{{baseUrl}}"], "path": ["v1", "hoteles", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Hotel",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Hotel Caribe Resort & Spa\",\n  \"telefono\": \"6056789099\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/hoteles/1", "host": ["{{baseUrl}}"], "path": ["v1", "hoteles", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Hotel (lógico)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/hoteles/1", "host": ["{{baseUrl}}"], "path": ["v1", "hoteles", "1"] },
+            "description": "Borrado lógico: marca is_active=false."
+          }
+        }
+      ]
+    },
+    {
+      "name": "✈️ Aerolíneas",
+      "item": [
+        {
+          "name": "Crear Aerolínea (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Avianca\",\n  \"codigo_iata\": \"AV\",\n  \"pais\": \"Colombia\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/aerolineas", "host": ["{{baseUrl}}"], "path": ["v1", "aerolineas"] },
+            "description": "Logo disponible en: https://www.gstatic.com/flights/airline_logos/70px/AV.png"
+          }
+        },
+        {
+          "name": "Listar Aerolíneas",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/aerolineas", "host": ["{{baseUrl}}"], "path": ["v1", "aerolineas"] }
+          }
+        },
+        {
+          "name": "Obtener Aerolínea",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/aerolineas/1", "host": ["{{baseUrl}}"], "path": ["v1", "aerolineas", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Aerolínea (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Avianca S.A.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/aerolineas/1", "host": ["{{baseUrl}}"], "path": ["v1", "aerolineas", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Proveedores",
+      "item": [
+        {
+          "name": "Crear Proveedor",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Transportes Rápido S.A.\",\n  \"tipo\": \"transporte\",\n  \"contacto\": \"Carlos Ruiz\",\n  \"telefono\": \"3101234567\",\n  \"email\": \"contacto@rapido.com\",\n  \"nit\": \"900123456-7\",\n  \"ciudad\": \"Bogotá\",\n  \"observaciones\": \"Proveedor principal de buses\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/proveedores", "host": ["{{baseUrl}}"], "path": ["v1", "proveedores"] }
+          }
+        },
+        {
+          "name": "Listar Proveedores",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/proveedores?page=1&limit=20&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "proveedores"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Proveedor",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "proveedores", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Proveedor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3109876543\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "proveedores", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Proveedor",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "proveedores", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💸 Pagos Proveedores",
+      "item": [
+        {
+          "name": "Registrar Pago Proveedor",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proveedor_id\": 1,\n  \"tour_id\": 1001,\n  \"monto\": 2000000,\n  \"moneda\": \"COP\",\n  \"fecha_pago\": \"2026-06-01\",\n  \"referencia\": \"PAG-2026-001\",\n  \"concepto\": \"Pago anticipo bus tour Cartagena\",\n  \"observaciones\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/pagos-proveedores", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-proveedores"] }
+          }
+        },
+        {
+          "name": "Listar Pagos Proveedores",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/pagos-proveedores?page=1&limit=20&proveedor_id=&tour_id=&hotel_id=&moneda=&fecha_desde=&fecha_hasta=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "pagos-proveedores"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "proveedor_id", "value": "" },
+                { "key": "tour_id", "value": "" },
+                { "key": "hotel_id", "value": "" },
+                { "key": "moneda", "value": "", "description": "COP | USD" },
+                { "key": "fecha_desde", "value": "", "description": "YYYY-MM-DD" },
+                { "key": "fecha_hasta", "value": "", "description": "YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Pago Proveedor",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/pagos-proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-proveedores", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Pago Proveedor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 2500000,\n  \"concepto\": \"Pago total bus\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/pagos-proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-proveedores", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Pago Proveedor",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/pagos-proveedores/1", "host": ["{{baseUrl}}"], "path": ["v1", "pagos-proveedores", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⏳ Saldos Pendientes",
+      "item": [
+        {
+          "name": "Listar Saldos Pendientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/saldos-pendientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "saldos-pendientes"]
+            },
+            "description": "Lista tours con saldos pendientes de pago."
+          }
+        },
+        {
+          "name": "Reservas con Saldo Pendiente por Tour",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/saldos-pendientes/1001/reservas", "host": ["{{baseUrl}}"], "path": ["v1", "saldos-pendientes", "1001", "reservas"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Métodos de Pago",
+      "item": [
+        {
+          "name": "Crear Método de Pago",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Nequi\",\n  \"descripcion\": \"Transferencia por Nequi\",\n  \"numero_cuenta\": \"3001234567\",\n  \"titular\": \"Agencia de Viajes XYZ\",\n  \"banco\": \"Nequi\",\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago"] }
+          }
+        },
+        {
+          "name": "Listar Métodos de Pago",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago"] }
+          }
+        },
+        {
+          "name": "Obtener Método de Pago",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago/1", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Método de Pago",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago/1", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Método de Pago",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago/1", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/metodos-pago/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "metodos-pago", "sync-vectors"] },
+            "description": "Regenera los embeddings semánticos de todos los métodos de pago."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏙️ Sedes",
+      "item": [
+        {
+          "name": "Crear Sede",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sede Bogotá\",\n  \"ciudad\": \"Bogotá\",\n  \"direccion\": \"Calle 72 #10-34\",\n  \"telefono\": \"6012345678\",\n  \"email\": \"bogota@agencia.com\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/sedes", "host": ["{{baseUrl}}"], "path": ["v1", "sedes"] }
+          }
+        },
+        {
+          "name": "Listar Sedes",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/sedes", "host": ["{{baseUrl}}"], "path": ["v1", "sedes"] }
+          }
+        },
+        {
+          "name": "Obtener Sede",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/sedes/1", "host": ["{{baseUrl}}"], "path": ["v1", "sedes", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Sede",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"6019876543\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/sedes/1", "host": ["{{baseUrl}}"], "path": ["v1", "sedes", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Sede",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/sedes/1", "host": ["{{baseUrl}}"], "path": ["v1", "sedes", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores Sedes",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/sedes/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "sedes", "sync-vectors"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚌 Bus Layouts",
+      "item": [
+        {
+          "name": "Crear Layout de Bus",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Bus 45 Pasajeros\",\n  \"capacidad\": 45,\n  \"filas\": 11,\n  \"columnas\": 4,\n  \"layout\": [\n    { \"numero\": \"A1\", \"fila\": 1, \"columna\": 1, \"disponible\": true },\n    { \"numero\": \"A2\", \"fila\": 1, \"columna\": 2, \"disponible\": true }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/bus-layouts", "host": ["{{baseUrl}}"], "path": ["v1", "bus-layouts"] }
+          }
+        },
+        {
+          "name": "Listar Bus Layouts",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/bus-layouts", "host": ["{{baseUrl}}"], "path": ["v1", "bus-layouts"] }
+          }
+        },
+        {
+          "name": "Obtener Bus Layout",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/bus-layouts/1", "host": ["{{baseUrl}}"], "path": ["v1", "bus-layouts", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Bus Layout",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Bus 45 Pasajeros Ejecutivo\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/bus-layouts/1", "host": ["{{baseUrl}}"], "path": ["v1", "bus-layouts", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Bus Layout",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/bus-layouts/1", "host": ["{{baseUrl}}"], "path": ["v1", "bus-layouts", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💺 Selección de Asientos (Público)",
+      "item": [
+        {
+          "name": "Obtener Info Selección",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/seleccion/TOKEN_AQUI", "host": ["{{baseUrl}}"], "path": ["v1", "seleccion", "TOKEN_AQUI"] },
+            "description": "Muestra el mapa de asientos y la info del tour para el cliente."
+          }
+        },
+        {
+          "name": "Verificar Cédula",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cedula\": \"1234567890\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/seleccion/TOKEN_AQUI/verificar-cedula", "host": ["{{baseUrl}}"], "path": ["v1", "seleccion", "TOKEN_AQUI", "verificar-cedula"] }
+          }
+        },
+        {
+          "name": "Reservar Hold Asientos",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asientos\": [\"A3\", \"A4\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/seleccion/TOKEN_AQUI/hold", "host": ["{{baseUrl}}"], "path": ["v1", "seleccion", "TOKEN_AQUI", "hold"] },
+            "description": "Reserva temporalmente asientos mientras el cliente confirma."
+          }
+        },
+        {
+          "name": "Liberar Hold",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/seleccion/TOKEN_AQUI/hold", "host": ["{{baseUrl}}"], "path": ["v1", "seleccion", "TOKEN_AQUI", "hold"] },
+            "description": "Cancela el hold de asientos."
+          }
+        },
+        {
+          "name": "Confirmar Selección",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cedula\": \"1234567890\",\n  \"asientos\": [\"A3\", \"A4\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/seleccion/TOKEN_AQUI/confirmar", "host": ["{{baseUrl}}"], "path": ["v1", "seleccion", "TOKEN_AQUI", "confirmar"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 Análisis IA",
+      "item": [
+        {
+          "name": "Analizar Documento",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://drive.google.com/comprobante.jpg\",\n  \"tipo\": \"comprobante_pago\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/analisis-ia/analizar-documento", "host": ["{{baseUrl}}"], "path": ["v1", "analisis-ia", "analizar-documento"] },
+            "description": "Extrae datos de un documento usando IA (OCR + LLM). Rate limit: 10/min."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Analytics",
+      "item": [
+        {
+          "name": "Obtener Analytics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics?periodo=mes",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics"],
+              "query": [{ "key": "periodo", "value": "mes", "description": "dia | semana | mes" }]
+            },
+            "description": "Dashboard de métricas de la agencia. Accesible por admin y agente."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Auditoría General (Admin)",
+      "item": [
+        {
+          "name": "Consultar Auditoría",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/auditoria-general?page=1&limit=50&modulo=&operacion=&usuario_id=&fecha=",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auditoria-general"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" },
+                { "key": "modulo", "value": "", "description": "hoteles | reservas | tours | etc." },
+                { "key": "operacion", "value": "", "description": "CREAR | ACTUALIZAR | ELIMINAR" },
+                { "key": "usuario_id", "value": "" },
+                { "key": "fecha", "value": "", "description": "YYYY-MM-DD" }
+              ]
+            },
+            "description": "Historial completo de cambios en todos los módulos. Solo admin."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Catálogos",
+      "item": [
+        {
+          "name": "Crear Catálogo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"destino\",\n  \"valor\": \"Cancún, México\",\n  \"descripcion\": \"Destino turístico de playa\",\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/catalogos", "host": ["{{baseUrl}}"], "path": ["v1", "catalogos"] }
+          }
+        },
+        {
+          "name": "Listar Catálogos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/catalogos", "host": ["{{baseUrl}}"], "path": ["v1", "catalogos"] }
+          }
+        },
+        {
+          "name": "Obtener Catálogo",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/catalogos/1", "host": ["{{baseUrl}}"], "path": ["v1", "catalogos", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Catálogo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/catalogos/1", "host": ["{{baseUrl}}"], "path": ["v1", "catalogos", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Catálogo",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/catalogos/1", "host": ["{{baseUrl}}"], "path": ["v1", "catalogos", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❓ FAQs",
+      "item": [
+        {
+          "name": "Crear FAQ",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"¿Cuál es la política de cancelación?\",\n  \"respuesta\": \"Las cancelaciones con más de 15 días de anticipación tienen reembolso del 80%.\",\n  \"categoria\": \"cancelaciones\",\n  \"activa\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/faqs", "host": ["{{baseUrl}}"], "path": ["v1", "faqs"] }
+          }
+        },
+        {
+          "name": "Listar FAQs",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/faqs", "host": ["{{baseUrl}}"], "path": ["v1", "faqs"] }
+          }
+        },
+        {
+          "name": "Obtener FAQ",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/faqs/1", "host": ["{{baseUrl}}"], "path": ["v1", "faqs", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar FAQ",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"respuesta\": \"Las cancelaciones con más de 20 días tienen reembolso completo.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/faqs/1", "host": ["{{baseUrl}}"], "path": ["v1", "faqs", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar FAQ",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/faqs/1", "host": ["{{baseUrl}}"], "path": ["v1", "faqs", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores FAQs",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/faqs/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "faqs", "sync-vectors"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Info Empresa",
+      "item": [
+        {
+          "name": "Info Pública (sin auth)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa/publica", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa", "publica"] },
+            "description": "Endpoint público — no requiere autenticación."
+          }
+        },
+        {
+          "name": "Crear Info Empresa",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Viajes Soñados S.A.S.\",\n  \"nit\": \"901234567-8\",\n  \"telefono\": \"6011234567\",\n  \"whatsapp\": \"3001234567\",\n  \"email\": \"info@viajessonados.com\",\n  \"direccion\": \"Calle 80 #45-23\",\n  \"ciudad\": \"Bogotá\",\n  \"descripcion\": \"Agencia de viajes especializada en turismo nacional\",\n  \"logo_url\": \"https://ejemplo.com/logo.png\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa"] }
+          }
+        },
+        {
+          "name": "Listar Info Empresa",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa"] }
+          }
+        },
+        {
+          "name": "Obtener Info Empresa",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa/1", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Info Empresa",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"6019876543\",\n  \"descripcion\": \"Descripción actualizada\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa/1", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Info Empresa",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa/1", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores Info Empresa",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/info-empresa/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "info-empresa", "sync-vectors"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔧 Módulos (Admin)",
+      "item": [
+        {
+          "name": "Listar Módulos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/modulos", "host": ["{{baseUrl}}"], "path": ["v1", "modulos"] }
+          }
+        },
+        {
+          "name": "Obtener Módulo",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/modulos/1", "host": ["{{baseUrl}}"], "path": ["v1", "modulos", "1"] }
+          }
+        },
+        {
+          "name": "Crear Módulo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"tours\",\n  \"descripcion\": \"Gestión de tours\",\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/modulos", "host": ["{{baseUrl}}"], "path": ["v1", "modulos"] }
+          }
+        },
+        {
+          "name": "Actualizar Módulo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Gestión de tours y paquetes\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/modulos/1", "host": ["{{baseUrl}}"], "path": ["v1", "modulos", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Módulo",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/modulos/1", "host": ["{{baseUrl}}"], "path": ["v1", "modulos", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛎️ Servicios",
+      "item": [
+        {
+          "name": "Crear Servicio",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Seguro de viaje\",\n  \"descripcion\": \"Seguro todo riesgo para el viaje\",\n  \"precio\": 50000,\n  \"imagenes\": [\"https://ejemplo.com/seguro.jpg\"],\n  \"activo\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/servicios", "host": ["{{baseUrl}}"], "path": ["v1", "servicios"] }
+          }
+        },
+        {
+          "name": "Listar Servicios",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/servicios", "host": ["{{baseUrl}}"], "path": ["v1", "servicios"] }
+          }
+        },
+        {
+          "name": "Obtener Servicio",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/servicios/1", "host": ["{{baseUrl}}"], "path": ["v1", "servicios", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Servicio",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 60000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/servicios/1", "host": ["{{baseUrl}}"], "path": ["v1", "servicios", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Servicio",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/servicios/1", "host": ["{{baseUrl}}"], "path": ["v1", "servicios", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores Servicios",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/servicios/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "servicios", "sync-vectors"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📃 Políticas de Reserva",
+      "item": [
+        {
+          "name": "Crear Política",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Política de Cancelación\",\n  \"contenido\": \"Cancelaciones con más de 15 días: reembolso 80%.\",\n  \"activa\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva"] }
+          }
+        },
+        {
+          "name": "Listar Políticas",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva"] }
+          }
+        },
+        {
+          "name": "Obtener Política",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva/1", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Política",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenido\": \"Política actualizada\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva/1", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva", "1"] }
+          }
+        },
+        {
+          "name": "Eliminar Política",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva/1", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva", "1"] }
+          }
+        },
+        {
+          "name": "Sincronizar Vectores Políticas",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/v1/politicas-reserva/sync-vectors", "host": ["{{baseUrl}}"], "path": ["v1", "politicas-reserva", "sync-vectors"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Recordatorio Saldo",
+      "item": [
+        {
+          "name": "Enviar Recordatorio",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reserva_id\": 1,\n  \"mensaje\": \"Recordamos que tiene un saldo pendiente de $500.000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/recordatorio-saldo", "host": ["{{baseUrl}}"], "path": ["v1", "recordatorio-saldo"] },
+            "description": "Envía recordatorio de saldo por WhatsApp al cliente."
+          }
+        },
+        {
+          "name": "Logs de Recordatorios",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/recordatorio-saldo/logs?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "recordatorio-saldo", "logs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📤 Uploads",
+      "item": [
+        {
+          "name": "Subir Imagen a Google Drive",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Imagen (JPEG, PNG, WEBP o GIF, máx 20MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/uploads/drive?folderId=FOLDER_ID_GOOGLE_DRIVE",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "uploads", "drive"],
+              "query": [{ "key": "folderId", "value": "FOLDER_ID_GOOGLE_DRIVE", "description": "ID de la carpeta destino en Google Drive" }]
+            },
+            "description": "Sube una imagen a Google Drive vía n8n. Solo JPEG, PNG, WEBP, GIF. Máx 20MB."
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 WhatsApp",
+      "item": [
+        {
+          "name": "Enviar Mensaje",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"12345\",\n  \"content\": \"Hola, su reserva ha sido confirmada.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/whatsapp/send", "host": ["{{baseUrl}}"], "path": ["v1", "whatsapp", "send"] },
+            "description": "Envía un mensaje por Chatwoot/YCloud al cliente."
+          }
+        }
+      ]
+    }
+  ]
+}

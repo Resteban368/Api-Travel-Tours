@@ -63,4 +63,8 @@ export class CreatePagoRealizadoDto {
   @IsString()
   @IsOptional()
   cliente_identificacion?: string;
+
+  @IsInt({ message: 'sede_id debe ser un número entero' })
+  @IsOptional()
+  sede_id?: number;
 }

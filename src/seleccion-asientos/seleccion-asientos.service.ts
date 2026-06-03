@@ -82,6 +82,30 @@ export class SeleccionAsientosService {
     await this.asientoRepo.delete({ reserva_id: reservaId, numero_asiento: numero });
   }
 
+  async limpiarAsientos(reservaId: number): Promise<boolean> {
+    const result = await this.asientoRepo.delete({ reserva_id: reservaId });
+    return (result.affected ?? 0) > 0;
+  }
+
+  async liberarAsientoMasLejano(reservaId: number): Promise<string | null> {
+    const asientos = await this.asientoRepo.find({
+      where: { reserva_id: reservaId, estado: 'confirmado' },
+    });
+    if (asientos.length === 0) return null;
+
+    // Ordenar por número de fila descendente (extrae prefijo numérico); en empate, por texto desc
+    asientos.sort((a, b) => {
+      const numA = parseInt(a.numero_asiento, 10) || 0;
+      const numB = parseInt(b.numero_asiento, 10) || 0;
+      if (numA !== numB) return numB - numA;
+      return b.numero_asiento.localeCompare(a.numero_asiento);
+    });
+
+    const objetivo = asientos[0];
+    await this.asientoRepo.delete({ id: objetivo.id });
+    return objetivo.numero_asiento;
+  }
+
   async moverAsiento(
     reservaIdOrigen: number,
     asientoOrigen: string,
