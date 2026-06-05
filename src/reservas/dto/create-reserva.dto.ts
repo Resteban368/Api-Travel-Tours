@@ -10,7 +10,9 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
+  Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -51,6 +53,20 @@ export class IntegranteDto {
   ocupa_asiento?: boolean;
 }
 
+export class HabitacionReservaDto {
+  @IsString()
+  @IsNotEmpty({ message: 'tipo_cama es obligatorio' })
+  tipo_cama: string;
+
+  @IsInt()
+  @Min(1, { message: 'cantidad debe ser al menos 1' })
+  cantidad: number;
+
+  @IsNumber({}, { message: 'precio_unitario debe ser un número' })
+  @Min(0, { message: 'precio_unitario debe ser mayor o igual a 0' })
+  precio_unitario: number;
+}
+
 export class HotelReservaDto {
   @IsInt()
   @IsNotEmpty()
@@ -71,6 +87,12 @@ export class HotelReservaDto {
   @IsNumber({}, { message: 'valor debe ser un número' })
   @IsNotEmpty()
   valor: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HabitacionReservaDto)
+  @IsOptional()
+  habitaciones?: HabitacionReservaDto[];
 }
 
 export class VueloDto {
@@ -128,10 +150,8 @@ export class CreateReservaDto {
   @IsOptional()
   tipo_reserva?: string; // 'tour' | 'vuelos' | extensible — default: 'tour'
 
-  // Requerido solo cuando tipo_reserva = 'tour'
-  @ValidateIf((o) => o.tipo_reserva === 'tour')
   @IsInt()
-  @IsNotEmpty()
+  @IsOptional()
   id_tour?: number;
 
   // Vuelos: requeridos cuando tipo_reserva = 'vuelos', opcionales para tours aéreos

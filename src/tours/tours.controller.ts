@@ -12,6 +12,7 @@ import {
   Version,
   Req,
 } from '@nestjs/common';
+import { IsArray, IsString } from 'class-validator';
 import { ToursService } from './tours.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
@@ -129,5 +130,24 @@ export class ToursController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTourDto, @Req() req: any) {
     return this.toursService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @Version('1')
+  @Get(':id/buses/:busLayoutId/agentes')
+  getAsientosAgentes(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
+  ) {
+    return this.toursService.getAsientosAgentes(id, busLayoutId);
+  }
+
+  @Version('1')
+  @Patch(':id/buses/:busLayoutId/agentes')
+  setAsientosAgentes(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
+    @Body() body: { asientos_agentes: string[] },
+  ) {
+    return this.toursService.setAsientosAgentes(id, busLayoutId, body.asientos_agentes ?? []);
   }
 }

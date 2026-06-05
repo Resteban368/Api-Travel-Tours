@@ -37,4 +37,10 @@ export class BusLayoutsController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }
+
+  @Version('1')
+  @Get(':id/historial')
+  findHistorial(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findHistorial(id);
+  }
 }

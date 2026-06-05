@@ -7,6 +7,7 @@ import { SeleccionAsientosController } from './seleccion-asientos.controller';
 import { SeleccionPageController } from './seleccion-page.controller';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
+import { TourBusAgente } from '../tours/entities/tour-bus-agente.entity';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
       AsientoSeleccionado,
       Reserva,
       BusLayout,
+      TourBusAgente,
     ]),
     WhatsAppModule,
   ],

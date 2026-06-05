@@ -10,6 +10,7 @@ import { ReservaSeleccionToken } from './entities/reserva-seleccion-token.entity
 import { AsientoSeleccionado } from './entities/asiento-seleccionado.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
+import { TourBusAgente } from '../tours/entities/tour-bus-agente.entity';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 const HOLD_MINUTOS = 8;
@@ -25,6 +26,8 @@ export class SeleccionAsientosService {
     private readonly reservaRepo: Repository<Reserva>,
     @InjectRepository(BusLayout)
     private readonly busLayoutRepo: Repository<BusLayout>,
+    @InjectRepository(TourBusAgente)
+    private readonly tourBusAgenteRepo: Repository<TourBusAgente>,
     private readonly whatsappService: WhatsAppService,
   ) {}
 
@@ -162,7 +165,10 @@ export class SeleccionAsientosService {
       .andWhere('a.hold_expires_at > :now', { now })
       .getMany();
 
-    // Asientos ocupados por OTRAS reservas (confirmados + holds activos)
+    // Asientos de agentes para este tour-bus (se muestran diferenciados en el mapa)
+    const asientosAgentes = await this._getAsientosAgentes(reserva.tour?.id, reserva.bus_layout_id!);
+
+    // Asientos ocupados por OTRAS reservas (confirmados + holds activos + agentes)
     const asientosOcupados = await this._getAsientosOcupados(
       reserva.id,
       reserva.tour?.id,
@@ -192,6 +198,7 @@ export class SeleccionAsientosService {
         configuracion: layout.configuracion,
       },
       asientos_ocupados: asientosOcupados,
+      asientos_agentes: asientosAgentes,
       asientos_propios: propios.map((a) => a.numero_asiento),
       asientos_en_hold: holdsActivos.map((a) => a.numero_asiento),
       hold_expires_at: holdsActivos[0]?.hold_expires_at ?? null,
@@ -359,18 +366,32 @@ export class SeleccionAsientosService {
     const otrasReservas = await this.reservaRepo.find({ where });
     const otrasIds = otrasReservas.map((r) => r.id).filter((id) => id !== reservaIdActual);
 
-    if (otrasIds.length === 0) return [];
+    const ocupadosPorClientes: string[] = [];
 
-    const now = new Date();
-    const ocupados = await this.asientoRepo
-      .createQueryBuilder('a')
-      .where('a.reserva_id IN (:...ids)', { ids: otrasIds })
-      .andWhere(
-        "(a.estado = 'confirmado' OR (a.estado = 'hold' AND a.hold_expires_at > :now))",
-        { now },
-      )
-      .getMany();
+    if (otrasIds.length > 0) {
+      const now = new Date();
+      const ocupados = await this.asientoRepo
+        .createQueryBuilder('a')
+        .where('a.reserva_id IN (:...ids)', { ids: otrasIds })
+        .andWhere(
+          "(a.estado = 'confirmado' OR (a.estado = 'hold' AND a.hold_expires_at > :now))",
+          { now },
+        )
+        .getMany();
+      ocupadosPorClientes.push(...ocupados.map((a) => a.numero_asiento));
+    }
 
-    return ocupados.map((a) => a.numero_asiento);
+    // Incluir asientos reservados para agentes en este tour-bus
+    const asientosAgentes = await this._getAsientosAgentes(tourId, busLayoutId);
+
+    return [...new Set([...ocupadosPorClientes, ...asientosAgentes])];
+  }
+
+  private async _getAsientosAgentes(tourId: number | undefined, busLayoutId: number): Promise<string[]> {
+    if (!tourId) return [];
+    const registro = await this.tourBusAgenteRepo.findOne({
+      where: { tour_id: tourId, bus_layout_id: busLayoutId },
+    });
+    return registro?.asientos_agentes ?? [];
   }
 }

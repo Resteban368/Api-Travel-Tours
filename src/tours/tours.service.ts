@@ -8,6 +8,7 @@ import { TourPrecio } from './entities/tour-precio.entity';
 import { TourPrecioGrupal } from './entities/tour-precio-grupal.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
+import { TourBusAgente } from './entities/tour-bus-agente.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
 import { SeleccionAsientosService } from '../seleccion-asientos/seleccion-asientos.service';
 import { Reserva } from '../reservas/entities/reserva.entity';
@@ -41,6 +42,8 @@ export class ToursService {
     private readonly pagoRepository: Repository<PagoRealizado>,
     @InjectRepository(BusLayout)
     private readonly busLayoutRepository: Repository<BusLayout>,
+    @InjectRepository(TourBusAgente)
+    private readonly tourBusAgenteRepository: Repository<TourBusAgente>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly seleccionAsientosService: SeleccionAsientosService,
     private readonly auditoriaTourService: AuditoriaTourService,
@@ -1094,6 +1097,72 @@ export class ToursService {
       }
       return total;
     }, 0);
+  }
+
+  async getAsientosAgentes(tourId: number, busLayoutId: number): Promise<{ asientos_agentes: string[] }> {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+
+    const busAsignado = (tour.busLayouts ?? []).find((b) => b.id === busLayoutId);
+    if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+
+    const registro = await this.tourBusAgenteRepository.findOne({
+      where: { tour_id: tourId, bus_layout_id: busLayoutId },
+    });
+    return { asientos_agentes: registro?.asientos_agentes ?? [] };
+  }
+
+  async setAsientosAgentes(tourId: number, busLayoutId: number, asientos: string[]): Promise<{ asientos_agentes: string[] }> {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+
+    const busAsignado = (tour.busLayouts ?? []).find((b) => b.id === busLayoutId);
+    if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+
+    // Solo asientos de tipo 'normal' son válidos para agentes
+    const asientosNormales = new Set(
+      (busAsignado.configuracion?.asientos ?? [])
+        .filter((a) => a.tipo === 'normal')
+        .map((a) => a.numero),
+    );
+    const invalidos = asientos.filter((a) => !asientosNormales.has(a));
+    if (invalidos.length > 0) {
+      throw new BadRequestException(`Asientos inválidos o no disponibles: ${invalidos.join(', ')}`);
+    }
+
+    // Validar que ninguno ya esté confirmado por un cliente
+    if (asientos.length > 0) {
+      const reservasActivas = await this.reservaRepository.find({
+        where: { tour: { id: tourId }, bus_layout_id: busLayoutId },
+      });
+      const reservaIds = reservasActivas.map((r) => r.id);
+      if (reservaIds.length > 0) {
+        const confirmadosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds);
+        const confirmadosSet = new Set<string>();
+        for (const lista of confirmadosMap.values()) lista.forEach((a) => confirmadosSet.add(a));
+        const conflictos = asientos.filter((a) => confirmadosSet.has(a));
+        if (conflictos.length > 0) {
+          throw new BadRequestException(
+            `Los asientos ${conflictos.join(', ')} ya están confirmados por clientes. Libéralos primero.`,
+          );
+        }
+      }
+    }
+
+    const existing = await this.tourBusAgenteRepository.findOne({
+      where: { tour_id: tourId, bus_layout_id: busLayoutId },
+    });
+
+    if (existing) {
+      existing.asientos_agentes = asientos;
+      await this.tourBusAgenteRepository.save(existing);
+    } else {
+      await this.tourBusAgenteRepository.save(
+        this.tourBusAgenteRepository.create({ tour_id: tourId, bus_layout_id: busLayoutId, asientos_agentes: asientos }),
+      );
+    }
+
+    return { asientos_agentes: asientos };
   }
 
   private async enriquecerConCupos(tour: ToursMaestro) {

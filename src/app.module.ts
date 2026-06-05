@@ -39,6 +39,7 @@ import { SaldosPendientesModule } from './saldos-pendientes/saldos-pendientes.mo
 import { RecordatorioSaldoModule } from './recordatorio-saldo/recordatorio-saldo.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
 import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.module';
+import { IntegracionModule } from './integracion/integracion.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.mo
     RecordatorioSaldoModule,
     ProveedoresModule,
     PagosProveedoresModule,
+    IntegracionModule,
   ],
   controllers: [AppController],
   providers: [

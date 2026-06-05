@@ -5,6 +5,7 @@ import { TourPrecio } from './entities/tour-precio.entity';
 import { TourPrecioGrupal } from './entities/tour-precio-grupal.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
+import { TourBusAgente } from './entities/tour-bus-agente.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
@@ -17,7 +18,7 @@ import { SeleccionAsientosModule } from '../seleccion-asientos/seleccion-asiento
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, TourPrecioGrupal, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout]),
+    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, TourPrecioGrupal, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout, TourBusAgente]),
     EmbeddingsModule,
     AuditoriaGeneralModule,
     SeleccionAsientosModule,

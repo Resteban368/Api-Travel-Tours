@@ -32,4 +32,13 @@ export class HotelReserva {
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   valor: number;
+
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  habitaciones: HabitacionReserva[] | null;
+}
+
+export interface HabitacionReserva {
+  tipo_cama: string;
+  cantidad: number;
+  precio_unitario: number;
 }
