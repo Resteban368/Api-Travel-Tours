@@ -40,6 +40,8 @@ import { RecordatorioSaldoModule } from './recordatorio-saldo/recordatorio-saldo
 import { ProveedoresModule } from './proveedores/proveedores.module';
 import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.module';
 import { IntegracionModule } from './integracion/integracion.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { NextcloudModule } from './nextcloud/nextcloud.module';
 
 @Module({
   imports: [
@@ -110,6 +112,8 @@ import { IntegracionModule } from './integracion/integracion.module';
     ProveedoresModule,
     PagosProveedoresModule,
     IntegracionModule,
+    NotificacionesModule,
+    NextcloudModule,
   ],
   controllers: [AppController],
   providers: [

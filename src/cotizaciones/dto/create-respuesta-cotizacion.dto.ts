@@ -13,6 +13,40 @@ import {
 import { Type } from 'class-transformer';
 import { PartialType } from '@nestjs/mapped-types';
 
+export class EscalaDto {
+  @IsInt()
+  @IsOptional()
+  aerolinea_id?: number;
+
+  @IsString()
+  @IsOptional()
+  aerolinea?: string;
+
+  @IsString()
+  @IsOptional()
+  numero_vuelo?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  origen: string;
+
+  @IsString()
+  @IsNotEmpty()
+  destino: string;
+
+  @IsString()
+  @IsNotEmpty()
+  hora_salida: string;
+
+  @IsString()
+  @IsNotEmpty()
+  hora_llegada: string;
+
+  @IsString()
+  @IsOptional()
+  tiempo_conexion?: string;
+}
+
 export class VueloDto {
   @IsEnum(['ida', 'vuelta'])
   tipo: 'ida' | 'vuelta';
@@ -54,6 +88,13 @@ export class VueloDto {
   @IsOptional()
   numero_pasajeros?: number;
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EscalaDto)
+  @IsOptional()
+  escalas?: EscalaDto[];
+
+  // Campos legacy — mantenidos para compatibilidad con cotizaciones antiguas
   @IsBoolean()
   @IsOptional()
   tiene_escala?: boolean;

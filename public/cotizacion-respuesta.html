@@ -402,7 +402,7 @@
       .bp-airline-name { display:none; }
     }
 
-    /* STOPOVER */
+    /* STOPOVER legacy */
     .bp-stopover {
       padding:10px 24px;
       display:flex; align-items:center; gap:10px;
@@ -415,6 +415,66 @@
     .bp-stopover-city { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:-0.01em; }
     .bp-stopover-time { font-size:10px; font-weight:600; color:var(--accent); background:var(--accent-pale); padding:2px 8px; border-radius:100px; font-family:'DM Mono',monospace; }
     .bp-stopover-content { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+
+    /* ESCALAS */
+    .bp-escalas { border-bottom:1px solid var(--border); }
+    .bp-escala-item {
+      padding:12px 24px 13px;
+      background:var(--bg-subtle);
+      border-bottom:1px dashed var(--border);
+      display:flex; gap:12px; align-items:flex-start;
+    }
+    .bp-escala-item:last-child { border-bottom:none; }
+    .bp-escala-icon {
+      width:28px; height:28px; flex-shrink:0;
+      background:var(--accent-pale); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      color:var(--accent); margin-top:1px;
+    }
+    .bp-escala-icon svg { width:13px; height:13px; }
+    .bp-escala-body { flex:1; min-width:0; }
+    .bp-escala-top {
+      display:flex; align-items:center; gap:7px;
+      flex-wrap:wrap; margin-bottom:6px;
+    }
+    .bp-escala-tag {
+      font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.10em; color:var(--accent);
+      font-family:'DM Mono',monospace;
+    }
+    .bp-escala-city {
+      font-size:13px; font-weight:700;
+      color:var(--ink); letter-spacing:-0.01em;
+    }
+    .bp-escala-conexion {
+      font-size:10px; font-weight:600;
+      color:var(--accent); background:var(--accent-pale);
+      padding:2px 8px; border-radius:100px;
+      font-family:'DM Mono',monospace; margin-left:auto;
+    }
+    .bp-escala-detail {
+      display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+    }
+    .bp-escala-airline {
+      font-size:11px; font-weight:600; color:var(--ink-muted);
+    }
+    .bp-escala-fn {
+      font-size:10px; font-weight:500; color:var(--muted);
+      font-family:'DM Mono',monospace;
+      background:var(--border); padding:1px 6px; border-radius:4px;
+    }
+    .bp-escala-route {
+      display:flex; align-items:center; gap:5px;
+    }
+    .bp-escala-code {
+      font-family:'DM Mono',monospace;
+      font-size:11px; font-weight:700; color:var(--accent-mid);
+    }
+    .bp-escala-times {
+      font-size:11px; color:var(--muted); font-weight:500;
+      font-family:'DM Mono',monospace;
+    }
+    .bp-escala-sep { color:var(--border-mid); font-size:11px; }
 
     /* HOTEL CARD */
     .hotel-card {
@@ -968,7 +1028,31 @@
             ${(v.costo > 0) ? `<button class="bp-select-btn" data-flight-idx="${idx}">+ Incluir</button>` : `<span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(5,150,105,.12);border-radius:20px;padding:4px 10px;letter-spacing:.02em">✓ Incluido</span>`}
           </div>
         </div>
-        ${v.tiene_escala ? `
+        ${(v.escalas && v.escalas.length > 0) ? `
+        <div class="bp-escalas">
+          ${v.escalas.map(e => `
+          <div class="bp-escala-item">
+            <div class="bp-escala-icon">${ICO.planeS}</div>
+            <div class="bp-escala-body">
+              <div class="bp-escala-top">
+                <span class="bp-escala-tag">Escala</span>
+                <span class="bp-escala-city">${e.destino || ''}</span>
+                ${e.tiempo_conexion ? `<span class="bp-escala-conexion">${e.tiempo_conexion}</span>` : ''}
+              </div>
+              <div class="bp-escala-detail">
+                ${e.aerolinea ? `<span class="bp-escala-airline">${e.aerolinea}</span>` : ''}
+                ${e.numero_vuelo ? `<span class="bp-escala-fn">${e.numero_vuelo}</span>` : ''}
+                ${(e.aerolinea || e.numero_vuelo) ? `<span class="bp-escala-sep">·</span>` : ''}
+                <div class="bp-escala-route">
+                  <span class="bp-escala-code">${e.origen || ''}</span>
+                  <span class="bp-escala-sep">→</span>
+                  <span class="bp-escala-code">${e.destino || ''}</span>
+                </div>
+                ${(e.hora_salida && e.hora_llegada) ? `<span class="bp-escala-times">${e.hora_salida} – ${e.hora_llegada}</span>` : ''}
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>` : v.tiene_escala ? `
         <div class="bp-stopover">
           <div class="bp-stopover-icon">${ICO.planeS}</div>
           <div class="bp-stopover-content">
@@ -1324,7 +1408,17 @@
         lines.push(`${tipo?`*${tipo}:*`:''} ${f.origen} -> ${f.destino}`);
         if (f.fecha)        lines.push(`  Fecha:  ${fd(f.fecha)}`);
         if (f.numero_vuelo) lines.push(`  Vuelo:  ${f.numero_vuelo}`);
-        if (f.tiene_escala) lines.push(`  Escala: ${f.ciudad_escala||''} ${f.tiempo_escala?`(${f.tiempo_escala})`:``}`);
+        if (f.escalas && f.escalas.length > 0) {
+          f.escalas.forEach(e => {
+            let eStr = `  Escala: ${e.origen||''} → ${e.destino||''}`;
+            if (e.hora_salida && e.hora_llegada) eStr += ` (${e.hora_salida} – ${e.hora_llegada})`;
+            if (e.tiempo_conexion) eStr += ` | Conexión: ${e.tiempo_conexion}`;
+            if (e.aerolinea) eStr += ` | ${e.aerolinea}${e.numero_vuelo ? ' ' + e.numero_vuelo : ''}`;
+            lines.push(eStr);
+          });
+        } else if (f.tiene_escala) {
+          lines.push(`  Escala: ${f.ciudad_escala||''} ${f.tiempo_escala?`(${f.tiempo_escala})`:``}`);
+        }
         if (f.costo>0)      lines.push(`  Precio: ${COP(f.costo)}`);
       });
     }

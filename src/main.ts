@@ -21,6 +21,14 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'public'));
   app.useStaticAssets(join(process.cwd(), 'assets'), { prefix: '/assets' });
 
+  // Conexiones SSE deben mantenerse indefinidamente
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.includes('/notificaciones/stream')) {
+      res.setTimeout(0);
+    }
+    next();
+  });
+
   app.use(compression({ threshold: 1024 }));
 
   // Límite específico para uploads (10mb)
