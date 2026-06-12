@@ -10,6 +10,7 @@ import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { TourBusAgente } from './entities/tour-bus-agente.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
+import { AsientoSeleccionado } from '../seleccion-asientos/entities/asiento-seleccionado.entity';
 import { SeleccionAsientosService } from '../seleccion-asientos/seleccion-asientos.service';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
@@ -44,6 +45,8 @@ export class ToursService {
     private readonly busLayoutRepository: Repository<BusLayout>,
     @InjectRepository(TourBusAgente)
     private readonly tourBusAgenteRepository: Repository<TourBusAgente>,
+    @InjectRepository(AsientoSeleccionado)
+    private readonly asientoSeleccionadoRepository: Repository<AsientoSeleccionado>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly seleccionAsientosService: SeleccionAsientosService,
     private readonly auditoriaTourService: AuditoriaTourService,
@@ -156,6 +159,7 @@ export class ToursService {
       id: saved.id,
       es_promocion: saved.es_promocion,
       tipo: saved.es_promocion ? 'promocion' : 'tour',
+      tipo_tour: saved.tipo_tour ?? null,
       fecha_creacion: saved.createdAt
         ? saved.createdAt.toISOString()
         : new Date().toISOString(),
@@ -256,19 +260,50 @@ export class ToursService {
       const newBusIds = dto.bus_layout_ids;
 
       const removedBusIds = currentBusIds.filter((bid) => !newBusIds.includes(bid));
+      const addedBusIds   = newBusIds.filter((bid) => !currentBusIds.includes(bid));
 
       if (removedBusIds.length > 0) {
-        const reservasActivasCount = await this.reservaRepository
+        // Reservas activas en los buses que se quitan
+        const reservasAfectadas = await this.reservaRepository
           .createQueryBuilder('r')
           .innerJoin('r.tour', 't')
           .where('t.id = :tourId', { tourId: id })
           .andWhere('r.bus_layout_id IN (:...removedBusIds)', { removedBusIds })
           .andWhere('r.estado IN (:...estados)', { estados: ['pendiente', 'al dia'] })
-          .getCount();
+          .select(['r.id'])
+          .getMany();
 
-        if (reservasActivasCount > 0) {
-          throw new BadRequestException('No se puede remover un bus que ya tiene reservas asignadas.');
+        if (reservasAfectadas.length > 0) {
+          const todosIds = reservasAfectadas.map((r) => r.id);
+
+          // IDs de reservas que YA tienen asientos → no se migran
+          const conAsientos = await this.asientoSeleccionadoRepository
+            .createQueryBuilder('a')
+            .where('a.reserva_id IN (:...ids)', { ids: todosIds })
+            .select('DISTINCT a.reserva_id', 'reserva_id')
+            .getRawMany<{ reserva_id: number }>();
+
+          const idsConAsiento = new Set(conAsientos.map((r) => r.reserva_id));
+
+          // Solo migrar las que NO tienen asientos seleccionados
+          const idsSinAsiento = todosIds.filter((rid) => !idsConAsiento.has(rid));
+
+          if (idsSinAsiento.length > 0) {
+            const nuevoBusId = addedBusIds.length >= 1 ? addedBusIds[0] : null;
+            await this.reservaRepository
+              .createQueryBuilder()
+              .update()
+              .set({ bus_layout_id: nuevoBusId })
+              .where('id IN (:...ids)', { ids: idsSinAsiento })
+              .execute();
+          }
         }
+
+        // Limpiar asientos de agentes del bus removido
+        await this.tourBusAgenteRepository.delete({
+          tour_id: id,
+          bus_layout_id: In(removedBusIds),
+        });
       }
 
       tour.busLayouts = dto.bus_layout_ids.length > 0
@@ -394,6 +429,7 @@ export class ToursService {
       id: saved.id,
       es_promocion: saved.es_promocion,
       tipo: saved.es_promocion ? 'promocion' : 'tour',
+      tipo_tour: saved.tipo_tour ?? null,
       fecha_creacion: saved.createdAt
         ? saved.createdAt.toISOString()
         : fetchCreationDate || new Date().toISOString(),
@@ -682,6 +718,15 @@ export class ToursService {
       }
     }
 
+    // Asientos de agentes por bus: busId → Set<numero>
+    const agentesRegistros = await this.tourBusAgenteRepository.find({
+      where: { tour_id: tourId },
+    });
+    const agentesMap = new Map<number, Set<string>>();
+    for (const reg of agentesRegistros) {
+      agentesMap.set(reg.bus_layout_id, new Set(reg.asientos_agentes ?? []));
+    }
+
     const tourInfo = {
       id: tour.id,
       nombre_tour: tour.nombre_tour,
@@ -696,40 +741,46 @@ export class ToursService {
     };
 
     const buses = busLayouts.map((bus) => {
+      const agentesSet = agentesMap.get(bus.id) ?? new Set<string>();
+
       const asientosOcupados = [...asientoReservaMap.entries()]
         .filter(([key]) => key.startsWith(`${bus.id}:`))
         .length;
 
-      const asientosLayout = (bus.configuracion?.asientos ?? [])
-        .filter((a) => a.tipo === 'normal')
-        .map((a) => {
-          const reserva = asientoReservaMap.get(`${bus.id}:${a.numero}`);
+      const asientosLayout = (bus.configuracion?.asientos ?? []).map((a) => {
+          const esNormal = a.tipo === 'normal';
+          const esAgente = esNormal && agentesSet.has(a.numero);
+          const reserva = esNormal ? asientoReservaMap.get(`${bus.id}:${a.numero}`) : undefined;
           return {
             numero: a.numero,
             fila: a.fila,
             columna: a.columna,
-            reserva: reserva
-              ? {
-                  id: reserva.id,
-                  id_reserva: reserva.id_reserva,
-                  estado: reserva.estado,
-                  responsable: reserva.responsable
-                    ? {
-                        nombre: reserva.responsable.nombre,
-                        tipo_documento: reserva.responsable.tipo_documento,
-                        documento: reserva.responsable.documento,
-                        telefono: reserva.responsable.telefono,
-                      }
-                    : null,
-                  integrantes: (reserva.integrantes ?? []).map((i) => ({
-                    nombre: i.nombre,
-                    tipo_documento: i.tipo_documento,
-                    documento: i.documento,
-                    telefono: i.telefono,
-                    ocupa_asiento: i.ocupa_asiento ?? true,
-                  })),
-                }
-              : null,
+            tipo: a.tipo,
+            ...(esNormal && {
+              agente: esAgente,
+              reserva: reserva
+                ? {
+                    id: reserva.id,
+                    id_reserva: reserva.id_reserva,
+                    estado: reserva.estado,
+                    responsable: reserva.responsable
+                      ? {
+                          nombre: reserva.responsable.nombre,
+                          tipo_documento: reserva.responsable.tipo_documento,
+                          documento: reserva.responsable.documento,
+                          telefono: reserva.responsable.telefono,
+                        }
+                      : null,
+                    integrantes: (reserva.integrantes ?? []).map((i) => ({
+                      nombre: i.nombre,
+                      tipo_documento: i.tipo_documento,
+                      documento: i.documento,
+                      telefono: i.telefono,
+                      ocupa_asiento: i.ocupa_asiento ?? true,
+                    })),
+                  }
+                : null,
+            }),
           };
         });
 
@@ -737,6 +788,7 @@ export class ToursService {
         bus_layout_id: bus.id,
         nombre: bus.nombre,
         total_asientos_cliente: bus.total_asientos_cliente,
+        asientos_agentes: agentesSet.size,
         asientos_ocupados: asientosOcupados,
         asientos_disponibles: Math.max(0, bus.total_asientos_cliente - asientosOcupados),
         configuracion: bus.configuracion,
@@ -869,6 +921,10 @@ export class ToursService {
       reservas_sin_cupo: sinAsignar.length,
       ids_sin_cupo: sinAsignar.map((r) => r.id),
     };
+  }
+
+  async asignarAsientoAdmin(tourId: number, busLayoutId: number, reservaId: number, asientos: string[]) {
+    return this.seleccionAsientosService.asignarAsientoAdmin(tourId, busLayoutId, reservaId, asientos);
   }
 
   async liberarAsiento(tourId: number, reservaId: number, numero: string) {

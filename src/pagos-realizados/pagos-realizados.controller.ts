@@ -18,18 +18,10 @@ import { UpdatePagoRealizadoDto } from './dto/update-pago-realizado.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('pagos-realizados')
-@RequierePermiso('pagosRealizados')
 export class PagosRealizadosController {
   constructor(private readonly pagosService: PagosRealizadosService) {}
 
-  // ─── CRUD ─────────────────────────────────────────────────────────────────
-
-  @Version('1')
-  @Post()
-  create(@Body() createDto: CreatePagoRealizadoDto, @Req() req: any) {
-    const realizadoPor = req.user?.nombre || req.user?.email;
-    return this.pagosService.create(createDto, realizadoPor, req.user?.id_usuario);
-  }
+  // ─── LECTURA (solo autenticación) ─────────────────────────────────────────
 
   @Version('1')
   @Get()
@@ -47,16 +39,6 @@ export class PagosRealizadosController {
     return this.pagosService.findAll(startDate, endDate, safePage, safeLimit, search, fechaDocDesde, fechaDocHasta);
   }
 
-  // ─── AUDITORÍA ────────────────────────────────────────────────────────────
-
-  /**
-   * GET /v1/pagos-realizados/auditoria
-   *
-   * Query params:
-   *   - id_pago   (optional) — filtrar por ID del pago
-   *   - startDate (optional) — fecha inicio (ISO 8601)
-   *   - endDate   (optional) — fecha fin    (ISO 8601)
-   */
   @Version('1')
   @Get('auditoria')
   findAuditoria(
@@ -68,14 +50,23 @@ export class PagosRealizadosController {
     return this.pagosService.findAuditoria(idPago, startDate, endDate);
   }
 
-  // ─── GET BY ID ────────────────────────────────────────────────────────────
-
   @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
   }
 
+  // ─── ESCRITURA (requiere permiso pagosRealizados) ─────────────────────────
+
+  @RequierePermiso('pagosRealizados')
+  @Version('1')
+  @Post()
+  create(@Body() createDto: CreatePagoRealizadoDto, @Req() req: any) {
+    const realizadoPor = req.user?.nombre || req.user?.email;
+    return this.pagosService.create(createDto, realizadoPor, req.user?.id_usuario);
+  }
+
+  @RequierePermiso('pagosRealizados')
   @Version('1')
   @Patch(':id/estado')
   cambiarEstado(
@@ -91,6 +82,7 @@ export class PagosRealizadosController {
     return this.pagosService.cambiarEstado(id, accion, motivo_rechazo, realizadoPor);
   }
 
+  @RequierePermiso('pagosRealizados')
   @Version('1')
   @Patch(':id')
   update(
@@ -102,6 +94,7 @@ export class PagosRealizadosController {
     return this.pagosService.update(id, updateDto, realizadoPor, req.user?.id_usuario);
   }
 
+  @RequierePermiso('pagosRealizados')
   @Version('1')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {

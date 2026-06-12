@@ -12,7 +12,6 @@ import {
   Version,
   Req,
 } from '@nestjs/common';
-import { IsArray, IsString } from 'class-validator';
 import { ToursService } from './tours.service';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
@@ -20,15 +19,10 @@ import { SearchToursDto } from './dto/search-tours.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('tours')
-@RequierePermiso('tours')
 export class ToursController {
   constructor(private readonly toursService: ToursService) {}
 
-  @Version('1')
-  @Post()
-  create(@Body() dto: CreateTourDto, @Req() req: any) {
-    return this.toursService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
-  }
+  // ─── LECTURA (solo autenticación) ─────────────────────────────────────────
 
   @Version('1')
   @Get()
@@ -42,16 +36,18 @@ export class ToursController {
     @Body() dto: SearchToursDto,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    // Note: SearchToursDto already uses camelCase property names
     if (dto.embedding.length !== 3072) {
       throw new BadRequestException(
         'embedding debe tener 3072 dimensiones (text-embedding-3-large)',
       );
     }
-    return this.toursService.searchByEmbedding(
-      dto.embedding,
-      Math.min(Math.max(1, limit), 50),
-    );
+    return this.toursService.searchByEmbedding(dto.embedding, Math.min(Math.max(1, limit), 50));
+  }
+
+  @Version('1')
+  @Get('historico')
+  findHistorico() {
+    return this.toursService.findHistorico();
   }
 
   @Version('1')
@@ -67,11 +63,53 @@ export class ToursController {
   }
 
   @Version('1')
+  @Get(':id/detalle')
+  findDetalle(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.findDetalle(id);
+  }
+
+  @Version('1')
+  @Get(':id/buses/:busLayoutId/agentes')
+  getAsientosAgentes(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
+  ) {
+    return this.toursService.getAsientosAgentes(id, busLayoutId);
+  }
+
+  @Version('1')
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.findOne(id);
+  }
+
+  // ─── ESCRITURA (requiere permiso tours) ───────────────────────────────────
+
+  @RequierePermiso('tours')
+  @Version('1')
+  @Post()
+  create(@Body() dto: CreateTourDto, @Req() req: any) {
+    return this.toursService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @RequierePermiso('tours')
+  @Version('1')
+  @Post(':id/asignar-asiento')
+  asignarAsientoAdmin(
+    @Param('id', ParseIntPipe) tourId: number,
+    @Body() body: { bus_layout_id: number; reserva_id: number; asientos: string[] },
+  ) {
+    return this.toursService.asignarAsientoAdmin(tourId, body.bus_layout_id, body.reserva_id, body.asientos);
+  }
+
+  @RequierePermiso('tours')
+  @Version('1')
   @Post(':id/auto-asignar-asientos')
   autoAsignarAsientos(@Param('id', ParseIntPipe) id: number) {
     return this.toursService.autoAsignarAsientos(id);
   }
 
+  @RequierePermiso('tours')
   @Version('1')
   @Post(':id/liberar-asiento')
   liberarAsiento(
@@ -81,6 +119,7 @@ export class ToursController {
     return this.toursService.liberarAsiento(id, body.reserva_id, body.numero_asiento);
   }
 
+  @RequierePermiso('tours')
   @Version('1')
   @Post(':id/mover-asiento')
   moverAsiento(
@@ -96,51 +135,28 @@ export class ToursController {
     );
   }
 
-  @Version('1')
-  @Get('historico')
-  findHistorico() {
-    return this.toursService.findHistorico();
-  }
-
+  @RequierePermiso('tours')
   @Version('1')
   @Post(':id/duplicar')
   duplicar(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.toursService.duplicarTour(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
+  @RequierePermiso('tours')
   @Version('1')
   @Patch(':id/finalizar')
   finalizar(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.toursService.finalizarTour(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
-  @Version('1')
-  @Get(':id/detalle')
-  findDetalle(@Param('id', ParseIntPipe) id: number) {
-    return this.toursService.findDetalle(id);
-  }
-
-  @Version('1')
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.toursService.findOne(id);
-  }
-
+  @RequierePermiso('tours')
   @Version('1')
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTourDto, @Req() req: any) {
     return this.toursService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
-  @Version('1')
-  @Get(':id/buses/:busLayoutId/agentes')
-  getAsientosAgentes(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
-  ) {
-    return this.toursService.getAsientosAgentes(id, busLayoutId);
-  }
-
+  @RequierePermiso('tours')
   @Version('1')
   @Patch(':id/buses/:busLayoutId/agentes')
   setAsientosAgentes(

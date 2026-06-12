@@ -17,6 +17,12 @@ const MODULOS_SEED: { nombre: string; descripcion: string }[] = [
   { nombre: 'agentes', descripcion: 'Gestión de agentes' },
   { nombre: 'reservas', descripcion: 'Gestión de reservas' },
   { nombre: 'cotizacion', descripcion: 'Gestión de cotizaciones' },
+  { nombre: 'clientes', descripcion: 'Gestión de clientes' },
+  { nombre: 'sedes', descripcion: 'Gestión de sedes' },
+  { nombre: 'bus_layouts', descripcion: 'Layouts de buses' },
+  { nombre: 'saldo_pendiente', descripcion: 'Saldos pendientes de cobro' },
+  { nombre: 'proveedores', descripcion: 'Gestión de proveedores' },
+  { nombre: 'historico_tours', descripcion: 'Histórico de tours' },
 ];
 
 @Injectable()

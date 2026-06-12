@@ -73,7 +73,7 @@ export class NextcloudService {
 
   // URL pública que se guarda en DB y el frontend usa
   private buildUrl(folder: string, userId: number, filename: string, apiBase: string): string {
-    return `${apiBase}/v1/nextcloud/image/${folder}/${userKey(userId)}/${filename}`;
+    return `${apiBase}/i/${folder}/${userKey(userId)}/${filename}`;
   }
 
   private uniqueFilename(original: string): string {

@@ -9,6 +9,7 @@ import { TourBusAgente } from './entities/tour-bus-agente.entity';
 import { Reserva } from '../reservas/entities/reserva.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
+import { AsientoSeleccionado } from '../seleccion-asientos/entities/asiento-seleccionado.entity';
 import { ToursService } from './tours.service';
 import { ToursController } from './tours.controller';
 import { EmbeddingsModule } from '../embeddings/embeddings.module';
@@ -18,7 +19,7 @@ import { SeleccionAsientosModule } from '../seleccion-asientos/seleccion-asiento
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, TourPrecioGrupal, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout, TourBusAgente]),
+    TypeOrmModule.forFeature([ToursMaestro, TourPrecio, TourPrecioGrupal, N8nVector, AuditoriaTour, Reserva, PagoRealizado, BusLayout, TourBusAgente, AsientoSeleccionado]),
     EmbeddingsModule,
     AuditoriaGeneralModule,
     SeleccionAsientosModule,

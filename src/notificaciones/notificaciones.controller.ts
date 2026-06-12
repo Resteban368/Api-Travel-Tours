@@ -26,6 +26,7 @@ import { CreateNotificacionDto } from './dto/create-notificacion.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 
 @Controller('notificaciones')
 export class NotificacionesController {
@@ -107,7 +108,7 @@ export class NotificacionesController {
     return { count };
   }
 
-  // ─── CREAR ────────────────────────────────────────────────────────────────
+  // ─── CREAR (admin JWT) ────────────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
   @Roles('admin')
@@ -115,6 +116,16 @@ export class NotificacionesController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateNotificacionDto, @Req() req: any) {
     return this.service.crearYEmitir(dto, req.user.id_usuario);
+  }
+
+  // ─── CREAR DESDE N8N (API Key) ───────────────────────────────────────────
+
+  @Public()
+  @UseGuards(ApiKeyGuard)
+  @Post('n8n')
+  @HttpCode(HttpStatus.CREATED)
+  createFromN8n(@Body() dto: CreateNotificacionDto) {
+    return this.service.crearYEmitir(dto);
   }
 
   // ─── MARCAR UNA LEÍDA ────────────────────────────────────────────────────

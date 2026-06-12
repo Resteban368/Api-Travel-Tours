@@ -14,14 +14,8 @@ import { CreateServicioDto, UpdateServicioDto } from './dto/servicios.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('servicios')
-@RequierePermiso('services')
 export class ServiciosController {
   constructor(private readonly serviciosService: ServiciosService) {}
-
-  @Post()
-  create(@Body() createDto: CreateServicioDto, @Req() req: any) {
-    return this.serviciosService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
-  }
 
   @Get()
   findAll() {
@@ -33,6 +27,13 @@ export class ServiciosController {
     return this.serviciosService.findOne(id);
   }
 
+  @RequierePermiso('services')
+  @Post()
+  create(@Body() createDto: CreateServicioDto, @Req() req: any) {
+    return this.serviciosService.create(createDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @RequierePermiso('services')
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -42,11 +43,13 @@ export class ServiciosController {
     return this.serviciosService.update(id, updateDto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
+  @RequierePermiso('services')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.serviciosService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
+  @RequierePermiso('services')
   @Post('sync-vectors')
   syncVectors() {
     return this.serviciosService.syncAllServiciosToVector();

@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import { NextcloudService } from './nextcloud.service';
 import { NextcloudController } from './nextcloud.controller';
+import { ImgController } from './img.controller';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { NextcloudController } from './nextcloud.controller';
       inject: [ConfigService],
     }),
   ],
-  controllers: [NextcloudController],
+  controllers: [NextcloudController, ImgController],
   providers: [NextcloudService],
   exports: [NextcloudService],
 })

@@ -338,6 +338,58 @@ export class SeleccionAsientosService {
     return this.tokenRepo.findOne({ where: { reserva_id: reservaId } });
   }
 
+  // ─── Asignación manual por admin ─────────────────────────────────────────
+
+  async asignarAsientoAdmin(
+    tourId: number,
+    busLayoutId: number,
+    reservaId: number,
+    asientos: string[],
+  ): Promise<{ asientos: string[] }> {
+    const reserva = await this.reservaRepo.findOne({ where: { id: reservaId } });
+    if (!reserva) throw new NotFoundException(`Reserva ${reservaId} no encontrada`);
+
+    // Validar que la reserva pertenece al tour
+    if (reserva.tour?.id !== tourId) {
+      throw new BadRequestException('La reserva no pertenece a este tour');
+    }
+
+    const layout = await this.busLayoutRepo.findOne({ where: { id: busLayoutId } });
+    if (!layout) throw new NotFoundException(`Bus layout ${busLayoutId} no encontrado`);
+
+    // Validar que los asientos existen en el layout y son tipo 'normal'
+    const asientosValidos = new Set(
+      layout.configuracion.asientos.filter((a) => a.tipo === 'normal').map((a) => a.numero),
+    );
+    const invalidos = asientos.filter((n) => !asientosValidos.has(n));
+    if (invalidos.length > 0) {
+      throw new BadRequestException(`Asientos inválidos para este bus: ${invalidos.join(', ')}`);
+    }
+
+    // Verificar disponibilidad (excluye la propia reserva)
+    const ocupados = await this._getAsientosOcupados(reservaId, tourId, busLayoutId);
+    const conflictos = asientos.filter((n) => ocupados.includes(n));
+    if (conflictos.length > 0) {
+      throw new BadRequestException(`Asientos ya ocupados: ${conflictos.join(', ')}`);
+    }
+
+    // Asignar bus a la reserva si aún no lo tiene
+    if (reserva.bus_layout_id !== busLayoutId) {
+      await this.reservaRepo.update({ id: reservaId }, { bus_layout_id: busLayoutId });
+    }
+
+    // Reemplazar asientos anteriores y guardar los nuevos como confirmados
+    await this.asientoRepo.delete({ reserva_id: reservaId });
+    if (asientos.length > 0) {
+      const nuevos = asientos.map((numero_asiento) =>
+        this.asientoRepo.create({ reserva_id: reservaId, numero_asiento, estado: 'confirmado' }),
+      );
+      await this.asientoRepo.save(nuevos);
+    }
+
+    return { asientos };
+  }
+
   // ─── Helpers privados ─────────────────────────────────────────────────────
 
   private async _resolverToken(token: string): Promise<{ reserva: Reserva; layout: BusLayout }> {

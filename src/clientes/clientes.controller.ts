@@ -17,15 +17,8 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
 @Controller('clientes')
-@RequierePermiso('clientes')
 export class ClientesController {
   constructor(private readonly clientesService: ClientesService) {}
-
-  @Version('1')
-  @Post()
-  create(@Body() dto: CreateClienteDto, @Req() req: any) {
-    return this.clientesService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
-  }
 
   @Version('1')
   @Get()
@@ -42,12 +35,21 @@ export class ClientesController {
     return this.clientesService.findOne(id);
   }
 
+  @RequierePermiso('clientes')
+  @Version('1')
+  @Post()
+  create(@Body() dto: CreateClienteDto, @Req() req: any) {
+    return this.clientesService.create(dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  @RequierePermiso('clientes')
   @Version('1')
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateClienteDto, @Req() req: any) {
     return this.clientesService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
+  @RequierePermiso('clientes')
   @Version('1')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {

@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query, Version } from '@nestjs/common';
 import { SaldosPendientesService } from './saldos-pendientes.service';
 import { QuerySaldosDto } from './dto/query-saldos.dto';
+import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
 
+@RequierePermiso('saldo_pendiente')
 @Controller('saldos-pendientes')
 export class SaldosPendientesController {
   constructor(private readonly service: SaldosPendientesService) {}

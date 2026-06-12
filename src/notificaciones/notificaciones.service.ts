@@ -5,12 +5,19 @@ import { Notificacion } from './entities/notificacion.entity';
 import { NotificacionVista } from './entities/notificacion-vista.entity';
 import { CreateNotificacionDto } from './dto/create-notificacion.dto';
 import { NotificacionesGateway } from './notificaciones.gateway';
+import { PermisoAgente } from '../modulos/entities/permiso-agente.entity';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 
 export interface ListaNotificacionesQuery {
   solo_no_leidas?: boolean;
   limite?: number;
   pagina?: number;
 }
+
+// Tipos que van solo a usuarios con permiso completo del módulo indicado
+const TIPO_MODULO_MAP: Record<string, string> = {
+  pago: 'pagos',
+};
 
 @Injectable()
 export class NotificacionesService {
@@ -21,37 +28,104 @@ export class NotificacionesService {
     @InjectRepository(NotificacionVista)
     private readonly vistaRepo: Repository<NotificacionVista>,
 
+    @InjectRepository(PermisoAgente)
+    private readonly permisoRepo: Repository<PermisoAgente>,
+
+    @InjectRepository(Usuario)
+    private readonly usuarioRepo: Repository<Usuario>,
+
     private readonly gateway: NotificacionesGateway,
   ) {}
 
   // ─── CREAR Y EMITIR ───────────────────────────────────────────────────────
 
-  async crearYEmitir(dto: CreateNotificacionDto, creadoBy?: number): Promise<Notificacion> {
+  async crearYEmitir(
+    dto: CreateNotificacionDto,
+    creadoBy?: number,
+  ): Promise<Notificacion | Notificacion[]> {
+    // Destinatario específico → una sola notificación
+    if (dto.usuario_id != null) {
+      return this.crearUna(dto.usuario_id, dto, creadoBy);
+    }
+
+    // Tipo con módulo restringido → fan-out a usuarios con permiso
+    const moduloNombre = TIPO_MODULO_MAP[dto.tipo];
+    if (moduloNombre) {
+      const userIds = await this.getDestinatariosModulo(moduloNombre);
+      if (userIds.length === 0) return [];
+      return Promise.all(userIds.map((uid) => this.crearUna(uid, dto, creadoBy)));
+    }
+
+    // Broadcast general
     const notificacion = this.notificacionRepo.create({
       titulo: dto.titulo,
       mensaje: dto.mensaje,
       tipo: dto.tipo,
-      usuario_id: dto.usuario_id ?? null,
+      usuario_id: null,
       creado_by: creadoBy ?? null,
     });
     const guardada = await this.notificacionRepo.save(notificacion);
 
-    const payload = {
+    this.gateway.pushToAll({
       id: guardada.id,
       titulo: guardada.titulo,
       mensaje: guardada.mensaje,
       tipo: guardada.tipo,
       leida: false,
       created_at: guardada.created_at.toISOString(),
-    };
-
-    if (guardada.usuario_id != null) {
-      this.gateway.pushToUser(guardada.usuario_id, payload);
-    } else {
-      this.gateway.pushToAll(payload);
-    }
+    });
 
     return guardada;
+  }
+
+  // ─── PRIVADOS ─────────────────────────────────────────────────────────────
+
+  private async crearUna(
+    usuarioId: number,
+    dto: CreateNotificacionDto,
+    creadoBy?: number,
+  ): Promise<Notificacion> {
+    const notificacion = this.notificacionRepo.create({
+      titulo: dto.titulo,
+      mensaje: dto.mensaje,
+      tipo: dto.tipo,
+      usuario_id: usuarioId,
+      creado_by: creadoBy ?? null,
+    });
+    const guardada = await this.notificacionRepo.save(notificacion);
+
+    this.gateway.pushToUser(usuarioId, {
+      id: guardada.id,
+      titulo: guardada.titulo,
+      mensaje: guardada.mensaje,
+      tipo: guardada.tipo,
+      leida: false,
+      created_at: guardada.created_at.toISOString(),
+    });
+
+    return guardada;
+  }
+
+  private async getDestinatariosModulo(nombreModulo: string): Promise<number[]> {
+    // Agentes con permiso completo al módulo
+    const permisos = await this.permisoRepo
+      .createQueryBuilder('p')
+      .innerJoin('p.modulo', 'm')
+      .where('m.nombre = :nombre', { nombre: nombreModulo })
+      .andWhere('p.tipo_permiso = :tipo', { tipo: 'completo' })
+      .select('p.usuario_id', 'usuario_id')
+      .getRawMany<{ usuario_id: number }>();
+
+    const agenteIds = permisos.map((p) => p.usuario_id);
+
+    // Admins siempre reciben
+    const admins = await this.usuarioRepo.find({
+      where: { rol_nombre: 'admin', activo: true },
+      select: ['id_usuario'],
+    });
+    const adminIds = admins.map((u) => u.id_usuario);
+
+    return [...new Set([...agenteIds, ...adminIds])];
   }
 
   // ─── LISTAR ───────────────────────────────────────────────────────────────
@@ -97,12 +171,10 @@ export class NotificacionesService {
   // ─── CONTEO NO LEÍDAS ────────────────────────────────────────────────────
 
   async countNoLeidas(userId: number): Promise<number> {
-    // Directas no leídas
     const directas = await this.notificacionRepo.count({
       where: { usuario_id: userId, leida: false },
     });
 
-    // Generales no vistas
     const todasGenerales = await this.notificacionRepo.find({
       where: { usuario_id: IsNull() },
       select: ['id'],
@@ -125,7 +197,6 @@ export class NotificacionesService {
     if (!notificacion) throw new NotFoundException(`Notificación ${id} no encontrada`);
 
     if (notificacion.usuario_id === null) {
-      // General: insertar en notificacion_vista (ignorar si ya existe)
       await this.vistaRepo
         .createQueryBuilder()
         .insert()
@@ -134,7 +205,6 @@ export class NotificacionesService {
         .orIgnore()
         .execute();
     } else {
-      // Directa: marcar leida
       await this.notificacionRepo.update({ id, usuario_id: userId }, { leida: true });
     }
 
@@ -146,14 +216,12 @@ export class NotificacionesService {
   async marcarTodasLeidas(userId: number): Promise<{ actualizadas: number }> {
     let actualizadas = 0;
 
-    // Directas no leídas
     const resultDirectas = await this.notificacionRepo.update(
       { usuario_id: userId, leida: false },
       { leida: true },
     );
     actualizadas += resultDirectas.affected ?? 0;
 
-    // Generales no vistas aún
     const todasGenerales = await this.notificacionRepo.find({
       where: { usuario_id: IsNull() },
       select: ['id'],
@@ -188,6 +256,6 @@ export class NotificacionesService {
   async remove(id: number): Promise<void> {
     const notificacion = await this.notificacionRepo.findOne({ where: { id } });
     if (!notificacion) throw new NotFoundException(`Notificación ${id} no encontrada`);
-    await this.notificacionRepo.remove(notificacion);
+    await this.notificacionRepo.softRemove(notificacion);
   }
 }
