@@ -5,10 +5,12 @@ import * as https from 'https';
 import { NextcloudService } from './nextcloud.service';
 import { NextcloudController } from './nextcloud.controller';
 import { ImgController } from './img.controller';
+import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 
 @Module({
   imports: [
     ConfigModule,
+    AuditoriaGeneralModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {

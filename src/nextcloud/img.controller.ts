@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Delete,
-  Param,
   Req,
   Res,
   HttpCode,
@@ -13,61 +12,45 @@ import { Response } from 'express';
 import { NextcloudService } from './nextcloud.service';
 import { Public } from '../auth/decorators/public.decorator';
 
+function parsePath(rawPath: string): { folder: string; ownerKey: string | null; filename: string } {
+  const segments = (rawPath ?? '').split('/').filter(Boolean);
+  if (segments.length < 2) return { folder: '', ownerKey: null, filename: segments[0] ?? '' };
+  const filename = segments[segments.length - 1];
+  const possibleOwnerKey = segments[segments.length - 2];
+  if (/^u\d+$/.test(possibleOwnerKey)) {
+    return { folder: segments.slice(0, -2).join('/'), ownerKey: possibleOwnerKey, filename };
+  }
+  return { folder: segments.slice(0, -1).join('/'), ownerKey: null, filename };
+}
+
 @Controller({ path: 'i', version: VERSION_NEUTRAL })
 export class ImgController {
   constructor(private readonly nextcloudService: NextcloudService) {}
 
   @Public()
-  @Get(':folder/:ownerKey/:filename')
-  async getImage(
-    @Param('folder') folder: string,
-    @Param('ownerKey') ownerKey: string,
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ) {
-    await this.nextcloudService.streamImage(folder, ownerKey, filename, res);
+  @Get('*')
+  async getImage(@Req() req: any, @Res() res: Response) {
+    const rawPath = (req.path ?? '').replace(/^\/i\//, '');
+    const { folder, ownerKey, filename } = parsePath(rawPath);
+    if (ownerKey) {
+      await this.nextcloudService.streamImage(folder, ownerKey, filename, res);
+    } else {
+      await this.nextcloudService.streamImageFlat(folder, filename, res);
+    }
   }
 
-  @Public()
-  @Get(':folder/:filename')
-  async getImageFlat(
-    @Param('folder') folder: string,
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ) {
-    await this.nextcloudService.streamImageFlat(folder, filename, res);
-  }
-
-  @Delete(':folder/:ownerKey/:filename')
+  @Delete('*')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteImage(
-    @Param('folder') folder: string,
-    @Param('ownerKey') ownerKey: string,
-    @Param('filename') filename: string,
-    @Req() req: any,
-  ) {
+  async deleteImage(@Req() req: any) {
+    const rawPath = (req.path ?? '').replace(/^\/i\//, '');
+    const { folder, ownerKey, filename } = parsePath(rawPath);
+    const userId = req.user.id_usuario;
     await this.nextcloudService.deleteImage(
       folder,
-      ownerKey,
+      ownerKey ?? `u${userId}`,
       filename,
-      req.user.id_usuario,
-      req.user.rol === 'admin',
-    );
-  }
-
-  @Delete(':folder/:filename')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteImageFlat(
-    @Param('folder') folder: string,
-    @Param('filename') filename: string,
-    @Req() req: any,
-  ) {
-    await this.nextcloudService.deleteImage(
-      folder,
-      `u${req.user.id_usuario}`,
-      filename,
-      req.user.id_usuario,
-      req.user.rol === 'admin',
+      userId,
+      req.user.nombre,
     );
   }
 }
