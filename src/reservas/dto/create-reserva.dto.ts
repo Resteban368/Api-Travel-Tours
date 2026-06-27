@@ -154,6 +154,18 @@ export class CreateReservaDto {
   @IsOptional()
   id_tour?: number;
 
+  @IsInt()
+  @IsOptional()
+  id_tour_salida?: number;
+
+  @IsISO8601({}, { message: 'fecha_inicio_personalizada debe ser una fecha válida (ISO 8601)' })
+  @IsOptional()
+  fecha_inicio_personalizada?: string;
+
+  @IsISO8601({}, { message: 'fecha_fin_personalizada debe ser una fecha válida (ISO 8601)' })
+  @IsOptional()
+  fecha_fin_personalizada?: string;
+
   // Vuelos: requeridos cuando tipo_reserva = 'vuelos', opcionales para tours aéreos
   @IsArray()
   @ValidateNested({ each: true })

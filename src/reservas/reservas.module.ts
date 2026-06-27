@@ -9,6 +9,7 @@ import { VueloReserva } from './entities/vuelo-reserva.entity';
 import { HotelReserva } from './entities/hotel-reserva.entity';
 import { AuditoriaReserva } from './entities/auditoria-reserva.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
+import { TourSalida } from '../tours/entities/tour-salida.entity';
 import { Servicio } from '../servicios/entities/servicio.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { ClienteApp } from '../clientes/entities/cliente-app.entity';
@@ -27,6 +28,7 @@ import { SeleccionAsientosModule } from '../seleccion-asientos/seleccion-asiento
       HotelReserva,
       AuditoriaReserva,
       ToursMaestro,
+      TourSalida,
       Servicio,
       PagoRealizado,
       ClienteApp,

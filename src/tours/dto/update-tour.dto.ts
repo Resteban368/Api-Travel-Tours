@@ -14,7 +14,7 @@ import {
   ValidateNested,
   Min,
 } from 'class-validator';
-import { ItineraryDayDto, TourPrecioDto, TourPrecioGrupalDto } from './create-tour.dto';
+import { CreateTourSalidaDto, ItineraryDayDto, TourPrecioDto, TourPrecioGrupalDto } from './create-tour.dto';
 
 export class UpdateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
@@ -39,6 +39,13 @@ export class UpdateTourDto {
   @IsOptional()
   agencia?: string;
 
+  @IsString()
+  @IsIn(['fecha_fija', 'multiples_fechas', 'permanente'], {
+    message: 'disponibilidad_tipo debe ser: fecha_fija, multiples_fechas o permanente',
+  })
+  @IsOptional()
+  disponibilidad_tipo?: 'fecha_fija' | 'multiples_fechas' | 'permanente';
+
   @IsISO8601({}, { message: 'fecha_inicio debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_inicio?: string;
@@ -46,6 +53,12 @@ export class UpdateTourDto {
   @IsISO8601({}, { message: 'fecha_fin debe ser una fecha válida (ISO 8601)' })
   @IsOptional()
   fecha_fin?: string;
+
+  @IsArray({ message: 'salidas debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateTourSalidaDto)
+  @IsOptional()
+  salidas?: CreateTourSalidaDto[];
 
   @IsNumber({}, { message: 'El precio debe ser un número' })
   @IsOptional()
@@ -95,6 +108,14 @@ export class UpdateTourDto {
   @Type(() => ItineraryDayDto)
   @IsOptional()
   itinerary?: ItineraryDayDto[];
+
+  @IsString({ message: 'La descripción debe ser un texto' })
+  @IsOptional()
+  descripcion?: string;
+
+  @IsString({ message: 'Las recomendaciones deben ser un texto' })
+  @IsOptional()
+  recomendaciones?: string;
 
   @IsNumber({}, { message: 'El campo cupos debe ser un número entero' })
   @IsOptional()

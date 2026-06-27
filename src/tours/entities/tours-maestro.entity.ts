@@ -14,6 +14,7 @@ import { Sede } from '../../sedes/entities/sede.entity';
 import { TourPrecio } from './tour-precio.entity';
 import { TourPrecioGrupal } from './tour-precio-grupal.entity';
 import { BusLayout } from '../../bus-layouts/entities/bus-layout.entity';
+import { TourSalida } from './tour-salida.entity';
 
 @Entity('tours_maestro')
 export class ToursMaestro {
@@ -74,6 +75,12 @@ export class ToursMaestro {
   @Column({ name: 'itinerary', type: 'jsonb', nullable: true })
   itinerary: any[] | null;
 
+  @Column({ name: 'descripcion', type: 'text', nullable: true, default: null })
+  descripcion: string | null;
+
+  @Column({ name: 'recomendaciones', type: 'text', nullable: true, default: null })
+  recomendaciones: string | null;
+
   @Column({ name: 'cupos', type: 'int', nullable: true, default: null })
   cupos: number | null;
 
@@ -126,4 +133,11 @@ export class ToursMaestro {
 
   @OneToMany(() => TourPrecioGrupal, (pg) => pg.tour, { eager: true, cascade: true })
   precios_grupales: TourPrecioGrupal[];
+
+  // 'fecha_fija' = comportamiento original | 'multiples_fechas' = usa tabla tour_salidas | 'permanente' = sin fechas, cupos ilimitados
+  @Column({ name: 'disponibilidad_tipo', type: 'text', default: 'fecha_fija' })
+  disponibilidad_tipo: 'fecha_fija' | 'multiples_fechas' | 'permanente';
+
+  @OneToMany(() => TourSalida, (s) => s.tour, { cascade: true, eager: false })
+  salidas: TourSalida[];
 }

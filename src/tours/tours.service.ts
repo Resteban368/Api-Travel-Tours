@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -9,6 +9,7 @@ import { TourPrecioGrupal } from './entities/tour-precio-grupal.entity';
 import { N8nVector } from './entities/n8n-vector.entity';
 import { AuditoriaTour } from './entities/auditoria-tour.entity';
 import { TourBusAgente } from './entities/tour-bus-agente.entity';
+import { TourSalida } from './entities/tour-salida.entity';
 import { BusLayout } from '../bus-layouts/entities/bus-layout.entity';
 import { AsientoSeleccionado } from '../seleccion-asientos/entities/asiento-seleccionado.entity';
 import { SeleccionAsientosService } from '../seleccion-asientos/seleccion-asientos.service';
@@ -47,6 +48,8 @@ export class ToursService {
     private readonly tourBusAgenteRepository: Repository<TourBusAgente>,
     @InjectRepository(AsientoSeleccionado)
     private readonly asientoSeleccionadoRepository: Repository<AsientoSeleccionado>,
+    @InjectRepository(TourSalida)
+    private readonly tourSalidaRepository: Repository<TourSalida>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly seleccionAsientosService: SeleccionAsientosService,
     private readonly auditoriaTourService: AuditoriaTourService,
@@ -55,12 +58,21 @@ export class ToursService {
   ) {}
 
   async create(dto: CreateTourDto, usuarioId?: number, usuarioNombre?: string): Promise<ToursMaestro> {
+    const disponibilidadTipo = dto.disponibilidad_tipo ?? 'fecha_fija';
+
+    if (disponibilidadTipo === 'fecha_fija' && (!dto.fecha_inicio || !dto.fecha_fin)) {
+      throw new BadRequestException('fecha_inicio y fecha_fin son obligatorias para tours de tipo fecha_fija');
+    }
+    if (disponibilidadTipo === 'multiples_fechas' && (!dto.salidas || dto.salidas.length === 0)) {
+      throw new BadRequestException('El campo salidas es obligatorio y debe tener al menos una entrada para tours de tipo multiples_fechas');
+    }
+
     const tour = this.toursMaestroRepository.create({
       id_tour: dto.id_tour ?? null,
       nombre_tour: dto.nombre_tour,
       agencia: dto.agencia ?? null,
-      fecha_inicio: dto.fecha_inicio ? new Date(dto.fecha_inicio) : null,
-      fecha_fin: dto.fecha_fin ? new Date(dto.fecha_fin) : null,
+      fecha_inicio: disponibilidadTipo === 'fecha_fija' && dto.fecha_inicio ? new Date(dto.fecha_inicio) : null,
+      fecha_fin: disponibilidadTipo === 'fecha_fija' && dto.fecha_fin ? new Date(dto.fecha_fin) : null,
       precio: dto.precio ?? null,
       precio_por_pareja: dto.precio_por_pareja ?? false,
       punto_partida: dto.punto_partida ?? null,
@@ -72,13 +84,16 @@ export class ToursService {
       inclusions: dto.inclusions ?? null,
       exclusions: dto.exclusions ?? null,
       itinerary: dto.itinerary ?? null,
-      cupos: dto.cupos ?? null,
+      descripcion: dto.descripcion ?? null,
+      recomendaciones: dto.recomendaciones ?? null,
+      cupos: disponibilidadTipo === 'permanente' ? null : (dto.cupos ?? null),
       tipo_tour: dto.tipo_tour,
       modo_precio: dto.modo_precio ?? 'individual',
       es_promocion: dto.es_promocion ?? false,
       is_active: dto.is_active ?? true,
       es_borrador: dto.es_borrador ?? false,
       sede_id: dto.sede_id ?? null,
+      disponibilidad_tipo: disponibilidadTipo,
     });
 
     if (dto.bus_layout_ids && dto.bus_layout_ids.length > 0) {
@@ -86,7 +101,32 @@ export class ToursService {
     } else {
       tour.busLayouts = [];
     }
-    const saved = await this.toursMaestroRepository.save(tour);
+    let saved: ToursMaestro;
+    try {
+      saved = await this.toursMaestroRepository.save(tour);
+    } catch (err) {
+      if (err?.code === '23505') {
+        throw new ConflictException(
+          `Ya existe un tour con el código ${dto.id_tour}. Usa un código diferente.`,
+        );
+      }
+      throw err;
+    }
+
+    // Guardar salidas si el tour es de tipo multiples_fechas
+    if (disponibilidadTipo === 'multiples_fechas' && dto.salidas && dto.salidas.length > 0) {
+      const salidaEntidades = dto.salidas.map((s) =>
+        this.tourSalidaRepository.create({
+          tour: saved,
+          fecha_inicio: s.fecha_inicio,
+          fecha_fin: s.fecha_fin,
+          cupos: s.cupos ?? null,
+          label: s.label ?? null,
+          is_active: true,
+        }),
+      );
+      await this.tourSalidaRepository.save(salidaEntidades);
+    }
 
     // Guardar precios si se enviaron
     let savedPrecios: TourPrecio[] = [];
@@ -142,6 +182,13 @@ export class ToursService {
       return saved;
     }
 
+    const salidasParaChunk = (dto.salidas ?? []).map((s) => ({
+      fecha_inicio: s.fecha_inicio,
+      fecha_fin: s.fecha_fin,
+      label: s.label ?? null,
+      is_active: true,
+    }));
+
     const chunksPayload = this.generateSemanticChunks({
       nombre_tour: dto.nombre_tour,
       agencia: dto.agencia,
@@ -152,6 +199,12 @@ export class ToursService {
       inclusions: dto.inclusions,
       exclusions: dto.exclusions,
       itinerary: dto.itinerary,
+      disponibilidad_tipo: saved.disponibilidad_tipo,
+      fecha_inicio: saved.fecha_inicio,
+      fecha_fin: saved.fecha_fin,
+      salidas: salidasParaChunk,
+      descripcion: saved.descripcion,
+      recomendaciones: saved.recomendaciones,
     });
 
     const metadataBase: Record<string, any> = {
@@ -160,6 +213,8 @@ export class ToursService {
       es_promocion: saved.es_promocion,
       tipo: saved.es_promocion ? 'promocion' : 'tour',
       tipo_tour: saved.tipo_tour ?? null,
+      disponibilidad_tipo: saved.disponibilidad_tipo,
+      salidas: salidasParaChunk,
       fecha_creacion: saved.createdAt
         ? saved.createdAt.toISOString()
         : new Date().toISOString(),
@@ -240,6 +295,8 @@ export class ToursService {
     if (dto.inclusions !== undefined) tour.inclusions = dto.inclusions;
     if (dto.exclusions !== undefined) tour.exclusions = dto.exclusions;
     if (dto.itinerary !== undefined) tour.itinerary = dto.itinerary;
+    if (dto.descripcion !== undefined) tour.descripcion = dto.descripcion ?? null;
+    if (dto.recomendaciones !== undefined) tour.recomendaciones = dto.recomendaciones ?? null;
     if (dto.es_promocion !== undefined) tour.es_promocion = dto.es_promocion;
     if (dto.is_active !== undefined) {
       track('is_active', tour.is_active, dto.is_active);
@@ -255,6 +312,18 @@ export class ToursService {
     track('es_borrador', tour.es_borrador, dto.es_borrador);
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
+    if (dto.disponibilidad_tipo !== undefined) {
+      tour.disponibilidad_tipo = dto.disponibilidad_tipo;
+      if (dto.disponibilidad_tipo === 'permanente') {
+        tour.cupos = null;
+        tour.fecha_inicio = null;
+        tour.fecha_fin = null;
+      }
+      if (dto.disponibilidad_tipo === 'multiples_fechas') {
+        tour.fecha_inicio = null;
+        tour.fecha_fin = null;
+      }
+    }
     if (dto.bus_layout_ids !== undefined) {
       const currentBusIds = tour.busLayouts?.map((b) => b.id) || [];
       const newBusIds = dto.bus_layout_ids;
@@ -312,6 +381,24 @@ export class ToursService {
     }
 
     const saved = await this.toursMaestroRepository.save(tour);
+
+    // Reemplazar salidas si se enviaron en el DTO
+    if (dto.salidas !== undefined) {
+      await this.tourSalidaRepository.delete({ tour: { id: saved.id } });
+      if (dto.salidas.length > 0) {
+        const salidaEntidades = dto.salidas.map((s) =>
+          this.tourSalidaRepository.create({
+            tour: saved,
+            fecha_inicio: s.fecha_inicio,
+            fecha_fin: s.fecha_fin,
+            cupos: s.cupos ?? null,
+            label: s.label ?? null,
+            is_active: true,
+          }),
+        );
+        await this.tourSalidaRepository.save(salidaEntidades);
+      }
+    }
 
     // Reemplazar precios si se enviaron en el DTO
     if (dto.precios !== undefined) {
@@ -408,6 +495,17 @@ export class ToursService {
       return saved;
     }
 
+    const salidasActuales = saved.disponibilidad_tipo === 'multiples_fechas'
+      ? await this.tourSalidaRepository.find({ where: { tour: { id: saved.id }, is_active: true }, order: { fecha_inicio: 'ASC' } })
+      : [];
+
+    const salidasParaChunk = salidasActuales.map((s) => ({
+      fecha_inicio: s.fecha_inicio,
+      fecha_fin: s.fecha_fin,
+      label: s.label ?? null,
+      is_active: s.is_active,
+    }));
+
     const chunksPayload = this.generateSemanticChunks({
       nombre_tour: saved.nombre_tour,
       agencia: saved.agencia,
@@ -418,6 +516,12 @@ export class ToursService {
       inclusions: saved.inclusions,
       exclusions: saved.exclusions,
       itinerary: saved.itinerary,
+      disponibilidad_tipo: saved.disponibilidad_tipo,
+      fecha_inicio: saved.fecha_inicio,
+      fecha_fin: saved.fecha_fin,
+      salidas: salidasParaChunk,
+      descripcion: saved.descripcion,
+      recomendaciones: saved.recomendaciones,
     });
 
     const fetchCreationDate = existingVectors.find(
@@ -430,6 +534,8 @@ export class ToursService {
       es_promocion: saved.es_promocion,
       tipo: saved.es_promocion ? 'promocion' : 'tour',
       tipo_tour: saved.tipo_tour ?? null,
+      disponibilidad_tipo: saved.disponibilidad_tipo,
+      salidas: salidasParaChunk,
       fecha_creacion: saved.createdAt
         ? saved.createdAt.toISOString()
         : fetchCreationDate || new Date().toISOString(),
@@ -646,7 +752,33 @@ export class ToursService {
     if (!tour) {
       throw new NotFoundException(`Tour con id ${id} no encontrado`);
     }
-    return this.enriquecerConCupos(this.normalize(tour));
+    const base = await this.enriquecerConCupos(this.normalize(tour));
+    if (tour.disponibilidad_tipo === 'multiples_fechas') {
+      const salidas = await this.findSalidas(id);
+      return { ...base, salidas };
+    }
+    return base;
+  }
+
+  async findSalidas(tourId: number) {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+
+    const salidas = await this.tourSalidaRepository.find({
+      where: { tour: { id: tourId } },
+      order: { fecha_inicio: 'ASC' },
+    });
+
+    return Promise.all(
+      salidas.map(async (s) => {
+        const cuposLimite = s.cupos ?? tour.cupos;
+        if (cuposLimite === null) {
+          return { ...s, cupos_disponibles: null };
+        }
+        const usados = await this.calcularCuposUsadosPorSalida(s.id);
+        return { ...s, cupos_disponibles: Math.max(0, cuposLimite - usados) };
+      }),
+    );
   }
 
   async getBusesDisponibilidad(tourId: number) {
@@ -973,6 +1105,7 @@ export class ToursService {
 
     const reservas = await this.reservaRepository.find({
       where: { tour: { id: tourId } },
+      relations: ['tour_salida'],
       order: { fecha_creacion: 'DESC' },
     });
 
@@ -1008,7 +1141,49 @@ export class ToursService {
         const esCancelada = ['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? '');
         const ocupaCupo = r.estado === 'al dia' || (!esCancelada && tienePageValidado);
 
-        const valor_total = Number(r.valor_total);
+        // Recalcular valor_total igual que en reservas.service para consistencia
+        const esGrupal = r.tour?.modo_precio === 'grupal';
+        const usaPreciosCategorias =
+          r.precio_responsable_aplicado != null ||
+          (r.integrantes ?? []).some((i) => i.precio_aplicado != null);
+
+        let valor_total: number;
+        if (esGrupal || usaPreciosCategorias) {
+          const totalPersonas = 1 + (r.integrantes?.length ?? 0);
+          let tourSubtotal = 0;
+          let descuentoTotal = 0;
+          if (r.tour) {
+            const modoPrecio = r.tour.modo_precio ?? (r.tour.precio_por_pareja ? 'pareja' : 'individual');
+            if (esGrupal) {
+              const grupoActivo = (r.tour.precios_grupales ?? [])
+                .filter((pg) => pg.activo)
+                .find((pg) => totalPersonas >= pg.min_personas && totalPersonas <= pg.max_personas);
+              tourSubtotal = grupoActivo
+                ? Number(grupoActivo.precio)
+                : Number(r.tour.precio ?? 0) * totalPersonas;
+            } else {
+              const precioResp = Number(r.precio_responsable_aplicado ?? 0);
+              const ints = r.integrantes ?? [];
+              const descuento = Number(r.descuento_por_persona ?? 0);
+              if (modoPrecio === 'pareja') {
+                const unidades = Math.ceil(totalPersonas / 2);
+                tourSubtotal = precioResp;
+                for (let idx = 1; idx < ints.length; idx += 2) tourSubtotal += Number(ints[idx].precio_aplicado ?? 0);
+                descuentoTotal = descuento * unidades;
+              } else {
+                tourSubtotal = precioResp + ints.reduce((sum, i) => sum + Number(i.precio_aplicado ?? 0), 0);
+                descuentoTotal = descuento * totalPersonas;
+              }
+            }
+          }
+          const costo_servicios_calc = (r.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
+          const totalVuelos = (r.vuelos ?? []).reduce((sum, v) => sum + Number(v.precio ?? 0), 0);
+          const totalHoteles = (r.hoteles ?? []).reduce((sum, h) => sum + Number(h.valor ?? 0), 0);
+          valor_total = tourSubtotal + costo_servicios_calc + totalVuelos + totalHoteles - descuentoTotal;
+        } else {
+          valor_total = Number(r.valor_total);
+        }
+
         const costo_servicios = (r.servicios ?? []).reduce((sum, s) => sum + Number(s.costo ?? 0), 0);
         const valor_tour_snapshot = valor_total - costo_servicios;
 
@@ -1024,6 +1199,17 @@ export class ToursService {
           costo_servicios,
           valor_cancelado,
           saldo_pendiente: valor_total - valor_cancelado,
+          fecha_inicio_personalizada: r.fecha_inicio_personalizada ?? null,
+          fecha_fin_personalizada: r.fecha_fin_personalizada ?? null,
+          id_tour_salida: r.tour_salida?.id ?? null,
+          tour_salida: r.tour_salida
+            ? {
+                id: r.tour_salida.id,
+                fecha_inicio: r.tour_salida.fecha_inicio,
+                fecha_fin: r.tour_salida.fecha_fin,
+                label: r.tour_salida.label ?? null,
+              }
+            : null,
           responsable: r.responsable
             ? {
                 id: r.responsable.id,
@@ -1155,6 +1341,75 @@ export class ToursService {
     }, 0);
   }
 
+  async addSalida(tourId: number, dto: { fecha_inicio: string; fecha_fin: string; cupos?: number; label?: string }) {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+    if (tour.disponibilidad_tipo !== 'multiples_fechas') {
+      throw new BadRequestException('Solo se pueden agregar salidas a tours de tipo multiples_fechas');
+    }
+    const salida = this.tourSalidaRepository.create({
+      tour,
+      fecha_inicio: dto.fecha_inicio,
+      fecha_fin: dto.fecha_fin,
+      cupos: dto.cupos ?? null,
+      label: dto.label ?? null,
+      is_active: true,
+    });
+    return this.tourSalidaRepository.save(salida);
+  }
+
+  async updateSalida(tourId: number, salidaId: number, dto: { fecha_inicio?: string; fecha_fin?: string; cupos?: number | null; label?: string | null; is_active?: boolean }) {
+    const salida = await this.tourSalidaRepository.findOne({
+      where: { id: salidaId, tour: { id: tourId } },
+      relations: ['tour'],
+    });
+    if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada para el tour ${tourId}`);
+    if (dto.fecha_inicio !== undefined) salida.fecha_inicio = dto.fecha_inicio;
+    if (dto.fecha_fin !== undefined) salida.fecha_fin = dto.fecha_fin;
+    if (dto.cupos !== undefined) salida.cupos = dto.cupos ?? null;
+    if (dto.label !== undefined) salida.label = dto.label ?? null;
+    if (dto.is_active !== undefined) salida.is_active = dto.is_active;
+    return this.tourSalidaRepository.save(salida);
+  }
+
+  async removeSalida(tourId: number, salidaId: number) {
+    const salida = await this.tourSalidaRepository.findOne({
+      where: { id: salidaId, tour: { id: tourId } },
+      relations: ['tour'],
+    });
+    if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada para el tour ${tourId}`);
+    salida.is_active = false;
+    await this.tourSalidaRepository.save(salida);
+    return { id: salidaId, is_active: false, mensaje: 'Salida desactivada correctamente' };
+  }
+
+  async calcularCuposUsadosPorSalida(tourSalidaId: number): Promise<number> {
+    const reservas = await this.reservaRepository.find({
+      where: { tour_salida: { id: tourSalidaId } },
+    });
+
+    const activas = reservas.filter((r) => !['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? ''));
+    if (activas.length === 0) return 0;
+
+    const pendientesIds = activas.filter((r) => r.estado !== 'al dia').map((r) => r.id);
+    const reservasConPago = new Set<number>();
+    if (pendientesIds.length > 0) {
+      const pagos = await this.pagoRepository
+        .createQueryBuilder('p')
+        .select('DISTINCT p.reserva_id', 'reserva_id')
+        .where('p.reserva_id IN (:...ids)', { ids: pendientesIds })
+        .andWhere('p.is_validated = true')
+        .getRawMany<{ reserva_id: number }>();
+      pagos.forEach((p) => reservasConPago.add(Number(p.reserva_id)));
+    }
+
+    return activas.reduce((total, r) => {
+      const personas = 1 + (r.integrantes?.length ?? 0);
+      if (r.estado === 'al dia' || reservasConPago.has(r.id)) return total + personas;
+      return total;
+    }, 0);
+  }
+
   async getAsientosAgentes(tourId: number, busLayoutId: number): Promise<{ asientos_agentes: string[] }> {
     const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
     if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
@@ -1254,6 +1509,12 @@ export class ToursService {
     inclusions?: string[] | null;
     exclusions?: string[] | null;
     itinerary?: any[] | null;
+    disponibilidad_tipo?: string | null;
+    fecha_inicio?: Date | null;
+    fecha_fin?: Date | null;
+    salidas?: Array<{ fecha_inicio: string; fecha_fin: string; label?: string | null; is_active?: boolean }> | null;
+    descripcion?: string | null;
+    recomendaciones?: string | null;
   }): Array<{
     text: string;
     chunk_type: 'resumen' | 'detalles' | 'itinerario';
@@ -1283,13 +1544,37 @@ export class ToursService {
     }
     const preciosText = preciosLineas.length > 0 ? `PRECIOS:\n${preciosLineas.join('\n')}` : '';
 
+    // Construir texto de disponibilidad según el tipo
+    const fmtFecha = (f: string | Date | null | undefined): string => {
+      if (!f) return '';
+      const d = typeof f === 'string' ? new Date(f) : f;
+      return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    let disponibilidadText = '';
+    const tipo = data.disponibilidad_tipo ?? 'fecha_fija';
+    if (tipo === 'permanente') {
+      disponibilidadText = 'DISPONIBILIDAD:\n- Disponible todo el año, sin fecha fija, cupos ilimitados';
+    } else if (tipo === 'multiples_fechas' && data.salidas && data.salidas.length > 0) {
+      const salidasActivas = data.salidas.filter((s) => s.is_active !== false);
+      const lineas = salidasActivas.map((s) => {
+        const rango = `${fmtFecha(s.fecha_inicio)} – ${fmtFecha(s.fecha_fin)}`;
+        return s.label ? `- ${s.label}: ${rango}` : `- ${rango}`;
+      });
+      disponibilidadText = `DISPONIBILIDAD:\n- Múltiples salidas disponibles\n${lineas.join('\n')}`;
+    } else if (tipo === 'fecha_fija' && data.fecha_inicio && data.fecha_fin) {
+      disponibilidadText = `DISPONIBILIDAD:\n- Fecha fija: ${fmtFecha(data.fecha_inicio)} – ${fmtFecha(data.fecha_fin)}`;
+    }
+
     // 1. Resumen Ejecutivo
     const resumenParts = [
       `TOUR RESUMEN: ${data.nombre_tour}`,
       data.agencia ? `Agencia: ${data.agencia}` : '',
+      data.descripcion ? `DESCRIPCIÓN:\n${data.descripcion}` : '',
       preciosText,
       data.punto_partida ? `Punto de Partida: ${data.punto_partida}` : '',
       data.llegada ? `Destino/Llegada: ${data.llegada}` : '',
+      disponibilidadText,
     ];
     chunks.push({
       text: resumenParts.filter(Boolean).join('\n'),
@@ -1297,10 +1582,11 @@ export class ToursService {
       chunk_index: 0,
     });
 
-    // 2. Detalles Técnicos (Inclusiones y Exclusiones)
+    // 2. Detalles Técnicos (Inclusiones, Exclusiones y Recomendaciones)
     if (
       (data.inclusions && data.inclusions.length > 0) ||
-      (data.exclusions && data.exclusions.length > 0)
+      (data.exclusions && data.exclusions.length > 0) ||
+      data.recomendaciones
     ) {
       const detallesParts = [
         `DETALLES TOUR: ${data.nombre_tour}`,
@@ -1309,6 +1595,9 @@ export class ToursService {
           : '',
         data.exclusions?.length
           ? `NO INCLUYE:\n- ${data.exclusions.join('\n- ')}`
+          : '',
+        data.recomendaciones
+          ? `RECOMENDACIONES:\n${data.recomendaciones}`
           : '',
       ];
       chunks.push({

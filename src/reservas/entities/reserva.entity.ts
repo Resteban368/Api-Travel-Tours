@@ -13,6 +13,7 @@ import {
   Index,
 } from 'typeorm';
 import { ToursMaestro } from '../../tours/entities/tours-maestro.entity';
+import { TourSalida } from '../../tours/entities/tour-salida.entity';
 import { Servicio } from '../../servicios/entities/servicio.entity';
 import { IntegranteReserva } from './integrante.entity';
 import { ClienteApp } from '../../clientes/entities/cliente-app.entity';
@@ -129,6 +130,16 @@ export class Reserva {
   @ManyToOne(() => ToursMaestro, { eager: true, nullable: true })
   @JoinColumn({ name: 'id_tours' })
   tour: ToursMaestro | null;
+
+  @ManyToOne(() => TourSalida, { eager: false, nullable: true })
+  @JoinColumn({ name: 'tour_salida_id' })
+  tour_salida: TourSalida | null;
+
+  @Column({ name: 'fecha_inicio_personalizada', type: 'date', nullable: true, default: null })
+  fecha_inicio_personalizada: string | null;
+
+  @Column({ name: 'fecha_fin_personalizada', type: 'date', nullable: true, default: null })
+  fecha_fin_personalizada: string | null;
 
   @ManyToMany(() => Servicio, { eager: true })
   @JoinTable({

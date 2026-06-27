@@ -4,6 +4,7 @@ import { Repository, In, DataSource, Or } from 'typeorm';
 import { Reserva } from './entities/reserva.entity';
 import { Servicio } from '../servicios/entities/servicio.entity';
 import { ToursMaestro } from '../tours/entities/tours-maestro.entity';
+import { TourSalida } from '../tours/entities/tour-salida.entity';
 import { PagoRealizado } from '../pagos-realizados/entities/pago-realizado.entity';
 import { ClienteApp } from '../clientes/entities/cliente-app.entity';
 import { IntegranteReserva } from './entities/integrante.entity';
@@ -29,6 +30,8 @@ export class ReservasService {
     private readonly servicioRepository: Repository<Servicio>,
     @InjectRepository(ToursMaestro)
     private readonly tourRepository: Repository<ToursMaestro>,
+    @InjectRepository(TourSalida)
+    private readonly tourSalidaRepository: Repository<TourSalida>,
     @InjectRepository(PagoRealizado)
     private readonly pagoRepository: Repository<PagoRealizado>,
     @InjectRepository(ClienteApp)
@@ -55,6 +58,7 @@ export class ReservasService {
     // 1. Validar tour si aplica
     const tipoReserva = dto.tipo_reserva ?? 'tour';
     let tour: ToursMaestro | null = null;
+    let tourSalida: TourSalida | null = null;
     if (tipoReserva === 'tour') {
       if (!dto.id_tour) throw new BadRequestException('id_tour es requerido para reservas de tipo tour');
       tour = await this.tourRepository.findOne({
@@ -62,6 +66,31 @@ export class ReservasService {
         relations: ['precios_grupales'],
       });
       if (!tour) throw new NotFoundException(`Tour con ID ${dto.id_tour} no encontrado`);
+
+      if (tour.disponibilidad_tipo === 'permanente') {
+        if (!dto.fecha_inicio_personalizada || !dto.fecha_fin_personalizada) {
+          throw new BadRequestException(
+            'El tour es permanente. Debes especificar fecha_inicio_personalizada y fecha_fin_personalizada para registrar las fechas de esta reserva.',
+          );
+        }
+      }
+
+      if (tour.disponibilidad_tipo === 'multiples_fechas') {
+        if (!dto.id_tour_salida) {
+          throw new BadRequestException(
+            'El tour tiene múltiples salidas. Debes especificar id_tour_salida para indicar en qué fecha quieres reservar.',
+          );
+        }
+        tourSalida = await this.tourSalidaRepository.findOne({
+          where: { id: dto.id_tour_salida, tour: { id: dto.id_tour } },
+        });
+        if (!tourSalida) {
+          throw new NotFoundException(`La salida ${dto.id_tour_salida} no existe o no pertenece al tour ${dto.id_tour}`);
+        }
+        if (!tourSalida.is_active) {
+          throw new BadRequestException(`La salida seleccionada no está disponible`);
+        }
+      }
     }
 
     // 2. Validar vuelos y hoteles si se envían
@@ -160,6 +189,9 @@ export class ReservasService {
       bus_layout_id: dto.bus_layout_id ?? null,
       responsable,
       tour,
+      tour_salida: tourSalida,
+      fecha_inicio_personalizada: dto.fecha_inicio_personalizada ?? null,
+      fecha_fin_personalizada: dto.fecha_fin_personalizada ?? null,
       servicios: serviciosAdicionales,
       integrantes: dto.integrantes ?? [],
       vuelos: vuelosEntidades,
@@ -168,14 +200,27 @@ export class ReservasService {
 
     // Advertencia de cupos (no bloquea, solo informa)
     let advertencia_cupos: string | null = null;
-    if (tour && tour.cupos !== null) {
-      const cuposUsados = await this.calcularCuposUsados(tour.id);
-      const cuposDisponibles = Math.max(0, tour.cupos - cuposUsados);
-      if (totalPersonas > cuposDisponibles) {
-        advertencia_cupos =
-          cuposDisponibles === 0
-            ? `El tour "${tour.nombre_tour}" no tiene cupos disponibles. Se registró la reserva igualmente.`
-            : `El tour "${tour.nombre_tour}" solo tiene ${cuposDisponibles} cupo(s) disponible(s) pero se solicitaron ${totalPersonas}. Se registró la reserva igualmente.`;
+    if (tour && tour.disponibilidad_tipo !== 'permanente') {
+      let cuposLimite: number | null = null;
+      let cuposUsados = 0;
+
+      if (tourSalida) {
+        cuposLimite = tourSalida.cupos ?? tour.cupos;
+        if (cuposLimite !== null) cuposUsados = await this.calcularCuposUsadosPorSalida(tourSalida.id);
+      } else if (tour.cupos !== null) {
+        cuposLimite = tour.cupos;
+        cuposUsados = await this.calcularCuposUsados(tour.id);
+      }
+
+      if (cuposLimite !== null) {
+        const cuposDisponibles = Math.max(0, cuposLimite - cuposUsados);
+        if (totalPersonas > cuposDisponibles) {
+          const contexto = tourSalida ? ` (salida ${tourSalida.fecha_inicio})` : '';
+          advertencia_cupos =
+            cuposDisponibles === 0
+              ? `El tour "${tour.nombre_tour}"${contexto} no tiene cupos disponibles. Se registró la reserva igualmente.`
+              : `El tour "${tour.nombre_tour}"${contexto} solo tiene ${cuposDisponibles} cupo(s) disponible(s) pero se solicitaron ${totalPersonas}. Se registró la reserva igualmente.`;
+        }
       }
     }
 
@@ -209,6 +254,7 @@ export class ReservasService {
       .leftJoinAndSelect('reserva.responsable', 'responsable')
       .leftJoinAndSelect('reserva.tour', 'tour')
       .leftJoinAndSelect('tour.precios_grupales', 'precios_grupales')
+      .leftJoinAndSelect('reserva.tour_salida', 'tour_salida')
       .leftJoinAndSelect('reserva.integrantes', 'integrantes')
       .leftJoinAndSelect('reserva.servicios', 'servicios')
       .leftJoinAndSelect('reserva.hoteles', 'hoteles')
@@ -290,7 +336,10 @@ export class ReservasService {
   }
 
   async findOne(id: number) {
-    const reserva = await this.reservaRepository.findOne({ where: { id } });
+    const reserva = await this.reservaRepository.findOne({
+      where: { id },
+      relations: ['tour_salida'],
+    });
     if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
 
     let agente: Usuario | null = null;
@@ -756,6 +805,32 @@ export class ReservasService {
     }, 0);
   }
 
+  private async calcularCuposUsadosPorSalida(tourSalidaId: number): Promise<number> {
+    const reservas = await this.reservaRepository.find({
+      where: { tour_salida: { id: tourSalidaId } },
+    });
+    const activas = reservas.filter((r) => !['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? ''));
+    if (activas.length === 0) return 0;
+
+    const pendientesIds = activas.filter((r) => r.estado !== 'al dia').map((r) => r.id);
+    const reservasConPago = new Set<number>();
+    if (pendientesIds.length > 0) {
+      const pagos = await this.pagoRepository
+        .createQueryBuilder('p')
+        .select('DISTINCT p.reserva_id', 'reserva_id')
+        .where('p.reserva_id IN (:...ids)', { ids: pendientesIds })
+        .andWhere('p.is_validated = true')
+        .getRawMany<{ reserva_id: number }>();
+      pagos.forEach((p) => reservasConPago.add(Number(p.reserva_id)));
+    }
+
+    return activas.reduce((total, r) => {
+      const personas = 1 + (r.integrantes?.length ?? 0);
+      if (r.estado === 'al dia' || reservasConPago.has(r.id)) return total + personas;
+      return total;
+    }, 0);
+  }
+
   private async buildHoteles(hoteles: CreateReservaDto['hoteles']): Promise<HotelReserva[]> {
     if (!hoteles || hoteles.length === 0) return [];
 
@@ -879,7 +954,7 @@ export class ReservasService {
     const usaPreciosCategorias =
       reserva.precio_responsable_aplicado != null ||
       (reserva.integrantes ?? []).some((i) => i.precio_aplicado != null);
-    const useStored = !esGrupal && (!fullTour || !usaPreciosCategorias);
+    const useStored = !esGrupal && !usaPreciosCategorias;
     const { valor_sin_descuento, valor_total } = useStored
       ? { valor_sin_descuento: Number(reserva.valor_sin_descuento), valor_total: Number(reserva.valor_total) }
       : this.calcularValorReal(reserva);
@@ -976,6 +1051,7 @@ export class ReservasService {
               agencia: reserva.tour.agencia,
               fecha_inicio: reserva.tour.fecha_inicio,
               fecha_fin: reserva.tour.fecha_fin,
+              disponibilidad_tipo: reserva.tour.disponibilidad_tipo,
               precio: reserva.tour.precio,
               precio_por_pareja: reserva.tour.precio_por_pareja ?? false,
               punto_partida: reserva.tour.punto_partida,
@@ -987,6 +1063,8 @@ export class ReservasService {
               exclusions: reserva.tour.exclusions,
               itinerary: reserva.tour.itinerary,
               cupos: reserva.tour.cupos,
+              descripcion: reserva.tour.descripcion ?? null,
+              recomendaciones: reserva.tour.recomendaciones ?? null,
               es_promocion: reserva.tour.es_promocion,
               modo_precio: reserva.tour.modo_precio ?? 'individual',
               precios: (reserva.tour.precios ?? []).map((p) => ({
@@ -1016,6 +1094,17 @@ export class ReservasService {
               precio_por_pareja: reserva.tour.precio_por_pareja ?? false,
               es_promocion: reserva.tour.es_promocion,
             }
+        : null,
+      fecha_inicio_personalizada: reserva.fecha_inicio_personalizada ?? null,
+      fecha_fin_personalizada: reserva.fecha_fin_personalizada ?? null,
+      id_tour_salida: reserva.tour_salida?.id ?? null,
+      tour_salida: reserva.tour_salida
+        ? {
+            id: reserva.tour_salida.id,
+            fecha_inicio: reserva.tour_salida.fecha_inicio,
+            fecha_fin: reserva.tour_salida.fecha_fin,
+            label: reserva.tour_salida.label ?? null,
+          }
         : null,
       vuelos: (reserva.vuelos ?? []).map((v) => ({
         id: v.id,

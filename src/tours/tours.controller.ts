@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -13,7 +14,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { ToursService } from './tours.service';
-import { CreateTourDto } from './dto/create-tour.dto';
+import { CreateTourDto, CreateTourSalidaDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 import { SearchToursDto } from './dto/search-tours.dto';
 import { RequierePermiso } from '../modulos/decorators/requiere-permiso.decorator';
@@ -154,6 +155,42 @@ export class ToursController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTourDto, @Req() req: any) {
     return this.toursService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
+  }
+
+  // ─── SALIDAS (múltiples fechas) ───────────────────────────────────────────
+
+  @Version('1')
+  @Get(':id/salidas')
+  findSalidas(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.findSalidas(id);
+  }
+
+  @RequierePermiso('tours')
+  @Version('1')
+  @Post(':id/salidas')
+  addSalida(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateTourSalidaDto) {
+    return this.toursService.addSalida(id, dto);
+  }
+
+  @RequierePermiso('tours')
+  @Version('1')
+  @Patch(':id/salidas/:salidaId')
+  updateSalida(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('salidaId', ParseIntPipe) salidaId: number,
+    @Body() dto: Partial<CreateTourSalidaDto> & { is_active?: boolean },
+  ) {
+    return this.toursService.updateSalida(id, salidaId, dto);
+  }
+
+  @RequierePermiso('tours')
+  @Version('1')
+  @Delete(':id/salidas/:salidaId')
+  removeSalida(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('salidaId', ParseIntPipe) salidaId: number,
+  ) {
+    return this.toursService.removeSalida(id, salidaId);
   }
 
   @RequierePermiso('tours')

@@ -79,6 +79,24 @@ export class ItineraryDayDto {
   descripcion: string;
 }
 
+export class CreateTourSalidaDto {
+  @IsISO8601({}, { message: 'fecha_inicio de la salida debe ser una fecha válida (ISO 8601)' })
+  @IsNotEmpty({ message: 'fecha_inicio de la salida es obligatoria' })
+  fecha_inicio: string;
+
+  @IsISO8601({}, { message: 'fecha_fin de la salida debe ser una fecha válida (ISO 8601)' })
+  @IsNotEmpty({ message: 'fecha_fin de la salida es obligatoria' })
+  fecha_fin: string;
+
+  @IsNumber({}, { message: 'cupos de la salida debe ser un número' })
+  @IsOptional()
+  cupos?: number;
+
+  @IsString({ message: 'label debe ser un texto' })
+  @IsOptional()
+  label?: string;
+}
+
 export class CreateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
   @IsNotEmpty({ message: 'El ID del tour es obligatorio' })
@@ -102,13 +120,26 @@ export class CreateTourDto {
   @IsOptional()
   agencia?: string;
 
+  @IsString()
+  @IsIn(['fecha_fija', 'multiples_fechas', 'permanente'], {
+    message: 'disponibilidad_tipo debe ser: fecha_fija, multiples_fechas o permanente',
+  })
+  @IsOptional()
+  disponibilidad_tipo?: 'fecha_fija' | 'multiples_fechas' | 'permanente';
+
   @IsISO8601({}, { message: 'fecha_inicio debe ser una fecha válida (ISO 8601)' })
-  @IsNotEmpty({ message: 'La fecha de inicio es obligatoria' })
-  fecha_inicio: string;
+  @IsOptional()
+  fecha_inicio?: string;
 
   @IsISO8601({}, { message: 'fecha_fin debe ser una fecha válida (ISO 8601)' })
-  @IsNotEmpty({ message: 'La fecha de fin es obligatoria' })
-  fecha_fin: string;
+  @IsOptional()
+  fecha_fin?: string;
+
+  @IsArray({ message: 'salidas debe ser un arreglo' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateTourSalidaDto)
+  @IsOptional()
+  salidas?: CreateTourSalidaDto[];
 
   @IsNumber({}, { message: 'El precio debe ser un número' })
   @IsOptional()
@@ -160,6 +191,14 @@ export class CreateTourDto {
   @ValidateNested({ each: true })
   @Type(() => ItineraryDayDto)
   itinerary: ItineraryDayDto[];
+
+  @IsString({ message: 'La descripción debe ser un texto' })
+  @IsOptional()
+  descripcion?: string;
+
+  @IsString({ message: 'Las recomendaciones deben ser un texto' })
+  @IsOptional()
+  recomendaciones?: string;
 
   @IsNumber({}, { message: 'El campo cupos debe ser un número entero' })
   @IsOptional()
