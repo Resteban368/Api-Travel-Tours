@@ -11,6 +11,10 @@ export class TourBusAgente {
   @Column({ name: 'bus_layout_id', type: 'integer' })
   bus_layout_id: number;
 
+  // null = configuración a nivel tour | número = configuración por salida (multiples_fechas)
+  @Column({ name: 'tour_salida_id', type: 'integer', nullable: true, default: null })
+  tour_salida_id: number | null;
+
   @Column({ name: 'asientos_agentes', type: 'jsonb', default: [] })
   asientos_agentes: string[];
 

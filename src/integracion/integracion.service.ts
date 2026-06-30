@@ -112,7 +112,7 @@ export class IntegracionService {
       },
     });
 
-    if (!tour) throw new NotFoundException(`Tour no encontrado`);
+    if (!tour) throw new NotFoundException(`Tour con ID ${id} no encontrado o no está disponible`);
     return this.mapTour(tour);
   }
 

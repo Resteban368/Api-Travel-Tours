@@ -42,6 +42,7 @@ import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.mo
 import { IntegracionModule } from './integracion/integracion.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { NextcloudModule } from './nextcloud/nextcloud.module';
+import { N8nModule } from './n8n/n8n.module';
 
 @Module({
   imports: [
@@ -114,6 +115,7 @@ import { NextcloudModule } from './nextcloud/nextcloud.module';
     IntegracionModule,
     NotificacionesModule,
     NextcloudModule,
+    N8nModule,
   ],
   controllers: [AppController],
   providers: [

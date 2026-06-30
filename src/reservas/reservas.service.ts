@@ -90,6 +90,20 @@ export class ReservasService {
         if (!tourSalida.is_active) {
           throw new BadRequestException(`La salida seleccionada no está disponible`);
         }
+
+        // Validar que el bus pertenezca a esa salida (si se envía bus_layout_id)
+        if (dto.bus_layout_id) {
+          const salidaConBuses = await this.tourSalidaRepository.findOne({
+            where: { id: dto.id_tour_salida },
+            relations: ['busLayouts'],
+          });
+          const busValido = (salidaConBuses?.busLayouts ?? []).some((b) => b.id === dto.bus_layout_id);
+          if (!busValido) {
+            throw new BadRequestException(
+              `El bus ${dto.bus_layout_id} no está asignado a la salida ${dto.id_tour_salida}. Verifica los buses disponibles para esta fecha.`,
+            );
+          }
+        }
       }
     }
 

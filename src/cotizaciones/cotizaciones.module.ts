@@ -9,16 +9,19 @@ import { RespuestasPublicController } from './respuestas-cotizacion.public.contr
 import { CotizacionPageController } from './cotizacion-page.controller';
 import { CotizacionFormController } from './cotizacion-form.controller';
 import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
+import { CotizacionPdfService } from './cotizacion-pdf.service';
 import { Aerolinea } from '../aerolineas/entities/aerolinea.entity';
 import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { CotizacionRespuestaVista } from './entities/cotizacion-respuesta-vista.entity';
+import { InfoEmpresaModule } from '../info-empresa/info-empresa.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cotizacion, RespuestaCotizacion, Aerolinea, CotizacionRespuestaVista]),
     AuditoriaGeneralModule,
     UsuariosModule,
+    InfoEmpresaModule,
   ],
   controllers: [
     CotizacionesController,
@@ -27,6 +30,6 @@ import { CotizacionRespuestaVista } from './entities/cotizacion-respuesta-vista.
     CotizacionPageController,
     CotizacionFormController,
   ],
-  providers: [CotizacionesService, RespuestasCotizacionService],
+  providers: [CotizacionesService, RespuestasCotizacionService, CotizacionPdfService],
 })
 export class CotizacionesModule {}

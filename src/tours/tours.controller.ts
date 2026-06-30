@@ -53,14 +53,22 @@ export class ToursController {
 
   @Version('1')
   @Get(':id/buses-disponibilidad')
-  getBusesDisponibilidad(@Param('id', ParseIntPipe) id: number) {
-    return this.toursService.getBusesDisponibilidad(id);
+  getBusesDisponibilidad(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('salida_id') salidaIdStr?: string,
+  ) {
+    const salidaId = salidaIdStr ? parseInt(salidaIdStr, 10) : undefined;
+    return this.toursService.getBusesDisponibilidad(id, salidaId);
   }
 
   @Version('1')
   @Get(':id/buses-manifiesto')
-  getBusesManifiesto(@Param('id', ParseIntPipe) id: number) {
-    return this.toursService.getBusesManifiesto(id);
+  getBusesManifiesto(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('salida_id') salidaIdStr?: string,
+  ) {
+    const salidaId = salidaIdStr ? parseInt(salidaIdStr, 10) : undefined;
+    return this.toursService.getBusesManifiesto(id, salidaId);
   }
 
   @Version('1')
@@ -74,8 +82,10 @@ export class ToursController {
   getAsientosAgentes(
     @Param('id', ParseIntPipe) id: number,
     @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
+    @Query('salida_id') salidaIdStr?: string,
   ) {
-    return this.toursService.getAsientosAgentes(id, busLayoutId);
+    const salidaId = salidaIdStr ? parseInt(salidaIdStr, 10) : undefined;
+    return this.toursService.getAsientosAgentes(id, busLayoutId, salidaId);
   }
 
   @Version('1')
@@ -157,6 +167,13 @@ export class ToursController {
     return this.toursService.update(id, dto, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
+  @RequierePermiso('tours')
+  @Version('1')
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.toursService.remove(id, req.user?.nombre || req.user?.email);
+  }
+
   // ─── SALIDAS (múltiples fechas) ───────────────────────────────────────────
 
   @Version('1')
@@ -200,7 +217,9 @@ export class ToursController {
     @Param('id', ParseIntPipe) id: number,
     @Param('busLayoutId', ParseIntPipe) busLayoutId: number,
     @Body() body: { asientos_agentes: string[] },
+    @Query('salida_id') salidaIdStr?: string,
   ) {
-    return this.toursService.setAsientosAgentes(id, busLayoutId, body.asientos_agentes ?? []);
+    const salidaId = salidaIdStr ? parseInt(salidaIdStr, 10) : undefined;
+    return this.toursService.setAsientosAgentes(id, busLayoutId, body.asientos_agentes ?? [], salidaId);
   }
 }

@@ -312,7 +312,15 @@ export class ToursService {
     track('es_borrador', tour.es_borrador, dto.es_borrador);
     if (dto.es_borrador !== undefined) tour.es_borrador = dto.es_borrador;
     if (dto.sede_id !== undefined) tour.sede_id = dto.sede_id ?? null;
-    if (dto.disponibilidad_tipo !== undefined) {
+    if (dto.disponibilidad_tipo !== undefined && dto.disponibilidad_tipo !== tour.disponibilidad_tipo) {
+      const reservasExistentes = await this.reservaRepository.count({
+        where: { tour: { id } },
+      });
+      if (reservasExistentes > 0) {
+        throw new BadRequestException(
+          `No es posible cambiar el tipo de disponibilidad del tour porque ya tiene ${reservasExistentes} reserva(s) registrada(s). Para cambiarlo, primero cancela o elimina todas las reservas asociadas.`,
+        );
+      }
       tour.disponibilidad_tipo = dto.disponibilidad_tipo;
       if (dto.disponibilidad_tipo === 'permanente') {
         tour.cupos = null;
@@ -766,22 +774,86 @@ export class ToursService {
 
     const salidas = await this.tourSalidaRepository.find({
       where: { tour: { id: tourId } },
+      relations: ['busLayouts'],
       order: { fecha_inicio: 'ASC' },
     });
 
     return Promise.all(
       salidas.map(async (s) => {
         const cuposLimite = s.cupos ?? tour.cupos;
-        if (cuposLimite === null) {
-          return { ...s, cupos_disponibles: null };
-        }
-        const usados = await this.calcularCuposUsadosPorSalida(s.id);
-        return { ...s, cupos_disponibles: Math.max(0, cuposLimite - usados) };
+        const cupos_disponibles = cuposLimite === null
+          ? null
+          : Math.max(0, cuposLimite - await this.calcularCuposUsadosPorSalida(s.id));
+
+        // Disponibilidad de asientos por bus en esta salida
+        const busesConDisponibilidad = await Promise.all(
+          (s.busLayouts ?? []).map(async (bus) => {
+            const reservaIds = await this.reservaRepository
+              .createQueryBuilder('r')
+              .select('r.id')
+              .where('r.tour_salida_id = :salidaId', { salidaId: s.id })
+              .andWhere('r.bus_layout_id = :busId', { busId: bus.id })
+              .andWhere('r.estado NOT IN (:...cancelados)', { cancelados: ['cancelado', 'cancelada'] })
+              .getRawMany<{ r_id: number }>()
+              .then((rows) => rows.map((r) => r.r_id));
+            const asientosMap = reservaIds.length > 0
+              ? await this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds)
+              : new Map<number, string[]>();
+            const asientos_ocupados = [...asientosMap.values()].reduce((sum, a) => sum + a.length, 0);
+            const agentesReg = await this.tourBusAgenteRepository.findOne({
+              where: { tour_id: tourId, bus_layout_id: bus.id, tour_salida_id: s.id as any },
+            });
+            return {
+              bus_layout_id: bus.id,
+              nombre: bus.nombre,
+              total_asientos_cliente: bus.total_asientos_cliente,
+              asientos_ocupados,
+              asientos_disponibles: Math.max(0, bus.total_asientos_cliente - asientos_ocupados),
+              asientos_agentes: agentesReg?.asientos_agentes ?? [],
+            };
+          }),
+        );
+
+        return { ...s, cupos_disponibles, buses: busesConDisponibilidad };
       }),
     );
   }
 
-  async getBusesDisponibilidad(tourId: number) {
+  async getBusesDisponibilidad(tourId: number, salidaId?: number) {
+    // Con salidaId: usa los buses de esa salida y filtra reservas por tour_salida_id
+    if (salidaId) {
+      const salida = await this.tourSalidaRepository.findOne({
+        where: { id: salidaId, tour: { id: tourId } },
+        relations: ['busLayouts'],
+      });
+      if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada en el tour ${tourId}`);
+      const busLayouts = salida.busLayouts ?? [];
+      if (busLayouts.length === 0) return [];
+
+      return Promise.all(busLayouts.map(async (bus) => {
+        const reservaIds = await this.reservaRepository
+          .createQueryBuilder('r')
+          .select('r.id')
+          .where('r.tour_salida_id = :salidaId', { salidaId })
+          .andWhere('r.bus_layout_id = :busId', { busId: bus.id })
+          .andWhere('r.estado NOT IN (:...cancelados)', { cancelados: ['cancelado', 'cancelada'] })
+          .getRawMany<{ r_id: number }>()
+          .then((rows) => rows.map((r) => r.r_id));
+        const asientosMap = reservaIds.length > 0
+          ? await this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds)
+          : new Map<number, string[]>();
+        const asientos_ocupados = [...asientosMap.values()].reduce((sum, a) => sum + a.length, 0);
+        return {
+          bus_layout_id: bus.id,
+          nombre: bus.nombre,
+          total_asientos_cliente: bus.total_asientos_cliente,
+          asientos_ocupados,
+          asientos_disponibles: Math.max(0, bus.total_asientos_cliente - asientos_ocupados),
+        };
+      }));
+    }
+
+    // Sin salidaId: comportamiento original para tours fecha_fija
     const tour = await this.toursMaestroRepository.findOne({
       where: { id: tourId },
       relations: ['busLayouts'],
@@ -791,7 +863,6 @@ export class ToursService {
     const busLayouts = tour.busLayouts ?? [];
     if (busLayouts.length === 0) return [];
 
-    // Contar reservas activas (no canceladas) por bus para este tour
     const counts = await this.reservaRepository
       .createQueryBuilder('r')
       .select('r.bus_layout_id', 'bus_layout_id')
@@ -804,9 +875,7 @@ export class ToursService {
       .getRawMany();
 
     const countMap = new Map<number, number>();
-    for (const row of counts) {
-      countMap.set(Number(row.bus_layout_id), Number(row.count));
-    }
+    for (const row of counts) countMap.set(Number(row.bus_layout_id), Number(row.count));
 
     return busLayouts.map((bus) => {
       const ocupados = countMap.get(bus.id) ?? 0;
@@ -820,19 +889,57 @@ export class ToursService {
     });
   }
 
-  async getBusesManifiesto(tourId: number) {
-    const tour = await this.toursMaestroRepository.findOne({
-      where: { id: tourId },
-      relations: ['busLayouts'],
-    });
-    if (!tour) throw new NotFoundException(`Tour ${tourId} no encontrado`);
+  async getBusesManifiesto(tourId: number, salidaId?: number) {
+    let busLayouts: BusLayout[];
+    let tourInfo: any;
 
-    const busLayouts = tour.busLayouts ?? [];
+    if (salidaId) {
+      const salida = await this.tourSalidaRepository.findOne({
+        where: { id: salidaId, tour: { id: tourId } },
+        relations: ['busLayouts', 'tour'],
+      });
+      if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada en el tour ${tourId}`);
+      busLayouts = salida.busLayouts ?? [];
+      tourInfo = {
+        id: salida.tour.id,
+        nombre_tour: salida.tour.nombre_tour,
+        fecha_inicio: salida.fecha_inicio,
+        fecha_fin: salida.fecha_fin,
+        label: salida.label,
+        hora_partida: salida.tour.hora_partida,
+        llegada: salida.tour.llegada,
+        punto_partida: salida.tour.punto_partida,
+        cupos: salida.cupos ?? salida.tour.cupos,
+      };
+    } else {
+      const tour = await this.toursMaestroRepository.findOne({
+        where: { id: tourId },
+        relations: ['busLayouts'],
+      });
+      if (!tour) throw new NotFoundException(`Tour ${tourId} no encontrado`);
+      busLayouts = tour.busLayouts ?? [];
+      tourInfo = {
+        id: tour.id,
+        nombre_tour: tour.nombre_tour,
+        fecha_inicio: tour.fecha_inicio,
+        fecha_fin: tour.fecha_fin,
+        hora_partida: tour.hora_partida,
+        llegada: tour.llegada,
+        punto_partida: tour.punto_partida,
+        cupos: tour.cupos,
+        es_promocion: tour.es_promocion,
+        link_pdf: tour.link_pdf,
+      };
+    }
+
     if (busLayouts.length === 0) return [];
 
-    // Reservas activas del tour
+    // Reservas activas — filtradas por salida si aplica
+    const whereReservas: any = { tour: { id: tourId }, estado: In(['pendiente', 'al dia']) };
+    if (salidaId) whereReservas.tour_salida = { id: salidaId };
+
     const reservas = await this.reservaRepository.find({
-      where: { tour: { id: tourId }, estado: In(['pendiente', 'al dia']) },
+      where: whereReservas,
       order: { fecha_creacion: 'ASC' },
     });
     const reservasConBus = reservas.filter((r) => r.bus_layout_id !== null);
@@ -850,27 +957,16 @@ export class ToursService {
       }
     }
 
-    // Asientos de agentes por bus: busId → Set<numero>
-    const agentesRegistros = await this.tourBusAgenteRepository.find({
-      where: { tour_id: tourId },
-    });
+    // Asientos de agentes por bus — filtrados por salidaId si aplica
+    const agentesWhere: any = { tour_id: tourId };
+    if (salidaId) agentesWhere.tour_salida_id = salidaId;
+    else agentesWhere.tour_salida_id = null as any;
+
+    const agentesRegistros = await this.tourBusAgenteRepository.find({ where: agentesWhere });
     const agentesMap = new Map<number, Set<string>>();
     for (const reg of agentesRegistros) {
       agentesMap.set(reg.bus_layout_id, new Set(reg.asientos_agentes ?? []));
     }
-
-    const tourInfo = {
-      id: tour.id,
-      nombre_tour: tour.nombre_tour,
-      fecha_inicio: tour.fecha_inicio,
-      fecha_fin: tour.fecha_fin,
-      hora_partida: tour.hora_partida,
-      llegada: tour.llegada,
-      punto_partida: tour.punto_partida,
-      cupos: tour.cupos,
-      es_promocion: tour.es_promocion,
-      link_pdf: tour.link_pdf,
-    };
 
     const buses = busLayouts.map((bus) => {
       const agentesSet = agentesMap.get(bus.id) ?? new Set<string>();
@@ -1063,7 +1159,7 @@ export class ToursService {
     const reserva = await this.reservaRepository.findOne({
       where: { id: reservaId, tour: { id: tourId } },
     });
-    if (!reserva) throw new NotFoundException('Reserva no encontrada en este tour');
+    if (!reserva) throw new NotFoundException(`Reserva con ID ${reservaId} no encontrada en el tour ${tourId}`);
     await this.seleccionAsientosService.liberarUnAsiento(reservaId, numero);
     return { ok: true };
   }
@@ -1341,7 +1437,36 @@ export class ToursService {
     }, 0);
   }
 
-  async addSalida(tourId: number, dto: { fecha_inicio: string; fecha_fin: string; cupos?: number; label?: string }) {
+  async remove(tourId: number, usuarioNombre?: string) {
+    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+
+    const reservasActivas = await this.reservaRepository.count({
+      where: { tour: { id: tourId } },
+    });
+    if (reservasActivas > 0) {
+      throw new BadRequestException(
+        `No es posible eliminar el tour porque tiene ${reservasActivas} reserva(s) asociada(s). Cancela o elimina las reservas primero.`,
+      );
+    }
+
+    tour.is_active = false;
+    tour.deleted_at = new Date();
+    await this.toursMaestroRepository.save(tour);
+
+    await this.auditoriaGeneralService.registrar({
+      usuario_id: null,
+      usuario_nombre: usuarioNombre ?? null,
+      modulo: 'tours',
+      operacion: 'ELIMINAR',
+      documento_id: String(tourId),
+      detalle: { id: tourId, nombre_tour: tour.nombre_tour, nota: 'Eliminado lógico' },
+    });
+
+    return { message: `Tour "${tour.nombre_tour}" eliminado correctamente` };
+  }
+
+  async addSalida(tourId: number, dto: { fecha_inicio: string; fecha_fin: string; cupos?: number; label?: string; bus_layout_ids?: number[] }) {
     const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
     if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
     if (tour.disponibilidad_tipo !== 'multiples_fechas') {
@@ -1355,13 +1480,18 @@ export class ToursService {
       label: dto.label ?? null,
       is_active: true,
     });
+    if (dto.bus_layout_ids && dto.bus_layout_ids.length > 0) {
+      salida.busLayouts = await this.busLayoutRepository.findBy({ id: In(dto.bus_layout_ids) });
+    } else {
+      salida.busLayouts = [];
+    }
     return this.tourSalidaRepository.save(salida);
   }
 
-  async updateSalida(tourId: number, salidaId: number, dto: { fecha_inicio?: string; fecha_fin?: string; cupos?: number | null; label?: string | null; is_active?: boolean }) {
+  async updateSalida(tourId: number, salidaId: number, dto: { fecha_inicio?: string; fecha_fin?: string; cupos?: number | null; label?: string | null; is_active?: boolean; bus_layout_ids?: number[] }) {
     const salida = await this.tourSalidaRepository.findOne({
       where: { id: salidaId, tour: { id: tourId } },
-      relations: ['tour'],
+      relations: ['tour', 'busLayouts'],
     });
     if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada para el tour ${tourId}`);
     if (dto.fecha_inicio !== undefined) salida.fecha_inicio = dto.fecha_inicio;
@@ -1369,6 +1499,11 @@ export class ToursService {
     if (dto.cupos !== undefined) salida.cupos = dto.cupos ?? null;
     if (dto.label !== undefined) salida.label = dto.label ?? null;
     if (dto.is_active !== undefined) salida.is_active = dto.is_active;
+    if (dto.bus_layout_ids !== undefined) {
+      salida.busLayouts = dto.bus_layout_ids.length > 0
+        ? await this.busLayoutRepository.findBy({ id: In(dto.bus_layout_ids) })
+        : [];
+    }
     return this.tourSalidaRepository.save(salida);
   }
 
@@ -1410,27 +1545,46 @@ export class ToursService {
     }, 0);
   }
 
-  async getAsientosAgentes(tourId: number, busLayoutId: number): Promise<{ asientos_agentes: string[] }> {
-    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
-    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
-
-    const busAsignado = (tour.busLayouts ?? []).find((b) => b.id === busLayoutId);
-    if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+  async getAsientosAgentes(tourId: number, busLayoutId: number, salidaId?: number): Promise<{ asientos_agentes: string[] }> {
+    if (salidaId) {
+      const salida = await this.tourSalidaRepository.findOne({
+        where: { id: salidaId, tour: { id: tourId } },
+        relations: ['busLayouts'],
+      });
+      if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada en el tour ${tourId}`);
+      const busValido = (salida.busLayouts ?? []).some((b) => b.id === busLayoutId);
+      if (!busValido) throw new NotFoundException(`El bus ${busLayoutId} no está asignado a la salida ${salidaId}`);
+    } else {
+      const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+      if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+      const busValido = (tour.busLayouts ?? []).some((b) => b.id === busLayoutId);
+      if (!busValido) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+    }
 
     const registro = await this.tourBusAgenteRepository.findOne({
-      where: { tour_id: tourId, bus_layout_id: busLayoutId },
+      where: { tour_id: tourId, bus_layout_id: busLayoutId, tour_salida_id: (salidaId ?? null) as any },
     });
     return { asientos_agentes: registro?.asientos_agentes ?? [] };
   }
 
-  async setAsientosAgentes(tourId: number, busLayoutId: number, asientos: string[]): Promise<{ asientos_agentes: string[] }> {
-    const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
-    if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+  async setAsientosAgentes(tourId: number, busLayoutId: number, asientos: string[], salidaId?: number): Promise<{ asientos_agentes: string[] }> {
+    let busAsignado: BusLayout | undefined;
 
-    const busAsignado = (tour.busLayouts ?? []).find((b) => b.id === busLayoutId);
-    if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+    if (salidaId) {
+      const salida = await this.tourSalidaRepository.findOne({
+        where: { id: salidaId, tour: { id: tourId } },
+        relations: ['busLayouts'],
+      });
+      if (!salida) throw new NotFoundException(`Salida ${salidaId} no encontrada en el tour ${tourId}`);
+      busAsignado = (salida.busLayouts ?? []).find((b) => b.id === busLayoutId);
+      if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado a la salida ${salidaId}`);
+    } else {
+      const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
+      if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+      busAsignado = (tour.busLayouts ?? []).find((b) => b.id === busLayoutId);
+      if (!busAsignado) throw new NotFoundException(`El bus ${busLayoutId} no está asignado al tour ${tourId}`);
+    }
 
-    // Solo asientos de tipo 'normal' son válidos para agentes
     const asientosNormales = new Set(
       (busAsignado.configuracion?.asientos ?? [])
         .filter((a) => a.tipo === 'normal')
@@ -1441,11 +1595,10 @@ export class ToursService {
       throw new BadRequestException(`Asientos inválidos o no disponibles: ${invalidos.join(', ')}`);
     }
 
-    // Validar que ninguno ya esté confirmado por un cliente
     if (asientos.length > 0) {
-      const reservasActivas = await this.reservaRepository.find({
-        where: { tour: { id: tourId }, bus_layout_id: busLayoutId },
-      });
+      const whereReservas: any = { tour: { id: tourId }, bus_layout_id: busLayoutId };
+      if (salidaId) whereReservas.tour_salida = { id: salidaId };
+      const reservasActivas = await this.reservaRepository.find({ where: whereReservas });
       const reservaIds = reservasActivas.map((r) => r.id);
       if (reservaIds.length > 0) {
         const confirmadosMap = await this.seleccionAsientosService.getAsientosConfirmadosBatch(reservaIds);
@@ -1461,15 +1614,19 @@ export class ToursService {
     }
 
     const existing = await this.tourBusAgenteRepository.findOne({
-      where: { tour_id: tourId, bus_layout_id: busLayoutId },
+      where: { tour_id: tourId, bus_layout_id: busLayoutId, tour_salida_id: (salidaId ?? null) as any },
     });
-
     if (existing) {
       existing.asientos_agentes = asientos;
       await this.tourBusAgenteRepository.save(existing);
     } else {
       await this.tourBusAgenteRepository.save(
-        this.tourBusAgenteRepository.create({ tour_id: tourId, bus_layout_id: busLayoutId, asientos_agentes: asientos }),
+        this.tourBusAgenteRepository.create({
+          tour_id: tourId,
+          bus_layout_id: busLayoutId,
+          tour_salida_id: salidaId ?? null,
+          asientos_agentes: asientos,
+        }),
       );
     }
 
