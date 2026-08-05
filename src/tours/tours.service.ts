@@ -159,7 +159,7 @@ export class ToursService {
       await this.tourPrecioGrupalRepository.save(grupalesEntidades);
     }
 
-    await this.auditoriaTourService.registrarCreacion(saved).catch(() => null);
+    await this.auditoriaTourService.registrarCreacion(saved, usuarioNombre).catch(() => null);
     await this.auditoriaGeneralService.registrar({
       usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,
@@ -476,11 +476,11 @@ export class ToursService {
       camposAuditables.map(({ campo, anterior, nuevo }) => {
         if (campo === 'is_active' || campo === 'es_borrador') {
           return this.auditoriaTourService
-            .registrarCambioEstado(saved, campo as any, anterior, nuevo)
+            .registrarCambioEstado(saved, campo as any, anterior, nuevo, usuarioNombre)
             .catch(() => null);
         }
         return this.auditoriaTourService
-          .registrarEdicion(saved, campo, anterior, nuevo)
+          .registrarEdicion(saved, campo, anterior, nuevo, usuarioNombre)
           .catch(() => null);
       }),
     );
@@ -1437,7 +1437,7 @@ export class ToursService {
     }, 0);
   }
 
-  async remove(tourId: number, usuarioNombre?: string) {
+  async remove(tourId: number, usuarioId?: number, usuarioNombre?: string) {
     const tour = await this.toursMaestroRepository.findOne({ where: { id: tourId } });
     if (!tour) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
 
@@ -1454,8 +1454,22 @@ export class ToursService {
     tour.deleted_at = new Date();
     await this.toursMaestroRepository.save(tour);
 
+    // Eliminar vectores del tour para que no siga apareciendo en la búsqueda semántica
+    const vectors = await this.n8nVectorsRepository
+      .createQueryBuilder('v')
+      .where("v.metadata->>'id' = :id", { id: String(tourId) })
+      .getMany();
+    if (vectors.length > 0) {
+      await this.n8nVectorsRepository.remove(vectors);
+    }
+
+    await Promise.all([
+      this.cacheManager.del(CACHE_KEY_ACTIVOS),
+      this.cacheManager.del(CACHE_KEY_TODOS),
+    ]);
+
     await this.auditoriaGeneralService.registrar({
-      usuario_id: null,
+      usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,
       modulo: 'tours',
       operacion: 'ELIMINAR',
@@ -1463,7 +1477,17 @@ export class ToursService {
       detalle: { id: tourId, nombre_tour: tour.nombre_tour, nota: 'Eliminado lógico' },
     });
 
+    await this.auditoriaTourService
+      .registrarEliminacion(tour, usuarioNombre)
+      .catch(() => null);
+
     return { message: `Tour "${tour.nombre_tour}" eliminado correctamente` };
+  }
+
+  async obtenerAuditoria(tourId: number) {
+    const existe = await this.toursMaestroRepository.exists({ where: { id: tourId } });
+    if (!existe) throw new NotFoundException(`Tour con id ${tourId} no encontrado`);
+    return this.auditoriaTourService.obtenerAuditoria(tourId);
   }
 
   async addSalida(tourId: number, dto: { fecha_inicio: string; fecha_fin: string; cupos?: number; label?: string; bus_layout_ids?: number[] }) {
