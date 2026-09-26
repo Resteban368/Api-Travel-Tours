@@ -49,7 +49,8 @@ import { N8nModule } from './n8n/n8n.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production'
+        // pino-pretty corre en un worker thread que no existe dentro del bundle de Vercel
+        transport: process.env.NODE_ENV !== 'production' && !process.env.VERCEL
           ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
           : undefined,
         level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',

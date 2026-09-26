@@ -16,6 +16,21 @@ const funcDir = path.join('.vercel', 'output', 'functions', 'api', 'index.func')
 fs.mkdirSync(funcDir, { recursive: true });
 run(`./node_modules/.bin/ncc build dist/lambda.js -o ${funcDir} --no-source-map-register -q`);
 
+// 2b. ncc no copia los binarios nativos de bcrypt (node-gyp-build los busca en <dir>/prebuilds)
+fs.cpSync(
+  path.join('node_modules', 'bcrypt', 'prebuilds', 'linux-x64'),
+  path.join(funcDir, 'prebuilds', 'linux-x64'),
+  { recursive: true },
+);
+
+// 2c. pdf-parse (pdfjs) requiere @napi-rs/canvas al cargar; ncc tampoco lo empaqueta.
+//     En el build de Vercel (Linux) npm instala @napi-rs/canvas-linux-x64-gnu.
+fs.cpSync(
+  path.join('node_modules', '@napi-rs'),
+  path.join(funcDir, 'node_modules', '@napi-rs'),
+  { recursive: true },
+);
+
 // 3. Config de la función (Vercel Build Output API v3)
 fs.writeFileSync(
   path.join(funcDir, '.vc-config.json'),

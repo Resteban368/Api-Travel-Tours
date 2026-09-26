@@ -1,0 +1,10 @@
+.env
+.env.*
+api
+dist
+tmp
+scratch
+build.log
+context.txt
+node_modules
+.DS_Store
