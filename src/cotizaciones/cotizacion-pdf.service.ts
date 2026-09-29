@@ -56,6 +56,16 @@ function fmtCOP(n?: number | null): string {
   }).format(n);
 }
 
+const WEEKDAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+/** Fecha del día N (0 = primer día) a partir de 'YYYY-MM-DD'; '' si no hay fecha de inicio. */
+function fechaDelDia(inicio: string | null, offset: number): string {
+  if (!inicio) return '';
+  const [y, m, d] = inicio.substring(0, 10).split('-').map(Number);
+  const f = new Date(Date.UTC(y, m - 1, d + offset));
+  return `${WEEKDAYS[f.getUTCDay()]} ${f.getUTCDate()} ${MONTHS[f.getUTCMonth()]} ${f.getUTCFullYear()}`;
+}
+
 function city(s?: string | null): string {
   return s?.split('(')[0]?.trim() ?? s ?? '';
 }
@@ -116,6 +126,12 @@ export class CotizacionPdfService {
     const adicionales: any[]  = (data.adicionales as any[]) ?? [];
     const incluidos: string[] = (data.items_incluidos as string[]) ?? [];
     const excluidos: string[] = (data.items_no_incluidos as string[]) ?? [];
+    const itinerario: any[]   = ((data.itinerario as any[]) ?? []).filter(
+      (d) => d?.titulo?.trim() || (d?.descripciones ?? []).some((x: string) => x?.trim()),
+    );
+    // Día 1 = fecha del vuelo de ida, o del primer check-in
+    const inicioViaje: string | null =
+      vuelos.find((v) => v.tipo === 'ida')?.fecha ?? hoteles[0]?.fecha_entrada ?? null;
 
     const totalVuelos    = vuelos.reduce((s, v) => s + (Number(v.costo) || 0), 0);
     const totalHoteles   = hoteles.reduce((s, h) => s + (Number(h.precio_total) || 0), 0);
@@ -167,6 +183,53 @@ export class CotizacionPdfService {
       ],
       margin: [0, 0, 0, 14],
     });
+
+    // ══ ITINERARIO ═══════════════════════════════════════════════════════════
+    if (itinerario.length > 0) {
+      content.push(sectionHeader(`Itinerario  (${itinerario.length} día${itinerario.length > 1 ? 's' : ''})`));
+
+      itinerario.forEach((dia: any, i: number) => {
+        const fecha = fechaDelDia(inicioViaje, i);
+        const descripciones = ((dia.descripciones as string[]) ?? []).filter((x) => x?.trim());
+        content.push({
+          columns: [
+            {
+              width: 44,
+              table: {
+                widths: [36],
+                body: [[{
+                  stack: [
+                    { text: 'DÍA', fontSize: 6.5, bold: true, color: '#F7B928', alignment: 'center' },
+                    { text: String(i + 1), fontSize: 13, bold: true, color: '#FFFFFF', alignment: 'center' },
+                  ],
+                  fillColor: '#0B2A6B',
+                  margin: [0, 3, 0, 3],
+                }]],
+              },
+              layout: 'noBorders',
+            },
+            {
+              width: '*',
+              stack: [
+                ...(fecha ? [{ text: fecha.toUpperCase(), fontSize: 7, bold: true, color: BLUE, letterSpacing: 0.5, margin: [0, 0, 0, 2] }] : []),
+                ...(dia.titulo?.trim() ? [{ text: dia.titulo.trim(), fontSize: 10, bold: true, color: DARK, margin: [0, 0, 0, 3] }] : []),
+                ...descripciones.map((x) => ({
+                  columns: [
+                    { text: '•', color: BLUE, fontSize: 9, width: 8 },
+                    { text: x.trim(), fontSize: 8.5, color: MUTED, width: '*' },
+                  ],
+                  columnGap: 2,
+                  margin: [0, 1, 0, 1],
+                })),
+              ],
+            },
+          ],
+          columnGap: 10,
+          margin: [0, 0, 0, 10],
+          unbreakable: true,
+        });
+      });
+    }
 
     // ══ VUELOS ════════════════════════════════════════════════════════════════
     if (vuelos.length > 0) {

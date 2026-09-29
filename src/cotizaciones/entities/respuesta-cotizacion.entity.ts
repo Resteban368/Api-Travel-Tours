@@ -47,6 +47,10 @@ export class RespuestaCotizacion {
   @Column({ type: 'jsonb', default: '[]' })
   adicionales: object[];
 
+  /** [{ titulo?, descripciones: string[] }] — un elemento por día */
+  @Column({ type: 'jsonb', default: '[]' })
+  itinerario: object[];
+
   @Column({ type: 'text', nullable: true })
   condiciones_generales: string | null;
 

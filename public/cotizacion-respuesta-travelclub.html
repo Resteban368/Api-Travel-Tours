@@ -92,6 +92,21 @@ svg.i{width:1em;height:1em;flex:none}
 .hint{margin:-10px 0 16px;color:var(--muted);font-size:14px}
 .stack{display:grid;gap:16px}
 
+/* itinerario */
+.days{list-style:none;margin:0;padding:0;display:grid}
+.days>li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;position:relative;padding-bottom:18px}
+.days>li:last-child{padding-bottom:0}
+.days>li::before{content:"";position:absolute;left:31px;top:56px;bottom:4px;border-left:2px dashed var(--line)}
+.days>li:last-child::before{display:none}
+.dn{width:64px;height:52px;border-radius:14px;background:var(--navy);color:#fff;display:grid;place-content:center;text-align:center;font-family:var(--head);line-height:1}
+.dn small{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--yellow)}
+.dn b{font-size:20px;font-weight:900}
+.days .when{display:block;font-size:12px;font-weight:800;color:var(--sky);letter-spacing:.06em;text-transform:uppercase}
+.days h3{margin:2px 0 4px;font-family:var(--head);font-size:16px;color:var(--navy);line-height:1.3}
+.days ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.days ul li{display:block;padding:0 0 0 16px;position:relative;color:var(--muted);font-size:15px}
+.days ul li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--sky)}
+
 /* incluye */
 .lists{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .lists.one{grid-template-columns:1fr}
@@ -347,6 +362,35 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
       </div></header>`;
   }
 
+  /* ── Itinerario ──────────────────────────────────────── */
+  // Día 1 = fecha del vuelo de ida (o del primer check-in); los demás suman un día
+  const fechaDia = (inicio, offset) => {
+    if (!inicio) return '';
+    const [y, m, d] = ymd(inicio);
+    const f = new Date(y, m - 1, d + offset);
+    return `${DI[f.getDay()]} ${f.getDate()} ${MO[f.getMonth()]}`;
+  };
+
+  function itinerarioHtml(dias, inicio) {
+    dias = (dias || []).filter(d => d?.titulo?.trim() || (d?.descripciones || []).some(x => x?.trim()));
+    if (!dias.length) return '';
+    return `
+      <section class="card">
+        <h2>Tu viaje en ${plural(dias.length, 'día')}</h2>
+        <ol class="days">
+          ${dias.map((d, i) => {
+            const desc = (d.descripciones || []).filter(x => x?.trim());
+            const fecha = fechaDia(inicio, i);
+            return `<li><div class="dn"><small>DÍA</small><b>${i + 1}</b></div><div>
+              ${fecha ? `<span class="when">${fecha}</span>` : ''}
+              ${d.titulo?.trim() ? `<h3>${esc(d.titulo.trim())}</h3>` : ''}
+              ${desc.length ? `<ul>${desc.map(x => `<li>${esc(x.trim())}</li>`).join('')}</ul>` : ''}
+            </div></li>`;
+          }).join('')}
+        </ol>
+      </section>`;
+  }
+
   /* ── Incluye / No incluye ────────────────────────────── */
   function incluyeHtml(si, no) {
     if (!si.length && !no.length) return '';
@@ -552,6 +596,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
       <main class="wrap" id="viaje">
         <div class="layout">
           <div class="col">
+            ${itinerarioHtml(d.itinerario, fechaInicio)}
             ${incluyeHtml(d.items_incluidos || [], d.items_no_incluidos || [])}
 
             ${vuelos.length ? `

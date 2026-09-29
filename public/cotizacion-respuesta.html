@@ -262,6 +262,22 @@
     .card-body { padding:24px; }
     section { margin-bottom:28px; }
 
+    /* ITINERARIO */
+    .itin { list-style:none; margin:0; padding:0; }
+    .itin > li { display:grid; grid-template-columns:52px minmax(0,1fr); gap:14px; position:relative; padding-bottom:18px; }
+    .itin > li:last-child { padding-bottom:0; }
+    .itin > li::before { content:""; position:absolute; left:25px; top:52px; bottom:4px; border-left:1.5px dashed var(--border-mid); }
+    .itin > li:last-child::before { display:none; }
+    .itin-n { width:52px; height:46px; border-radius:var(--r-m); background:var(--accent-pale); color:var(--accent);
+      display:grid; place-content:center; text-align:center; line-height:1; }
+    .itin-n small { font-size:9px; font-weight:700; letter-spacing:.12em; }
+    .itin-n b { font-size:18px; font-weight:800; }
+    .itin-when { font-family:'DM Mono',monospace; font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:.04em; }
+    .itin h3 { font-size:14px; font-weight:700; color:var(--ink); margin:2px 0 4px; letter-spacing:-0.01em; }
+    .itin ul { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+    .itin ul li { position:relative; padding-left:14px; font-size:13px; color:var(--ink-soft); line-height:1.45; }
+    .itin ul li::before { content:""; position:absolute; left:2px; top:.55em; width:5px; height:5px; border-radius:50%; background:var(--accent); }
+
     /* INCLUDES */
     .includes-grid {
       display:grid;
@@ -962,6 +978,15 @@
   const fd  = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${+d} ${MO[+m-1]} ${y}`; };
   const code = s => s?.match(/\(([A-Z]{3})\)/)?.[1] || s?.substring(0,3).toUpperCase() || '???';
   const city = s => s?.split('(')[0]?.trim() || s;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const DI  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  // Día 1 = fecha del vuelo de ida (o del primer check-in); los demás suman un día
+  const fechaDia = (inicio, offset) => {
+    if (!inicio) return '';
+    const [y,m,d] = String(inicio).substring(0,10).split('-').map(Number);
+    const f = new Date(y, m-1, d+offset);
+    return `${DI[f.getDay()]} ${f.getDate()} ${MO[f.getMonth()]}`;
+  };
 
   const SLIDE_DURATION = 5000;
   const token = window.location.pathname.split('/').filter(Boolean).pop();
@@ -1182,6 +1207,30 @@
          </div>`
       : '';
 
+    const dias = (d.itinerario||[]).filter(x => x?.titulo?.trim() || (x?.descripciones||[]).some(t => t?.trim()));
+    const inicioItin = (d.vuelos||[]).find(v => v.tipo === 'ida')?.fecha || (d.opciones_hotel||[])[0]?.fecha_entrada || null;
+    const itinerarioHtml = dias.length ? `
+      <section class="au d1">
+        <div class="sec-head">
+          <div class="sec-icon">${ICO.doc}</div>
+          <h2>Itinerario</h2>
+          <span class="sec-count">${dias.length} día${dias.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="card"><div class="card-body">
+          <ol class="itin">
+            ${dias.map((x,i) => {
+              const desc = (x.descripciones||[]).filter(t => t?.trim());
+              const fecha = fechaDia(inicioItin, i);
+              return `<li><div class="itin-n"><small>DÍA</small><b>${i+1}</b></div><div>
+                ${fecha ? `<span class="itin-when">${fecha}</span>` : ''}
+                ${x.titulo?.trim() ? `<h3>${esc(x.titulo.trim())}</h3>` : ''}
+                ${desc.length ? `<ul>${desc.map(t => `<li>${esc(t.trim())}</li>`).join('')}</ul>` : ''}
+              </div></li>`;
+            }).join('')}
+          </ol>
+        </div></div>
+      </section>` : '';
+
     const includesHtml = (d.items_incluidos||[]).length ? `
       <section class="au d1">
         <div class="sec-head">
@@ -1308,6 +1357,7 @@
       <div class="wrap">
         <div class="page-grid">
           <main>
+            ${itinerarioHtml}
             ${includesHtml}
             ${noIncludesHtml}
             ${vuelosHtml}
