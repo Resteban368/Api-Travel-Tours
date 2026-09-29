@@ -74,6 +74,19 @@ function iataCode(s?: string | null): string {
   return s?.match(/\(([A-Z]{3})\)/)?.[1] ?? s?.substring(0, 3).toUpperCase() ?? '—';
 }
 
+// ── Íconos vectoriales ─────────────────────────────────────────────────────
+// La fuente (Liberation Sans) no trae ✓ ✗ ✈, así que se dibujan como SVG.
+const ICON_SVG = {
+  check: (c: string) => `<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  x:     (c: string) => `<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/></svg>`,
+  plane: (c: string) => `<svg viewBox="0 0 24 24"><path fill="${c}" d="M21.5 11.2L14 9.6 10.6 2.8a1 1 0 0 0-.9-.5H8.5l1.8 7.1-5 .1-2-2.3H2l1.2 4.8L2 16.8h1.3l2-2.3 5 .1-1.8 7.1h1.2a1 1 0 0 0 .9-.5L14 14.4l7.5-1.6c.9-.2.9-1.4 0-1.6z"/></svg>`,
+  arrow: (c: string) => `<svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+function icon(name: keyof typeof ICON_SVG, color: string, size: number, extra: Record<string, any> = {}) {
+  return { svg: ICON_SVG[name](color), width: size, height: size, ...extra };
+}
+
 // ── Thin horizontal divider ────────────────────────────────────────────────
 function divider(color = BORDER, margin: number[] = [0, 8, 0, 8]) {
   return {
@@ -317,9 +330,9 @@ export class CotizacionPdfService {
           // ── Row 1: Header oscuro ───────────────────────────────────────────
           [{
             columns: [
-              { text: tipoLabel, fontSize: 8, bold: true, color: 'rgba(255,255,255,0.70)', letterSpacing: 1, width: '*' },
+              { text: tipoLabel, fontSize: 8, bold: true, color: '#C9D3EE', letterSpacing: 1, width: '*' },
               aerolinea
-                ? { text: `${aerolinea}${iata ? '  ·  ' + iata : ''}`, fontSize: 8, bold: true, color: 'rgba(255,255,255,0.85)', alignment: 'right' }
+                ? { text: `${aerolinea}${iata ? '  ·  ' + iata : ''}`, fontSize: 8, bold: true, color: '#FFFFFF', alignment: 'right' }
                 : {},
             ],
             fillColor: headerBg,
@@ -346,7 +359,7 @@ export class CotizacionPdfService {
                 // Centro: avión + línea (centrado verticalmente con margin)
                 {
                   stack: [
-                    { text: '✈', fontSize: 13, color: MUTED, alignment: 'center', margin: [0, 0, 0, 5] },
+                    icon('plane', MUTED, 14, { alignment: 'center', margin: [0, 0, 0, 5] }),
                     { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 90, y2: 0, lineWidth: 0.5, lineColor: BORDER }] },
                   ],
                   border: [false, false, false, false],
@@ -467,7 +480,7 @@ export class CotizacionPdfService {
             while (group.length < colsPerRow) group.push('');
             tagRows.push(group.map(t => ({
               stack: t ? [
-                { text: '✓', fontSize: 7, bold: true, color: GREEN },
+                icon('check', GREEN, 8),
                 { text: t, fontSize: 8, color: DARK, margin: [0, 2, 0, 0] },
               ] : [{ text: '' }],
               border: [false, false, false, false],
@@ -511,10 +524,10 @@ export class CotizacionPdfService {
                 border: [false, false, false, false],
               },
               {
-                text: '→',
-                fontSize: 16, color: MUTED, alignment: 'center',
+                ...icon('arrow', MUTED, 16),
+                alignment: 'center',
                 border: [false, false, false, false],
-                margin: [0, 14, 0, 0],
+                margin: [0, 16, 0, 0],
               },
               {
                 stack: [
@@ -633,9 +646,10 @@ export class CotizacionPdfService {
                 { text: 'INCLUYE', bold: true, fontSize: 8, color: GREEN, margin: [0, 0, 0, 5] },
                 ...incluidos.map(i => ({
                   columns: [
-                    { text: '✓', color: GREEN, fontSize: 9, width: 12, margin: [0, 1, 0, 0] },
+                    { width: 12, stack: [icon('check', GREEN, 9, { margin: [0, 2, 0, 0] })] },
                     { text: i, fontSize: 8.5, color: DARK },
                   ],
+                  columnGap: 2,
                   margin: [0, 2, 0, 2],
                 })),
               ],
@@ -648,9 +662,10 @@ export class CotizacionPdfService {
                 { text: 'NO INCLUYE', bold: true, fontSize: 8, color: RED, margin: [0, 0, 0, 5] },
                 ...excluidos.map(i => ({
                   columns: [
-                    { text: '✗', color: RED, fontSize: 9, width: 12, margin: [0, 1, 0, 0] },
+                    { width: 12, stack: [icon('x', RED, 9, { margin: [0, 2, 0, 0] })] },
                     { text: i, fontSize: 8.5, color: MUTED },
                   ],
+                  columnGap: 2,
                   margin: [0, 2, 0, 2],
                 })),
               ],
@@ -698,7 +713,7 @@ export class CotizacionPdfService {
         rows.push([{
           columns: [
             { text: `OPCIÓN ${idx + 1}`, fontSize: 7.5, bold: true, color: '#fff', width: 'auto' },
-            { text: h?.nombre ?? '', fontSize: 7.5, color: 'rgba(255,255,255,0.75)', margin: [8, 0, 0, 0] },
+            { text: h?.nombre ?? '', fontSize: 7.5, color: '#E5E7EB', margin: [8, 0, 0, 0] },
           ],
           fillColor: accentColor,
           colSpan: 2,
