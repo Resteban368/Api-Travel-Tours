@@ -66,6 +66,15 @@ function fechaDelDia(inicio: string | null, offset: number): string {
   return `${WEEKDAYS[f.getUTCDay()]} ${f.getUTCDate()} ${MONTHS[f.getUTCMonth()]} ${f.getUTCFullYear()}`;
 }
 
+/** Normaliza horas escritas a mano: "11:AM" → "11:00 AM", "13:PM" → "13:00", "14:30" → "14:30". */
+function fmtHora(s?: string | null): string {
+  const raw = String(s ?? '').trim();
+  const m = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*:?\s*(AM|PM)?$/i);
+  if (!m) return raw;
+  const h = +m[1], min = m[2] || '00', ap = (m[3] || '').toUpperCase();
+  return h > 12 || !ap ? `${h}:${min}` : `${h}:${min} ${ap}`;
+}
+
 function city(s?: string | null): string {
   return s?.split('(')[0]?.trim() ?? s ?? '';
 }
@@ -273,7 +282,7 @@ export class CotizacionPdfService {
           if (e.aerolinea) detParts.push(e.aerolinea);
           if (e.numero_vuelo) detParts.push(e.numero_vuelo);
           if (e.origen && e.destino) detParts.push(`${e.origen} → ${e.destino}`);
-          if (e.hora_salida && e.hora_llegada) detParts.push(`${e.hora_salida} – ${e.hora_llegada}`);
+          if (e.hora_salida && e.hora_llegada) detParts.push(`${fmtHora(e.hora_salida)} – ${fmtHora(e.hora_llegada)}`);
           return [{
             stack: [
               { columns: parts, columnGap: 2, margin: [0, 0, 0, 3] },
@@ -310,8 +319,8 @@ export class CotizacionPdfService {
         });
 
         if (v.fecha)            footCols.push(footCell('FECHA',      fmtDate(v.fecha)));
-        if (v.hora_salida)      footCols.push(footCell('SALE',       v.hora_salida));
-        if (v.hora_llegada)     footCols.push(footCell('LLEGA',      v.hora_llegada));
+        if (v.hora_salida)      footCols.push(footCell('SALE',       fmtHora(v.hora_salida)));
+        if (v.hora_llegada)     footCols.push(footCell('LLEGA',      fmtHora(v.hora_llegada)));
         if (v.numero_vuelo)     footCols.push(footCell('VUELO',      v.numero_vuelo));
         if (v.numero_pasajeros) footCols.push(footCell('PASAJEROS',  `${v.numero_pasajeros}`));
 
@@ -349,7 +358,7 @@ export class CotizacionPdfService {
                 // Izquierda: origen
                 {
                   stack: [
-                    { text: v.hora_salida ?? '', bold: true, fontSize: 26, color: DARK, lineHeight: 1 },
+                    { text: fmtHora(v.hora_salida), bold: true, fontSize: 26, color: DARK, lineHeight: 1 },
                     { text: origCode, fontSize: 10, bold: true, color: BLUE, margin: [0, 5, 0, 3] },
                     { text: origCity, fontSize: 8, color: MUTED },
                   ],
@@ -369,7 +378,7 @@ export class CotizacionPdfService {
                 // Derecha: destino (alineado a la derecha)
                 {
                   stack: [
-                    { text: v.hora_llegada ?? '', bold: true, fontSize: 26, color: DARK, lineHeight: 1, alignment: 'right' },
+                    { text: fmtHora(v.hora_llegada), bold: true, fontSize: 26, color: DARK, lineHeight: 1, alignment: 'right' },
                     { text: destCode, fontSize: 10, bold: true, color: BLUE, margin: [0, 5, 0, 3], alignment: 'right' },
                     { text: destCity, fontSize: 8, color: MUTED, alignment: 'right' },
                   ],
@@ -519,7 +528,7 @@ export class CotizacionPdfService {
                 stack: [
                   { text: 'CHECK-IN', fontSize: 7, bold: true, color: MUTED },
                   { text: fmtDate(h.fecha_entrada), bold: true, fontSize: 11, color: DARK, margin: [0, 4, 0, 2] },
-                  { text: h.hora_entrada ?? '', fontSize: 9, color: BLUE, bold: true },
+                  { text: fmtHora(h.hora_entrada), fontSize: 9, color: BLUE, bold: true },
                 ],
                 border: [false, false, false, false],
               },
@@ -533,7 +542,7 @@ export class CotizacionPdfService {
                 stack: [
                   { text: 'CHECK-OUT', fontSize: 7, bold: true, color: MUTED, alignment: 'right' },
                   { text: fmtDate(h.fecha_salida), bold: true, fontSize: 11, color: DARK, margin: [0, 4, 0, 2], alignment: 'right' },
-                  { text: h.hora_salida ?? '', fontSize: 9, color: BLUE, bold: true, alignment: 'right' },
+                  { text: fmtHora(h.hora_salida), fontSize: 9, color: BLUE, bold: true, alignment: 'right' },
                 ],
                 border: [false, false, false, false],
               },
