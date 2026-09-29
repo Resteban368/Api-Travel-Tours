@@ -5,15 +5,23 @@ import { CotizacionPdfService } from './cotizacion-pdf.service';
 import { InfoEmpresaService } from '../info-empresa/info-empresa.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { MarcaCotizacion, hostDe, parseMarcas } from './marcas-cotizacion';
 
 @Controller('p')
 @Public()
 export class RespuestasPublicController {
+  /** Dominio → plantilla/logo, desde COTIZACION_TEMPLATES (ver marcas-cotizacion.ts) */
+  private readonly marcas: Map<string, MarcaCotizacion>;
+
   constructor(
     private readonly service: RespuestasCotizacionService,
     private readonly pdfService: CotizacionPdfService,
     private readonly infoEmpresaService: InfoEmpresaService,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.marcas = parseMarcas(configService.get<string>('COTIZACION_TEMPLATES'));
+  }
 
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Version('1')
@@ -25,7 +33,7 @@ export class RespuestasPublicController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Version('1')
   @Get(':token/pdf')
-  async downloadPdf(@Param('token') token: string, @Res() res: Response) {
+  async downloadPdf(@Param('token') token: string, @Req() req: Request, @Res() res: Response) {
     const data = await this.service.findByToken(token);
 
     const empresaList = await this.infoEmpresaService.findAll().catch(() => []);
@@ -33,7 +41,8 @@ export class RespuestasPublicController {
 
     let buffer: Buffer;
     try {
-      buffer = await this.pdfService.generate(data as Record<string, any>, empresa as Record<string, any>);
+      const logo = this.marcas.get(hostDe(req))?.logo;
+      buffer = await this.pdfService.generate(data as Record<string, any>, empresa as Record<string, any>, logo);
     } catch (err) {
       throw new InternalServerErrorException(`Error generando el PDF: ${(err as Error).message}`);
     }

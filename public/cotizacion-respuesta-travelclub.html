@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cotización | Travel Club</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B2A6B">
+<link rel="icon" type="image/png" href="/logo-travel-club/icono-256.png">
+<link rel="apple-touch-icon" href="/logo-travel-club/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Nunito:wght@400;600;700;800&display=swap">
+<!--
+  Diseño exclusivo Travel Club. Se sirve cuando el link se abre desde
+  cotizaciones.travelclubagencia.com (ver COTIZACION_TEMPLATES y cotizacion-page.controller.ts).
+  CSS propio (sin Tailwind): los colores salen del logo en public/logo-travel-club/.
+-->
+<style>
+:root{
+  color-scheme:light;
+  --navy:#0B2A6B;--blue:#1C5BC4;--sky:#3AAEE5;--green:#4FA83A;--yellow:#F7B928;
+  --bg:#F6F8FC;--ink:#14244A;--muted:#66758F;--line:#E3E9F3;--wa:#22C35E;--dark:#0A0D14;
+  --head:"Montserrat",system-ui,sans-serif;--body:"Nunito",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+a{color:inherit}
+button{font:inherit;cursor:pointer;color:inherit}
+svg.i{width:1em;height:1em;flex:none}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px;border-radius:8px}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-weight:800;border-radius:999px;padding:12px 20px;font-size:15px;border:0;transition:filter .2s,transform .1s}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:scale(.98)}
+.btn svg{width:18px;height:18px}
+.btn-wa{background:var(--wa);color:#fff}
+.btn-y{background:var(--yellow);color:var(--navy)}
+.btn-ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6);backdrop-filter:blur(6px)}
+.btn-line{background:#fff;color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--line)}
+
+/* header */
+.top{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;padding-block:10px}
+.top .logo{height:54px;width:auto}
+.rnt{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em}
+.rnt b{background:var(--navy);color:#fff;padding:5px 10px;border-radius:8px;letter-spacing:.06em}
+.prev-tag{background:#FFF4D6;color:#7A5300;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800}
+@media (max-width:520px){.top .logo{height:38px}.rnt span{display:none}}
+
+/* hero slider */
+.hero{position:relative;height:min(78vh,620px);min-height:460px;overflow:hidden;background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .9s ease}
+.slide.on{opacity:1}
+.slide img{width:100%;height:100%;object-fit:cover;transform:scale(1.04);transition:transform 6s ease}
+.slide.on img{transform:scale(1)}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,23,60,.94) 0%,rgba(7,23,60,.5) 45%,rgba(7,23,60,.08) 75%);pointer-events:none}
+.hero .in{position:absolute;left:0;right:0;bottom:0;z-index:2;padding-bottom:40px}
+.hook{display:inline-flex;align-items:baseline;gap:10px;background:var(--yellow);color:var(--navy);border-radius:16px;padding:8px 16px;font-family:var(--head)}
+.hook b{font-size:34px;font-weight:900;line-height:1}
+.hook span{font-weight:800;font-size:15px}
+.hero .eyebrow{margin-top:16px;font-family:var(--head);font-size:12px;letter-spacing:.3em;font-weight:700;color:#D4E0F7;text-transform:uppercase}
+.hero h1{font-family:var(--head);font-weight:900;font-size:clamp(40px,8vw,86px);letter-spacing:-.03em;line-height:.95;margin:6px 0 12px;text-wrap:balance}
+.hero .facts{display:flex;flex-wrap:wrap;gap:6px 18px;color:#D4E0F7;font-size:15px}
+.hero .facts b{color:#fff}
+.hero .row{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;margin-top:20px}
+.hero .price{font-family:var(--head)}
+.hero .price small{display:block;font-size:12px;color:#D4E0F7;font-weight:700;letter-spacing:.08em}
+.hero .price b{font-size:30px;font-weight:900}
+.hero .price em{font-style:normal;font-size:14px;color:#D4E0F7;margin-left:4px}
+.ctrl{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.2);backdrop-filter:blur(6px);color:#fff;font-size:22px;font-weight:800;display:grid;place-items:center}
+.ctrl:hover{background:rgba(255,255,255,.35)}
+.ctrl.p{left:14px}.ctrl.n{right:14px}
+.dots{position:absolute;z-index:3;right:16px;bottom:18px;display:flex;gap:6px;align-items:center}
+.dots button{width:9px;height:9px;border-radius:999px;border:0;background:rgba(255,255,255,.5);padding:0;transition:width .3s}
+.dots button.on{width:26px;background:var(--yellow)}
+.allph{position:absolute;z-index:3;right:16px;top:16px}
+.allph .btn{padding:8px 14px;font-size:13px}
+@media (max-width:600px){.hero .ctrl{display:none}.hook b{font-size:28px}.dots{bottom:auto;top:24px;left:16px;right:auto}}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;margin-top:32px;align-items:start}
+@media (max-width:920px){.layout{grid-template-columns:minmax(0,1fr)}}
+.col{display:grid;gap:20px;min-width:0}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}
+.card h2{font-family:var(--head);font-weight:800;color:var(--navy);font-size:19px;margin:0 0 16px;display:flex;align-items:center;gap:10px}
+.card h2::before{content:"";width:4px;height:20px;border-radius:4px;background:var(--yellow);flex:none}
+.card h2 .count{margin-left:auto;font-family:var(--body);font-size:12px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:999px;padding:3px 10px}
+.hint{margin:-10px 0 16px;color:var(--muted);font-size:14px}
+.stack{display:grid;gap:16px}
+
+/* incluye */
+.lists{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.lists.one{grid-template-columns:1fr}
+@media (max-width:600px){.lists{grid-template-columns:1fr}}
+.lists h3{margin:0 0 10px;font-family:var(--head);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lists ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.lists li{display:flex;gap:10px;align-items:flex-start;font-weight:700}
+.lists li svg{width:18px;height:18px;margin-top:3px}
+.yes svg{color:var(--green)}
+.no li{color:var(--muted)}
+.no svg{color:#C0C9D8}
+
+/* opción seleccionable */
+.opt{border:1px solid var(--line);border-radius:16px;padding:18px;transition:opacity .25s,border-color .25s,box-shadow .25s}
+.opt.sel{border-color:rgba(28,91,196,.45);box-shadow:0 0 0 3px rgba(58,174,229,.12)}
+.opt.off{opacity:.55}
+.opt-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.tag{font-family:var(--head);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;border-radius:8px;padding:5px 10px;background:var(--navy);color:#fff}
+.tag.r{background:var(--yellow);color:var(--navy)}
+.tag.soft{background:var(--bg);color:var(--navy)}
+.air{display:flex;align-items:center;gap:8px;min-width:0}
+.air .lg{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;background:#fff;font-size:10px;font-weight:800;color:var(--navy);flex:none}
+.air .lg img{width:24px;height:24px;object-fit:contain}
+.air b{color:var(--navy);font-size:15px}
+.air span{color:var(--muted);font-size:13px;font-weight:700}
+.tgl{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:800;border:0;background:var(--bg);color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--line);transition:background .2s,color .2s}
+.tgl.on{background:var(--green);color:#fff;box-shadow:none}
+.tgl svg{width:15px;height:15px}
+.fixed{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;background:#E9F6E5;color:#2E6B20}
+.fixed svg{width:14px;height:14px}
+
+/* vuelo */
+.flight{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:16px;align-items:center}
+.flight .end b{display:block;font-family:var(--head);font-weight:900;font-size:32px;color:var(--navy);line-height:1}
+.flight .end span{display:block;font-size:13px;color:var(--muted);margin-top:4px;max-width:18ch}
+.flight .end em{display:block;font-style:normal;font-weight:800;margin-top:6px;font-size:18px}
+.flight .end.r{text-align:right}.flight .end.r span{margin-left:auto}
+.line{position:relative;height:44px}
+.line::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed var(--line)}
+.line svg{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);color:var(--sky);background:#fff;padding:0 3px;box-sizing:content-box}
+.line small{position:absolute;left:0;right:0;bottom:-2px;text-align:center;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.04em}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+@media (max-width:600px){.meta{grid-template-columns:1fr 1fr}.flight .end b{font-size:26px}.flight{gap:10px;align-items:start}.line{margin-top:-9px}.flight .end span{font-size:12px}}
+.meta small{display:block;font-size:12px;color:var(--muted)}
+.meta b{font-size:15px}
+.stops{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.stops li{background:#EEF6FD;border-radius:10px;padding:8px 12px;font-size:13px;color:var(--ink);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.stops li b{color:var(--navy)}
+.stops li span{color:var(--muted)}
+.stops li em{margin-left:auto;font-style:normal;font-weight:800;color:var(--blue);white-space:nowrap}
+.row-price{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.row-price b{font-family:var(--head);color:var(--navy);font-size:20px}
+
+/* hotel */
+.gal{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:280px;border-radius:14px;overflow:hidden}
+.gal.n1{grid-template-columns:1fr;grid-template-rows:1fr}
+.gal.n2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.gal button{border:0;padding:0;position:relative;overflow:hidden;background:none;cursor:zoom-in}
+.gal:not(.n1):not(.n2) button:first-child{grid-row:1/3}
+.gal img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.gal button:hover img{transform:scale(1.04)}
+.gal .more{position:absolute;right:8px;bottom:8px;background:rgba(7,23,60,.8);color:#fff;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px}
+.gal .empty{display:grid;background:linear-gradient(135deg,var(--blue),var(--navy));place-items:center;color:rgba(255,255,255,.35);font-size:64px}
+@media (max-width:560px){.gal{height:210px}}
+.hotel-name{margin:16px 0 2px;font-family:var(--head);font-weight:800;font-size:22px;color:var(--navy);line-height:1.2}
+.muted{color:var(--muted);font-size:14px}
+.amen{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.amen span{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
+.amen span.star{background:#FFF6DD;border-color:#F5DC9A;color:#6B4B00}
+.quote{margin:14px 0 0;padding:10px 14px;border-left:3px solid var(--yellow);background:var(--bg);border-radius:0 10px 10px 0;font-style:italic;font-weight:700}
+.quote small{display:block;font-style:normal;color:var(--muted);font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media (max-width:420px){.two{grid-template-columns:1fr}}
+.two div{background:var(--bg);border-radius:12px;padding:10px 14px}
+.two small{display:block;font-size:12px;color:var(--muted)}
+.pp{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:14px;color:var(--muted)}
+.pp b{color:var(--ink)}
+
+/* adicionales */
+.svc{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;padding:14px 0;border-top:1px solid var(--line);transition:opacity .25s}
+.svc:first-of-type{border-top:0;padding-top:0}
+.svc.off{opacity:.55}
+.svc .t{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.svc .t b{color:var(--navy)}
+.svc p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.svc .p{white-space:nowrap;font-weight:800;font-family:var(--head);color:var(--navy)}
+.svc .tgl,.svc .fixed{margin-left:0;padding:4px 10px;font-size:12px}
+.cond{margin:0;white-space:pre-line;color:var(--ink)}
+
+/* resumen */
+.side{position:sticky;top:90px;display:grid;gap:14px}
+@media (max-width:920px){.side{position:static}}
+.for{color:var(--muted);font-size:14px;margin:-6px 0 14px}
+.for b{color:var(--ink)}
+.bl{display:grid;gap:10px;font-size:14px}
+.bl div{display:flex;justify-content:space-between;gap:10px}
+.bl span{color:var(--muted)}
+.bl span small{display:block;font-size:12px}
+.bl b{white-space:nowrap}
+.tot{margin-top:16px;padding-top:16px;border-top:2px solid var(--navy);display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tot small{font-weight:800;color:var(--navy);font-size:13px;letter-spacing:.06em}
+.tot b{font-family:var(--head);font-weight:900;color:var(--navy);font-size:30px;line-height:1}
+.tot-note{font-size:12px;color:var(--muted);text-align:right;margin-top:4px}
+.acts{display:grid;gap:10px;margin-top:18px}
+.acts .btn{width:100%;border-radius:14px;padding:14px}
+.ref{margin-top:14px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.08em}
+.help{display:flex;align-items:center;gap:12px;text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;transition:border-color .2s}
+.help:hover{border-color:var(--sky)}
+.help .ic{width:40px;height:40px;border-radius:50%;background:#E8F7EE;color:var(--wa);display:grid;place-items:center;flex:none}
+.help .ic svg{width:20px;height:20px}
+.help b{display:block;color:var(--navy);font-size:14px}
+.help span{font-size:13px;color:var(--muted)}
+
+/* barra móvil */
+.mbar{display:none}
+@media (max-width:920px){
+  .mbar{display:flex;align-items:center;gap:12px;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+  .mbar small{display:block;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em}
+  .mbar b{font-family:var(--head);font-weight:900;color:var(--navy);font-size:18px}
+  .mbar .btn{flex:1;border-radius:14px}
+  body.has-mbar footer{padding-bottom:120px}
+}
+
+/* footer */
+footer{margin-top:64px;background:var(--dark);color:#9AA3B5;text-align:center;padding-block:48px 56px}
+footer .lg{display:inline-block;background:#fff;border-radius:16px;padding:12px 18px;margin-bottom:22px}
+footer .lg img{height:64px;width:auto}
+footer h2{margin:0;color:#E6E9F0;font-family:var(--head);font-weight:800;font-size:24px;letter-spacing:-.01em;text-transform:uppercase}
+footer .about{max-width:62ch;margin:10px auto 0;font-size:15px;line-height:1.6}
+footer ul{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:14px;font-size:16px;color:#B9C0CE}
+footer ul a{color:inherit;text-decoration:none}
+footer ul a:hover{color:#fff}
+footer ul small{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6E7890;margin-bottom:2px}
+footer .socs{margin-top:28px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+footer .soc{background:#161A24;color:#E6E9F0;border:1px solid #2A3040;border-radius:999px;padding:10px 22px;font-weight:700;font-size:15px;text-decoration:none}
+footer .soc:hover{border-color:var(--yellow)}
+footer .rn{margin-top:26px;font-size:13px;color:#6E7890;letter-spacing:.08em}
+footer .rn b{color:var(--yellow)}
+footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
+
+/* estados */
+.state{min-height:60vh;display:grid;place-items:center;padding:48px 16px}
+.state .card{max-width:420px;text-align:center;padding:36px}
+.state .card h2{justify-content:center}
+.state .card h2::before{display:none}
+.state p{color:var(--muted);margin:0}
+.spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--blue);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:60;background:rgba(5,10,24,.94);display:grid;place-items:center;padding:16px}
+.lb[hidden]{display:none}
+.lb img{max-width:100%;max-height:calc(100vh - 120px);border-radius:12px}
+.lb .x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:50%;border:0;background:#fff;color:var(--navy);font-size:24px;font-weight:800;z-index:2}
+.lb .ctrl{background:rgba(255,255,255,.15)}
+.lb .cap{position:absolute;bottom:16px;left:0;right:0;text-align:center;color:#fff;font-weight:700;font-size:14px;padding-inline:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.7.3-.2.3-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.5-.3Z"/></symbol>
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21.5 11.2 14 9.6 10.6 2.8a1 1 0 0 0-.9-.5H8.5l1.8 7.1-5 .1-2-2.3H2l1.2 4.8L2 16.8h1.3l2-2.3 5 .1-1.8 7.1h1.2a1 1 0 0 0 .9-.5L14 14.4l7.5-1.6c.9-.2.9-1.4 0-1.6Z"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M7 7l10 10M17 7 7 17"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="dl" viewBox="0 0 24 24"><path fill="currentColor" d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16 6.3 10.3l1.4-1.4 3.3 3.3V3ZM4 18h16v2H4v-2Z"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z"/></symbol>
+  <symbol id="hotel" viewBox="0 0 24 24"><path fill="currentColor" d="M3 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6h5a1 1 0 0 1 1 1v10h-2v-2H5v2H3Zm2-4h14v-5h-4v3h-2V5H5v12Zm2-9h2v2H7V8Zm4 0h2v2h-2V8Zm-4 4h2v2H7v-2Zm4 0h2v2h-2v-2Z"/></symbol>
+</svg>
+
+<div id="app">
+  <div class="state"><div class="spin" role="status" aria-label="Cargando cotización"></div></div>
+</div>
+
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Galería de fotos">
+  <button class="x" type="button" id="lbx" aria-label="Cerrar">×</button>
+  <button class="ctrl p" type="button" data-lb="-1" aria-label="Foto anterior">‹</button>
+  <img id="lbi" alt="">
+  <button class="ctrl n" type="button" data-lb="1" aria-label="Foto siguiente">›</button>
+  <div class="cap" id="lbc"></div>
+</div>
+
+<script>
+  /* ── Helpers ─────────────────────────────────────────── */
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const num = n => Number(n) || 0;
+  const COP = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(num(n));
+  const MO  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const DI  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const ymd = s => String(s || '').substring(0,10).split('-').map(Number);
+  const fd  = s => { if (!s) return ''; const [y,m,d] = ymd(s); return `${d} ${MO[m-1]} ${y}`; };
+  const fdw = s => { if (!s) return ''; const [y,m,d] = ymd(s); return `${DI[new Date(y, m-1, d).getDay()]} ${d} ${MO[m-1]} ${y}`; };
+  const diasEntre = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+  const code = s => s?.match(/\(([A-Z]{3})\)/)?.[1] || String(s || '').substring(0,3).toUpperCase() || '???';
+  const city = s => String(s || '').split('(')[0].trim();
+  // "11:AM" → "11:00 AM", "13:PM" → "13:00", "14:30" → "14:30"
+  const hora = s => {
+    const m = String(s || '').trim().match(/^(\d{1,2})(?::(\d{2}))?\s*:?\s*(AM|PM)?$/i);
+    if (!m) return esc(s);
+    const h = +m[1], min = m[2] || '00', ap = (m[3] || '').toUpperCase();
+    return h > 12 || !ap ? `${h}:${min}` : `${h}:${min} ${ap}`;
+  };
+  const ico = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+  const plural = (n, s, p = s + 's') => `${n} ${n === 1 ? s : p}`;
+
+  const RNT = '302421';   // no existe en info-empresa: fijo en la plantilla
+  const LOGO = '/logo-travel-club/logo-horizontal.png';
+  const SLIDE_DURATION = 5000;
+  const token = window.location.pathname.split('/').filter(Boolean).pop();
+  const REF = String(token || '').substring(0,8).toUpperCase();
+
+  /* ── Fetch ───────────────────────────────────────────── */
+  async function load() {
+    let data, empresa = {};
+    try {
+      const [rCot, rEmp] = await Promise.all([
+        fetch(`/v1/p/${token}`),
+        fetch(`/v1/info-empresa/publica`),
+      ]);
+      if (!rCot.ok) throw 0;
+      data = await rCot.json();
+      const empArr = rEmp.ok ? await rEmp.json() : [];
+      empresa = (Array.isArray(empArr) ? empArr[0] : empArr) || {};
+    } catch {
+      document.getElementById('app').innerHTML = `
+        ${headerHtml(null)}
+        <div class="state"><div class="card">
+          <h2>Cotización no encontrada</h2>
+          <p>El enlace puede haber expirado o ser incorrecto. Comunícate con tu asesor de Travel Club.</p>
+        </div></div>`;
+      return;
+    }
+    render(data, empresa);
+
+    // Registrar vista una sola vez por sesión de navegador
+    try {
+      if (!data._preview && !sessionStorage.getItem(`vista_${token}`)) {
+        sessionStorage.setItem(`vista_${token}`, '1');
+        fetch(`/v1/p/${token}/vista`, { method: 'POST' }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  /* ── Header ──────────────────────────────────────────── */
+  function headerHtml(d) {
+    return `
+      <header class="top"><div class="wrap">
+        <img class="logo" src="${LOGO}" alt="Travel Club, agencia de viajes">
+        ${d?._preview ? '<span class="prev-tag">Vista previa</span>' : ''}
+        <div class="rnt"><span>REGISTRO NACIONAL DE TURISMO</span><b>RNT ${RNT}</b></div>
+      </div></header>`;
+  }
+
+  /* ── Incluye / No incluye ────────────────────────────── */
+  function incluyeHtml(si, no) {
+    if (!si.length && !no.length) return '';
+    const list = (items, cls, titulo, icono) => items.length
+      ? `<div class="${cls}"><h3>${titulo}</h3><ul>${items.map(t => `<li>${ico(icono)}${esc(t)}</li>`).join('')}</ul></div>` : '';
+    return `
+      <section class="card">
+        <h2>Qué incluye</h2>
+        <div class="lists${si.length && no.length ? '' : ' one'}">
+          ${list(si, 'yes', 'Incluye', 'check')}
+          ${list(no, 'no', 'No incluye', 'x')}
+        </div>
+      </section>`;
+  }
+
+  /* ── Vuelos ──────────────────────────────────────────── */
+  function escalasHtml(v) {
+    if (v.escalas?.length) {
+      return `<ul class="stops">${v.escalas.map(e => {
+        const vuelo = [e.aerolinea, e.numero_vuelo].filter(Boolean).map(esc).join(' ');
+        const ruta = (e.origen || e.destino) ? `${esc(e.origen || '')} → ${esc(e.destino || '')}` : '';
+        const horas = (e.hora_salida && e.hora_llegada) ? `${hora(e.hora_salida)} – ${hora(e.hora_llegada)}` : '';
+        return `<li><b>Escala en ${esc(e.destino || e.origen || '')}</b>${[vuelo, ruta, horas].filter(Boolean).map(t => `<span>${t}</span>`).join('')}${e.tiempo_conexion ? `<em>${esc(e.tiempo_conexion)} de escala</em>` : ''}</li>`;
+      }).join('')}</ul>`;
+    }
+    if (v.tiene_escala) {
+      return `<ul class="stops"><li><b>Escala en ${esc(v.ciudad_escala || 'ciudad no especificada')}</b>${v.tiempo_escala ? `<em>${esc(v.tiempo_escala)} de escala</em>` : ''}</li></ul>`;
+    }
+    return '';
+  }
+
+  function vueloHtml(v, idx) {
+    const a = v.aerolinea;
+    const logo = a?.logo_url || (a?.codigo_iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.codigo_iata}.png` : null);
+    const iata = esc(a?.codigo_iata || (a?.nombre || '').substring(0,2).toUpperCase());
+    const ida = v.tipo !== 'vuelta';
+    const conexiones = v.escalas?.length || (v.tiene_escala ? 1 : 0);
+    const pax = num(v.numero_pasajeros);
+    const seleccionable = num(v.costo) > 0;
+
+    return `
+      <article class="opt flight-card" data-flight-idx="${idx}">
+        <div class="opt-head">
+          <span class="tag${ida ? '' : ' r'}">${ida ? 'Ida' : 'Regreso'}</span>
+          <div class="air">
+            <span class="lg">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(document.createTextNode('${iata}'))">` : (iata || ico('plane'))}</span>
+            <b>${esc(a?.nombre || 'Aerolínea')}</b>${v.numero_vuelo ? `<span>${esc(v.numero_vuelo)}</span>` : ''}
+          </div>
+          ${seleccionable
+            ? `<button type="button" class="tgl flight-toggle" data-flight-idx="${idx}"></button>`
+            : `<span class="fixed">${ico('check')}Incluido</span>`}
+        </div>
+        <div class="flight">
+          <div class="end"><b>${esc(code(v.origen))}</b><span>${esc(city(v.origen))}</span><em class="num">${hora(v.hora_salida)}</em></div>
+          <div class="line">${ico('plane')}<small>${conexiones ? plural(conexiones, 'escala') : 'Directo'}</small></div>
+          <div class="end r"><b>${esc(code(v.destino))}</b><span>${esc(city(v.destino))}</span><em class="num">${hora(v.hora_llegada)}</em></div>
+        </div>
+        <div class="meta">
+          <div><small>Fecha</small><b>${fdw(v.fecha) || '—'}</b></div>
+          <div><small>Salida</small><b class="num">${hora(v.hora_salida) || '—'}</b></div>
+          <div><small>Llegada</small><b class="num">${hora(v.hora_llegada) || '—'}</b></div>
+          <div><small>${pax ? 'Pasajeros' : 'Vuelo'}</small><b>${pax || esc(v.numero_vuelo || '—')}</b></div>
+        </div>
+        ${escalasHtml(v)}
+        ${seleccionable ? `<div class="row-price"><span>Precio del tramo</span><b class="num">${COP(v.costo)}</b></div>` : ''}
+      </article>`;
+  }
+
+  /* ── Hoteles ─────────────────────────────────────────── */
+  const _galerias = [];   // fotos por hotel para el lightbox
+
+  function hotelHtml(h, idx, total) {
+    const fotos = (h.fotos || []).filter(Boolean);
+    _galerias[idx] = fotos.map((src, i) => ({ src, alt: `${h.nombre || 'Hotel'} · foto ${i + 1}` }));
+    const tags = h.que_incluye || [];
+    const noches = (h.fecha_entrada && h.fecha_salida) ? diasEntre(h.fecha_entrada, h.fecha_salida) : 0;
+    const sub = [h.tipo_habitacion ? `Habitación ${esc(h.tipo_habitacion)}` : '', noches > 0 ? plural(noches, 'noche') : ''].filter(Boolean).join(' · ');
+    const vis = fotos.slice(0, 3);
+    const galCls = vis.length === 1 ? ' n1' : vis.length === 2 ? ' n2' : '';
+
+    return `
+      <article class="opt hotel-card" data-hotel-idx="${idx}">
+        ${total > 1 ? `<div class="opt-head"><span class="tag soft">Opción ${idx + 1}</span><button type="button" class="tgl hotel-toggle" data-hotel-idx="${idx}"></button></div>` : ''}
+        <div class="gal${galCls}">
+          ${vis.length
+            ? vis.map((f, i) => `<button type="button" data-gal="${idx}" data-i="${i}" aria-label="Ver foto ${i + 1} de ${esc(h.nombre)}"><img src="${esc(f)}" alt="" loading="lazy">${i === vis.length - 1 && fotos.length > 1 ? `<span class="more">Ver ${fotos.length > vis.length ? `las ${fotos.length}` : 'todas'}</span>` : ''}</button>`).join('')
+            : `<div class="empty">${ico('hotel')}</div>`}
+        </div>
+        <div class="hotel-name">${esc(h.nombre)}</div>
+        ${sub ? `<div class="muted">${sub}</div>` : ''}
+        ${tags.length ? `<div class="amen">${tags.map(t => `<span${/todo incluido|all inclusive/i.test(t) ? ' class="star"' : ''}>${esc(t)}</span>`).join('')}</div>` : ''}
+        ${h.notas ? `<p class="quote"><small>Nota de tu asesor</small>${esc(h.notas)}</p>` : ''}
+        ${(h.fecha_entrada || h.fecha_salida) ? `
+        <div class="two">
+          <div><small>Check-in</small><b>${fd(h.fecha_entrada) || '—'}</b>${h.hora_entrada ? ` · ${hora(h.hora_entrada)}` : ''}</div>
+          <div><small>Check-out</small><b>${fd(h.fecha_salida) || '—'}</b>${h.hora_salida ? ` · ${hora(h.hora_salida)}` : ''}</div>
+        </div>` : ''}
+        ${(h.precio_adulto != null || h.precio_menor != null) ? `
+        <div class="pp">
+          ${h.precio_adulto != null ? `<span>Por adulto <b class="num">${COP(h.precio_adulto)}</b></span>` : ''}
+          ${h.precio_menor != null ? `<span>Por menor <b class="num">${COP(h.precio_menor)}</b></span>` : ''}
+        </div>` : ''}
+        ${num(h.precio_total) > 0 ? `<div class="row-price"><span>Precio del hotel</span><b class="num">${COP(h.precio_total)}</b></div>` : ''}
+      </article>`;
+  }
+
+  /* ── Adicionales ─────────────────────────────────────── */
+  function adicionalesHtml(adc) {
+    if (!adc.length) return '';
+    const todosFijos = adc.every(a => a.es_seleccionable === false);
+    return `
+      <section class="card">
+        <h2>${todosFijos ? 'Servicios incluidos en el precio' : 'Servicios adicionales'}</h2>
+        ${todosFijos ? '' : '<p class="hint">Agrega o quita los servicios que quieras; el total se actualiza.</p>'}
+        ${adc.map((a, i) => `
+          <div class="svc adc-row" data-adc-idx="${i}">
+            <div>
+              <div class="t"><b>${esc(a.nombre)}</b>${a.es_seleccionable === false
+                ? `<span class="fixed">${ico('check')}Incluido</span>`
+                : `<button type="button" class="tgl adc-toggle" data-adc-idx="${i}"></button>`}</div>
+              ${a.descripcion ? `<p>${esc(a.descripcion)}</p>` : ''}
+            </div>
+            <span class="p num">${COP(a.precio)}</span>
+          </div>`).join('')}
+      </section>`;
+  }
+
+  /* ── Footer ──────────────────────────────────────────── */
+  function footerHtml(emp) {
+    const redes = (Array.isArray(emp.redes_sociales) ? emp.redes_sociales : []).filter(r => r && (r.link || r.url));
+    const tel = String(emp.telefono || '').replace(/\D/g, '');
+    const web = emp.pagina_web ? (/^https?:\/\//i.test(emp.pagina_web) ? emp.pagina_web : `https://${emp.pagina_web}`) : '';
+    const items = [
+      emp.direccion_sede_principal ? `<li><small>Dirección</small>${esc(emp.direccion_sede_principal)}</li>` : '',
+      emp.telefono ? `<li><small>Teléfono</small><a href="tel:+${tel}">${esc(emp.telefono)}</a></li>` : '',
+      emp.correo ? `<li><small>Correo</small><a href="mailto:${esc(emp.correo)}">${esc(emp.correo)}</a></li>` : '',
+      emp.horario_presencial ? `<li><small>Horario presencial</small><span style="white-space:pre-line">${esc(emp.horario_presencial)}</span></li>` : '',
+      emp.horario_virtual ? `<li><small>Atención virtual</small><span style="white-space:pre-line">${esc(emp.horario_virtual)}</span></li>` : '',
+      web ? `<li><small>Sitio web</small><a href="${esc(web)}" target="_blank" rel="noopener">${esc(emp.pagina_web)}</a></li>` : '',
+    ].join('');
+    return `
+      <footer><div class="wrap">
+        <span class="lg"><img src="${LOGO}" alt="Travel Club"></span>
+        <h2>${esc(emp.nombre || 'Travel Club')}</h2>
+        ${emp.detalles_empresa ? `<p class="about">${esc(emp.detalles_empresa)}</p>` : ''}
+        ${items ? `<ul>${items}</ul>` : ''}
+        ${redes.length ? `<div class="socs">${redes.map(r => `<a class="soc" href="${esc(r.link || r.url)}" target="_blank" rel="noopener">${esc(r.name || r.nombre || 'Red social')}</a>`).join('')}</div>` : ''}
+        <div class="rn">REGISTRO NACIONAL DE TURISMO · <b>RNT ${RNT}</b></div>
+        <div class="copy">© ${new Date().getFullYear()} ${esc(emp.nombre || 'Travel Club')}. Todos los derechos reservados.</div>
+      </div></footer>`;
+  }
+
+  /* ── Render principal ────────────────────────────────── */
+  let _heroFotos = [];
+
+  function render(d, emp) {
+    const imgs = (d.imagenes_destino || []).filter(Boolean);
+    const vuelos = d.vuelos || [];
+    const hoteles = d.opciones_hotel || [];
+    const adc = d.adicionales || [];
+    _heroFotos = imgs.map((src, i) => ({ src, alt: `${d.titulo_viaje || 'Destino'} · foto ${i + 1}` }));
+
+    const vueloIda = vuelos.find(v => v.tipo === 'ida');
+    const vueloVuelta = vuelos.find(v => v.tipo === 'vuelta');
+    const fechaInicio = vueloIda?.fecha || hoteles[0]?.fecha_entrada || null;
+    const fechaFin = vueloVuelta?.fecha || hoteles[0]?.fecha_salida || null;
+    const noches = fechaInicio && fechaFin ? diasEntre(fechaInicio, fechaFin) : 0;
+    const fechasViaje = fechaInicio && fechaFin ? `${fd(fechaInicio)} – ${fd(fechaFin)}` : fd(fechaInicio);
+    const incluyeTxt = [vuelos.length ? 'Vuelos' : '', hoteles.length ? 'hotel' : ''].filter(Boolean).join(' + ');
+
+    _waNumber = String(emp.telefono || '').replace(/\D/g, '');
+    _waEmpNombre = emp.nombre || 'Travel Club';
+    document.title = `Cotización ${d.titulo_viaje || ''} | Travel Club`;
+    document.body.classList.add('has-mbar');
+
+    document.getElementById('app').innerHTML = `
+      ${headerHtml(d)}
+
+      <section class="hero" id="hero" aria-label="Fotos del destino">
+        ${imgs.map((u, i) => `<div class="slide${i === 0 ? ' on' : ''}"><img src="${esc(u)}" alt="${esc(_heroFotos[i].alt)}"${i ? ' loading="lazy"' : ''}></div>`).join('')}
+        ${imgs.length > 1 ? `
+        <button class="ctrl p" type="button" data-go="-1" aria-label="Foto anterior">‹</button>
+        <button class="ctrl n" type="button" data-go="1" aria-label="Foto siguiente">›</button>
+        <div class="dots" id="dots">${imgs.map((_, i) => `<button type="button" aria-label="Foto ${i + 1}" data-dot="${i}"${i === 0 ? ' class="on"' : ''}></button>`).join('')}</div>` : ''}
+        ${imgs.length ? `<div class="allph"><button class="btn btn-ghost" type="button" data-hero-open>${ico('grid')}Ver fotos</button></div>` : ''}
+        <div class="in"><div class="wrap">
+          ${noches > 0 ? `<div class="hook"><b>${plural(noches + 1, 'día')}</b><span>· ${plural(noches, 'noche')}</span></div>` : ''}
+          <div class="eyebrow">Cotización de viaje${d.nombre_cliente ? ` · para ${esc(d.nombre_cliente)}` : ''}</div>
+          <h1>${esc(d.titulo_viaje || 'Tu próximo viaje')}</h1>
+          <div class="facts">
+            ${fechasViaje ? `<span><b>${fechasViaje}</b></span>` : ''}
+            ${incluyeTxt ? `<span>${incluyeTxt}</span>` : ''}
+            <span>Ref. <b>${REF}</b></span>
+          </div>
+          <div class="row">
+            <div class="price"><small>TOTAL</small><b class="num" id="hero-total">—</b><em>COP</em></div>
+            <a class="btn btn-y" href="#viaje">Ver detalles</a>
+            <a class="btn btn-wa wa-book" href="#" target="_blank" rel="noopener noreferrer">${ico('wa')}Reservar</a>
+          </div>
+        </div></div>
+      </section>
+
+      <main class="wrap" id="viaje">
+        <div class="layout">
+          <div class="col">
+            ${incluyeHtml(d.items_incluidos || [], d.items_no_incluidos || [])}
+
+            ${vuelos.length ? `
+            <section class="card">
+              <h2>Vuelos <span class="count">${plural(vuelos.length, 'tramo')}</span></h2>
+              ${vuelos.some(v => num(v.costo) > 0) && vuelos.length > 1 ? '<p class="hint">Puedes incluir o quitar tramos; el total se actualiza.</p>' : ''}
+              <div class="stack">${vuelos.map(vueloHtml).join('')}</div>
+            </section>` : ''}
+
+            ${hoteles.length ? `
+            <section class="card">
+              <h2>${hoteles.length > 1 ? 'Opciones de hotel' : 'Hotel'}${hoteles.length > 1 ? ` <span class="count">${hoteles.length} opciones</span>` : ''}</h2>
+              ${hoteles.length > 1 ? '<p class="hint">Elige la opción que prefieras.</p>' : ''}
+              <div class="stack">${hoteles.map((h, i) => hotelHtml(h, i, hoteles.length)).join('')}</div>
+            </section>` : ''}
+
+            ${adicionalesHtml(adc)}
+
+            ${d.condiciones_generales ? `
+            <section class="card">
+              <h2>Condiciones</h2>
+              <p class="cond">${esc(d.condiciones_generales)}</p>
+            </section>` : ''}
+          </div>
+
+          <aside class="side" id="resumen">
+            <section class="card">
+              <h2>Resumen</h2>
+              ${d.nombre_cliente ? `<div class="for">Preparado para <b>${esc(d.nombre_cliente)}</b>${d.telefono_cliente ? ` · ${esc(d.telefono_cliente)}` : ''}</div>` : ''}
+              <div class="bl" id="ps-breakdown"></div>
+              <div class="tot"><small>TOTAL</small><b class="num" id="ps-total">—</b></div>
+              <div class="tot-note">COP · impuestos incluidos</div>
+              <div class="acts">
+                <a class="btn btn-wa wa-book" href="#" target="_blank" rel="noopener noreferrer">${ico('wa')}Reservar ahora</a>
+                ${d._preview ? '' : `<a class="btn btn-line" href="/v1/p/${encodeURIComponent(token)}/pdf">${ico('dl')}Descargar PDF</a>`}
+              </div>
+              <div class="ref">REF. ${REF}</div>
+            </section>
+            <a class="help" id="btn-wa-help" href="#" target="_blank" rel="noopener noreferrer">
+              <span class="ic">${ico('wa')}</span>
+              <span><b>¿Tienes dudas?</b><span>Tu asesor de Travel Club te responde por WhatsApp.</span></span>
+            </a>
+          </aside>
+        </div>
+      </main>
+
+      ${footerHtml(emp)}
+
+      <div class="mbar">
+        <div><small>TOTAL</small><b class="num" id="mob-total">—</b></div>
+        <a class="btn btn-wa wa-book" href="#" target="_blank" rel="noopener noreferrer">${ico('wa')}Reservar</a>
+      </div>`;
+
+    initSelections(d);
+    initHeroSlider();
+  }
+
+  /* ── Estado de selección ─────────────────────────────── */
+  let _flights = [], _hotels = [], _adicionales = [], _cotData = {};
+  let _selFlights = new Set(), _selHotels = new Set(), _selAdc = new Set();
+  let _waNumber = '', _waEmpNombre = '';
+
+  function calcTotal() {
+    const f = _flights.reduce((s, v, i) => _selFlights.has(i) ? s + num(v.costo) : s, 0);
+    const h = _hotels.reduce((s, x, i) => _selHotels.has(i) ? s + num(x.precio_total) : s, 0);
+    const a = _adicionales.reduce((s, x, i) => _selAdc.has(i) ? s + num(x.precio) : s, 0);
+    const hasAny = _flights.some(v => num(v.costo) > 0) || _hotels.some(x => num(x.precio_total) > 0) || _adicionales.some(x => num(x.precio) > 0);
+    return hasAny ? f + h + a : num(_cotData.precio_total);
+  }
+
+  function buildWaLink(soloConsulta = false) {
+    const SEP = '━━━━━━━━━━━━━━━━━━━━';
+    const titulo = _cotData.titulo_viaje || 'Paquete de viaje';
+    if (soloConsulta) {
+      return `https://wa.me/${_waNumber}?text=${encodeURIComponent(`Hola ${_waEmpNombre}! Tengo una consulta sobre la cotización *${titulo}* (Ref. ${REF}).`)}`;
+    }
+    const selF = _flights.filter((_, i) => _selFlights.has(i));
+    const selH = _hotels.filter((_, i) => _selHotels.has(i));
+    const selA = _adicionales.filter((_, i) => _selAdc.has(i));
+    const total = calcTotal();
+    const L = [];
+    L.push(`Hola *${_waEmpNombre}!*`, 'Quiero reservar el siguiente paquete de viaje:', '', SEP, `*${titulo.toUpperCase()}*`, `_Ref. ${REF}_`, SEP);
+    if (selF.length) {
+      L.push('', '*-- VUELOS --*');
+      selF.forEach(f => {
+        const tipo = f.tipo === 'ida' ? 'Ida' : f.tipo === 'vuelta' ? 'Vuelta' : '';
+        L.push(`${tipo ? `*${tipo}:* ` : ''}${f.origen} -> ${f.destino}`);
+        if (f.fecha) L.push(`  Fecha:  ${fd(f.fecha)}`);
+        if (f.numero_vuelo) L.push(`  Vuelo:  ${f.numero_vuelo}`);
+        if (f.escalas?.length) {
+          f.escalas.forEach(e => {
+            let s = `  Escala: ${e.origen || ''} → ${e.destino || ''}`;
+            if (e.hora_salida && e.hora_llegada) s += ` (${e.hora_salida} – ${e.hora_llegada})`;
+            if (e.tiempo_conexion) s += ` | Conexión: ${e.tiempo_conexion}`;
+            if (e.aerolinea) s += ` | ${e.aerolinea}${e.numero_vuelo ? ' ' + e.numero_vuelo : ''}`;
+            L.push(s);
+          });
+        } else if (f.tiene_escala) {
+          L.push(`  Escala: ${f.ciudad_escala || ''} ${f.tiempo_escala ? `(${f.tiempo_escala})` : ''}`);
+        }
+        if (num(f.costo) > 0) L.push(`  Precio: ${COP(f.costo)}`);
+      });
+    }
+    if (selH.length) {
+      L.push('', '*-- ALOJAMIENTO --*');
+      selH.forEach(h => {
+        L.push(`*${h.nombre}*`, `  Habitacion: ${h.tipo_habitacion}`);
+        if (h.notas) L.push(`  Nota: ${h.notas}`);
+        if (h.fecha_entrada && h.fecha_salida) L.push(`  Fechas: ${fd(h.fecha_entrada)} al ${fd(h.fecha_salida)}`);
+        if (num(h.precio_total) > 0) L.push(`  Precio: ${COP(h.precio_total)}`);
+      });
+    }
+    if (selA.length) {
+      L.push('', '*-- ADICIONALES --*');
+      selA.forEach(a => L.push(`  ${a.nombre}${num(a.precio) > 0 ? `  —  ${COP(a.precio)}` : ''}`));
+    }
+    if (total > 0) L.push('', SEP, `*TOTAL: ${COP(total)}*`, SEP);
+    return `https://wa.me/${_waNumber}?text=${encodeURIComponent(L.join('\n'))}`;
+  }
+
+  function updateSidebar() {
+    const total = calcTotal();
+    const txt = total > 0 ? COP(total) : 'Consultar';
+    for (const id of ['hero-total', 'ps-total', 'mob-total']) {
+      const el = document.getElementById(id); if (el) el.textContent = txt;
+    }
+
+    const rows = [];
+    const row = (titulo, sub, precio) => `<div><span>${titulo}${sub ? `<small>${sub}</small>` : ''}</span><b class="num">${COP(precio)}</b></div>`;
+    _flights.forEach((f, i) => {
+      if (_selFlights.has(i) && num(f.costo) > 0) {
+        const pax = num(f.numero_pasajeros);
+        const sub = [f.aerolinea?.nombre ? esc(f.aerolinea.nombre) : '', pax ? plural(pax, 'pasajero') : ''].filter(Boolean).join(' · ');
+        rows.push(row(`Vuelo ${esc(city(f.origen))} → ${esc(city(f.destino))}`, sub, f.costo));
+      }
+    });
+    _hotels.forEach((h, i) => {
+      if (_selHotels.has(i) && num(h.precio_total) > 0) {
+        const noches = (h.fecha_entrada && h.fecha_salida) ? diasEntre(h.fecha_entrada, h.fecha_salida) : 0;
+        rows.push(row(esc(h.nombre), [h.tipo_habitacion ? `Habitación ${esc(h.tipo_habitacion)}` : '', noches > 0 ? plural(noches, 'noche') : ''].filter(Boolean).join(' · '), h.precio_total));
+      }
+    });
+    _adicionales.forEach((a, i) => {
+      if (_selAdc.has(i) && num(a.precio) > 0) rows.push(row(esc(a.nombre), '', a.precio));
+    });
+    const bd = document.getElementById('ps-breakdown');
+    bd.innerHTML = rows.join('');
+    bd.hidden = !rows.length;
+
+    const link = buildWaLink();
+    document.querySelectorAll('.wa-book').forEach(el => el.href = link);
+    const help = document.getElementById('btn-wa-help'); if (help) help.href = buildWaLink(true);
+  }
+
+  function paintToggles() {
+    const paint = (btn, on, onTxt, offTxt) => {
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-pressed', on);
+      btn.innerHTML = on ? `${ico('check')}${onTxt}` : `${ico('plus')}${offTxt}`;
+    };
+    document.querySelectorAll('.flight-toggle').forEach(btn => {
+      const i = +btn.dataset.flightIdx, on = _selFlights.has(i);
+      paint(btn, on, 'Incluido', 'Incluir');
+      const card = document.querySelector(`.flight-card[data-flight-idx="${i}"]`);
+      card?.classList.toggle('off', !on);
+    });
+    document.querySelectorAll('.hotel-toggle').forEach(btn => {
+      const i = +btn.dataset.hotelIdx, on = _selHotels.has(i);
+      paint(btn, on, 'Seleccionado', 'Seleccionar');
+      const card = document.querySelector(`.hotel-card[data-hotel-idx="${i}"]`);
+      card?.classList.toggle('sel', on);
+      card?.classList.toggle('off', !on);
+    });
+    document.querySelectorAll('.adc-toggle').forEach(btn => {
+      const i = +btn.dataset.adcIdx, on = _selAdc.has(i);
+      paint(btn, on, 'Agregado', 'Agregar');
+      document.querySelector(`.adc-row[data-adc-idx="${i}"]`)?.classList.toggle('off', !on);
+    });
+  }
+
+  function initSelections(d) {
+    _cotData = d; _flights = d.vuelos || []; _hotels = d.opciones_hotel || []; _adicionales = d.adicionales || [];
+    _selFlights = new Set(_flights.map((_, i) => i));            // todos incluidos por defecto
+    _selHotels = _hotels.length ? new Set([0]) : new Set();      // primera opción por defecto
+    _selAdc = new Set(_adicionales.map((_, i) => i));
+
+    const toggle = (set, i) => { set.has(i) ? set.delete(i) : set.add(i); paintToggles(); updateSidebar(); };
+    document.querySelectorAll('.flight-toggle').forEach(b => b.addEventListener('click', () => toggle(_selFlights, +b.dataset.flightIdx)));
+    document.querySelectorAll('.hotel-toggle').forEach(b => b.addEventListener('click', () => toggle(_selHotels, +b.dataset.hotelIdx)));
+    document.querySelectorAll('.adc-toggle').forEach(b => b.addEventListener('click', () => toggle(_selAdc, +b.dataset.adcIdx)));
+
+    paintToggles();
+    updateSidebar();
+  }
+
+  /* ── Slider del hero ─────────────────────────────────── */
+  let _heroCur = 0;
+  function initHeroSlider() {
+    const hero = document.getElementById('hero');
+    const slides = [...hero.querySelectorAll('.slide')];
+    const dots = [...hero.querySelectorAll('[data-dot]')];
+    if (slides.length <= 1) return;
+    let timer;
+    const show = i => {
+      _heroCur = (i + slides.length) % slides.length;
+      slides.forEach((s, k) => s.classList.toggle('on', k === _heroCur));
+      dots.forEach((d, k) => d.classList.toggle('on', k === _heroCur));
+    };
+    const auto = () => {
+      clearInterval(timer);
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => show(_heroCur + 1), SLIDE_DURATION);
+    };
+    hero.addEventListener('click', e => {
+      const g = e.target.closest('[data-go]'); if (g) { show(_heroCur + +g.dataset.go); auto(); return; }
+      const d = e.target.closest('[data-dot]'); if (d) { show(+d.dataset.dot); auto(); }
+    });
+    hero.addEventListener('mouseenter', () => clearInterval(timer));
+    hero.addEventListener('mouseleave', auto);
+    let sx = null;
+    hero.addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive: true });
+    hero.addEventListener('touchend', e => {
+      if (sx === null) return;
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 40) { show(_heroCur + (dx < 0 ? 1 : -1)); auto(); }
+      sx = null;
+    });
+    auto();
+  }
+
+  /* ── Lightbox ────────────────────────────────────────── */
+  const lb = document.getElementById('lb');
+  let _lbFotos = [], _lbI = 0;
+  function openLightbox(fotos, i) {
+    if (!fotos.length) return;
+    _lbFotos = fotos; _lbI = (i + fotos.length) % fotos.length;
+    const img = document.getElementById('lbi');
+    img.src = fotos[_lbI].src; img.alt = fotos[_lbI].alt;
+    document.getElementById('lbc').textContent = `${fotos[_lbI].alt.split(' · ')[0]} · ${_lbI + 1} / ${fotos.length}`;
+    lb.querySelectorAll('.ctrl').forEach(b => b.hidden = fotos.length < 2);
+    lb.hidden = false;
+  }
+  const closeLightbox = () => { lb.hidden = true; };
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-hero-open]')) return openLightbox(_heroFotos, _heroCur);
+    const g = e.target.closest('[data-gal]'); if (g) return openLightbox(_galerias[+g.dataset.gal] || [], +g.dataset.i);
+    const l = e.target.closest('[data-lb]'); if (l) return openLightbox(_lbFotos, _lbI + +l.dataset.lb);
+    if (e.target.id === 'lbx' || e.target === lb) closeLightbox();
+  });
+  document.addEventListener('keydown', e => {
+    if (lb.hidden) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowRight') openLightbox(_lbFotos, _lbI + 1);
+    if (e.key === 'ArrowLeft') openLightbox(_lbFotos, _lbI - 1);
+  });
+
+  load();
+</script>
+</body>
+</html>
