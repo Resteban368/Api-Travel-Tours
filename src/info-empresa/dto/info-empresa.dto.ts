@@ -53,6 +53,10 @@ export class CreateInfoEmpresaDto {
   @IsString({ message: 'La página web debe ser un texto' })
   @IsOptional()
   pagina_web?: string;
+
+  @IsString({ message: 'El RNT debe ser un texto' })
+  @IsOptional()
+  rnt?: string;
 }
 
 export class UpdateInfoEmpresaDto extends PartialType(CreateInfoEmpresaDto) {}

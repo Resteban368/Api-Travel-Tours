@@ -314,7 +314,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
   const ico = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
   const plural = (n, s, p = s + 's') => `${n} ${n === 1 ? s : p}`;
 
-  const RNT = '302421';   // no existe en info-empresa: fijo en la plantilla
+  let _rnt = '';          // Registro Nacional de Turismo, desde info-empresa
   const LOGO = '/logo-travel-club/logo-horizontal.png';
   const SLIDE_DURATION = 5000;
   const token = window.location.pathname.split('/').filter(Boolean).pop();
@@ -358,7 +358,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
       <header class="top"><div class="wrap">
         <img class="logo" src="${LOGO}" alt="Travel Club, agencia de viajes">
         ${d?._preview ? '<span class="prev-tag">Vista previa</span>' : ''}
-        <div class="rnt"><span>REGISTRO NACIONAL DE TURISMO</span><b>RNT ${RNT}</b></div>
+        ${_rnt ? `<div class="rnt"><span>REGISTRO NACIONAL DE TURISMO</span><b>RNT ${esc(_rnt)}</b></div>` : ''}
       </div></header>`;
   }
 
@@ -538,7 +538,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
         ${emp.detalles_empresa ? `<p class="about">${esc(emp.detalles_empresa)}</p>` : ''}
         ${items ? `<ul>${items}</ul>` : ''}
         ${redes.length ? `<div class="socs">${redes.map(r => `<a class="soc" href="${esc(r.link || r.url)}" target="_blank" rel="noopener">${esc(r.name || r.nombre || 'Red social')}</a>`).join('')}</div>` : ''}
-        <div class="rn">REGISTRO NACIONAL DE TURISMO · <b>RNT ${RNT}</b></div>
+        ${_rnt ? `<div class="rn">REGISTRO NACIONAL DE TURISMO · <b>RNT ${esc(_rnt)}</b></div>` : ''}
         <div class="copy">© ${new Date().getFullYear()} ${esc(emp.nombre || 'Travel Club')}. Todos los derechos reservados.</div>
       </div></footer>`;
   }
@@ -561,6 +561,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
     const fechasViaje = fechaInicio && fechaFin ? `${fd(fechaInicio)} – ${fd(fechaFin)}` : fd(fechaInicio);
     const incluyeTxt = [vuelos.length ? 'Vuelos' : '', hoteles.length ? 'hotel' : ''].filter(Boolean).join(' + ');
 
+    _rnt = String(emp.rnt || '').replace(/^\s*RNT[\s.:#-]*/i, '').trim();
     _waNumber = String(emp.telefono || '').replace(/\D/g, '');
     _waEmpNombre = emp.nombre || 'Travel Club';
     document.title = `Cotización ${d.titulo_viaje || ''} | Travel Club`;

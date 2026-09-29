@@ -65,12 +65,12 @@ export class InfoEmpresaService {
 
   async update(id: number, dto: UpdateInfoEmpresaDto, usuarioId?: number, usuarioNombre?: string): Promise<InfoEmpresa> {
     const info = await this.findOne(id);
-    const antes = { nombre: info.nombre, direccion_sede_principal: info.direccion_sede_principal, telefono: info.telefono, correo: info.correo, pagina_web: info.pagina_web, nombre_gerente: info.nombre_gerente };
+    const antes = { nombre: info.nombre, direccion_sede_principal: info.direccion_sede_principal, telefono: info.telefono, correo: info.correo, pagina_web: info.pagina_web, nombre_gerente: info.nombre_gerente, rnt: info.rnt };
     Object.assign(info, dto);
     const saved = await this.infoRepository.save(info);
     await this.cacheManager.del(CACHE_KEY);
     await this.syncInfoToVector();
-    const despues = { nombre: saved.nombre, direccion_sede_principal: saved.direccion_sede_principal, telefono: saved.telefono, correo: saved.correo, pagina_web: saved.pagina_web, nombre_gerente: saved.nombre_gerente };
+    const despues = { nombre: saved.nombre, direccion_sede_principal: saved.direccion_sede_principal, telefono: saved.telefono, correo: saved.correo, pagina_web: saved.pagina_web, nombre_gerente: saved.nombre_gerente, rnt: saved.rnt };
     await this.auditoriaService.registrar({
       usuario_id: usuarioId ?? null,
       usuario_nombre: usuarioNombre ?? null,
@@ -125,6 +125,7 @@ export class InfoEmpresaService {
       info.telefono ? `Teléfono: ${info.telefono}` : '',
       info.correo ? `Correo electrónico: ${info.correo}` : '',
       info.pagina_web ? `Sitio Web: ${info.pagina_web}` : '',
+      info.rnt ? `Registro Nacional de Turismo (RNT): ${info.rnt}` : '',
     ].filter(Boolean).join('\n');
 
     const fullText = `PERFIL COMPLETO DE LA EMPRESA:\n\n${text}`;
