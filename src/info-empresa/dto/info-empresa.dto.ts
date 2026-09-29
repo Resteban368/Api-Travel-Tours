@@ -3,8 +3,20 @@ import {
   IsOptional,
   IsNotEmpty,
   IsEmail,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PartialType } from '@nestjs/mapped-types';
+
+export class PoliticaDto {
+  @IsString({ message: 'El título de la política es obligatorio' })
+  @IsNotEmpty({ message: 'El título de la política es obligatorio' })
+  titulo: string;
+
+  @IsString({ message: 'El contenido de la política debe ser un texto' })
+  contenido: string;
+}
 
 export class CreateInfoEmpresaDto {
   @IsString({ message: 'El nombre es obligatorio' })
@@ -57,6 +69,12 @@ export class CreateInfoEmpresaDto {
   @IsString({ message: 'El RNT debe ser un texto' })
   @IsOptional()
   rnt?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PoliticaDto)
+  @IsOptional()
+  politicas?: PoliticaDto[];
 }
 
 export class UpdateInfoEmpresaDto extends PartialType(CreateInfoEmpresaDto) {}

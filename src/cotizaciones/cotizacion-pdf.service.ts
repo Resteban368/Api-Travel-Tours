@@ -776,6 +776,23 @@ export class CotizacionPdfService {
       });
     }
 
+    // ══ POLÍTICAS DE LA EMPRESA ══════════════════════════════════════════════
+    const politicas: any[] = (Array.isArray(empresa?.politicas) ? empresa.politicas : []).filter(
+      (p: any) => p?.titulo?.trim() || p?.contenido?.trim(),
+    );
+    if (politicas.length > 0) {
+      content.push(sectionHeader('Políticas de la empresa'));
+      for (const p of politicas) {
+        content.push({
+          stack: [
+            ...(p.titulo?.trim() ? [{ text: p.titulo.trim(), fontSize: 9, bold: true, color: DARK, margin: [0, 0, 0, 2] }] : []),
+            ...(p.contenido?.trim() ? [{ text: p.contenido.trim(), fontSize: 8, color: MUTED, lineHeight: 1.5 }] : []),
+          ],
+          margin: [0, 0, 0, 8],
+        });
+      }
+    }
+
     // ══ DOC DEFINITION ═══════════════════════════════════════════════════════
     const footerLine1Items: string[] = [empNombre];
     if (empTel)    footerLine1Items.push(`Tel: ${empTel}`);

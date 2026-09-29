@@ -195,6 +195,13 @@ svg.i{width:1em;height:1em;flex:none}
 .svc .p{white-space:nowrap;font-weight:800;font-family:var(--head);color:var(--navy)}
 .svc .tgl,.svc .fixed{margin-left:0;padding:4px 10px;font-size:12px}
 .cond{margin:0;white-space:pre-line;color:var(--ink)}
+.pol{border-top:1px solid var(--line)}
+.pol:first-of-type{border-top:0}
+.pol summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-weight:800;color:var(--navy)}
+.pol summary::-webkit-details-marker{display:none}
+.pol summary::after{content:"+";font-family:var(--head);font-size:20px;font-weight:700;color:var(--sky);line-height:1;transition:transform .2s}
+.pol[open] summary::after{transform:rotate(45deg)}
+.pol p{margin:0 0 14px;white-space:pre-line;color:var(--muted);font-size:15px}
 
 /* resumen */
 .side{position:sticky;top:90px;display:grid;gap:14px}
@@ -518,6 +525,21 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
       </section>`;
   }
 
+  /* ── Políticas de la empresa ────────────────────────── */
+  function politicasHtml(pols) {
+    pols = (Array.isArray(pols) ? pols : []).filter(p => p?.titulo?.trim() || p?.contenido?.trim());
+    if (!pols.length) return '';
+    return `
+      <section class="card">
+        <h2>Políticas de la empresa</h2>
+        ${pols.map(p => `
+          <details class="pol">
+            <summary>${esc(p.titulo?.trim() || 'Política')}</summary>
+            ${p.contenido?.trim() ? `<p>${esc(p.contenido.trim())}</p>` : ''}
+          </details>`).join('')}
+      </section>`;
+  }
+
   /* ── Footer ──────────────────────────────────────────── */
   function footerHtml(emp) {
     const redes = (Array.isArray(emp.redes_sociales) ? emp.redes_sociales : []).filter(r => r && (r.link || r.url));
@@ -621,6 +643,8 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
               <h2>Condiciones</h2>
               <p class="cond">${esc(d.condiciones_generales)}</p>
             </section>` : ''}
+
+            ${politicasHtml(emp.politicas)}
           </div>
 
           <aside class="side" id="resumen">

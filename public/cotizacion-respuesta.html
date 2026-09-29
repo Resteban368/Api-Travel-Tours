@@ -278,6 +278,16 @@
     .itin ul li { position:relative; padding-left:14px; font-size:13px; color:var(--ink-soft); line-height:1.45; }
     .itin ul li::before { content:""; position:absolute; left:2px; top:.55em; width:5px; height:5px; border-radius:50%; background:var(--accent); }
 
+    /* POLÍTICAS */
+    .pol { border-top:1px solid var(--border); }
+    .pol:first-child { border-top:0; }
+    .pol summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 0; font-size:13px; font-weight:700; color:var(--ink); }
+    .pol summary::-webkit-details-marker { display:none; }
+    .pol summary::after { content:"+"; font-size:18px; color:var(--accent); line-height:1; transition:transform .2s; }
+    .pol[open] summary::after { transform:rotate(45deg); }
+    .pol p { margin:0 0 14px; white-space:pre-line; font-size:13px; color:var(--ink-soft); line-height:1.55; }
+
     /* INCLUDES */
     .includes-grid {
       display:grid;
@@ -1312,6 +1322,22 @@
         <div class="cond-box"><p>${d.condiciones_generales}</p></div>
       </section>` : '';
 
+    const pols = (Array.isArray(emp.politicas) ? emp.politicas : []).filter(p => p?.titulo?.trim() || p?.contenido?.trim());
+    const politicasHtml = pols.length ? `
+      <section class="au">
+        <div class="sec-head">
+          <div class="sec-icon">${ICO.doc}</div>
+          <h2>Políticas de la empresa</h2>
+        </div>
+        <div class="card"><div class="card-body" style="padding-block:6px">
+          ${pols.map(p => `
+            <details class="pol">
+              <summary>${esc(p.titulo?.trim() || 'Política')}</summary>
+              ${p.contenido?.trim() ? `<p>${esc(p.contenido.trim())}</p>` : ''}
+            </details>`).join('')}
+        </div></div>
+      </section>` : '';
+
     const waNumber = (emp.telefono || '').replace(/\D/g,'');
     _waNumber    = waNumber;
     _waEmpNombre = emp.nombre || 'Travel Tours';
@@ -1364,6 +1390,7 @@
             ${hotelesHtml}
             ${adcHtml}
             ${condHtml}
+            ${politicasHtml}
           </main>
 
           <aside class="sidebar">
