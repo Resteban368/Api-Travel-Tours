@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Políticas | Travel Club</title>
+<meta name="theme-color" content="#0B2A6B">
+<link rel="icon" type="image/png" href="/logo-travel-club/icono-256.png">
+<link rel="apple-touch-icon" href="/logo-travel-club/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Nunito:wght@400;600;700;800&display=swap">
+<!--
+  Políticas de la empresa (Travel Club). Se sirve en /politicas desde
+  cotizaciones.travelclubagencia.com (ver politicas-page.controller.ts).
+  El contenido sale de info-empresa → politicas; se edita desde la app.
+-->
+<style>
+:root{
+  color-scheme:light;
+  --navy:#0B2A6B;--blue:#1C5BC4;--sky:#3AAEE5;--green:#4FA83A;--yellow:#F7B928;
+  --bg:#F6F8FC;--ink:#14244A;--muted:#66758F;--line:#E3E9F3;--dark:#0A0D14;
+  --head:"Montserrat",system-ui,sans-serif;--body:"Nunito",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+a{color:inherit}
+button{font:inherit;cursor:pointer;color:inherit}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px;border-radius:8px}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-weight:800;border-radius:999px;padding:10px 18px;font-size:14px;border:0}
+.btn svg{width:16px;height:16px;flex:none}
+.btn-ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
+.btn-ghost:hover{background:rgba(255,255,255,.24)}
+
+/* header */
+.top{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;padding-block:10px}
+.top .logo{height:54px;width:auto}
+.rnt{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em}
+.rnt b{background:var(--navy);color:#fff;padding:5px 10px;border-radius:8px;letter-spacing:.06em}
+@media (max-width:520px){.top .logo{height:38px}.rnt span{display:none}}
+
+/* banda */
+.band{background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;padding-block:44px 40px}
+.band .eyebrow{font-family:var(--head);font-size:12px;letter-spacing:.3em;font-weight:700;color:#D4E0F7;text-transform:uppercase}
+.band h1{font-family:var(--head);font-weight:900;font-size:clamp(34px,6vw,58px);letter-spacing:-.03em;line-height:1;margin:8px 0 12px}
+.band p{margin:0;color:#D4E0F7;max-width:60ch}
+.band .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;margin-top:32px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}}
+.toc{position:sticky;top:90px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px}
+@media (max-width:860px){.toc{position:static}}
+.toc h2{margin:0 0 10px;font-family:var(--head);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px;counter-reset:t}
+.toc a{display:flex;gap:10px;align-items:baseline;text-decoration:none;padding:6px 8px;border-radius:10px;font-size:14px;font-weight:700;color:var(--ink);line-height:1.35}
+.toc a:hover,.toc a.on{background:var(--bg);color:var(--navy)}
+.toc a span{font-family:var(--head);font-size:12px;font-weight:800;color:var(--sky);min-width:18px}
+.col{display:grid;gap:16px;min-width:0}
+.pol{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}
+.pol header{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.pol .n{width:40px;height:40px;border-radius:12px;background:var(--navy);color:#fff;display:grid;place-items:center;font-family:var(--head);font-weight:900;font-size:16px;flex:none}
+.pol h2{margin:0;font-family:var(--head);font-weight:800;font-size:19px;color:var(--navy);line-height:1.25}
+.pol p{margin:0 0 12px;color:var(--ink)}
+.pol p:last-child{margin-bottom:0}
+.pol p.bul{position:relative;padding-left:18px}
+.pol p.bul::before{content:"";position:absolute;left:3px;top:.68em;width:7px;height:7px;border-radius:50%;background:var(--sky)}
+.pol p b{color:var(--navy)}
+
+/* estados */
+.state{min-height:40vh;display:grid;place-items:center;padding:48px 16px}
+.state .box{max-width:420px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:36px}
+.state h2{margin:0 0 8px;font-family:var(--head);color:var(--navy)}
+.state p{margin:0;color:var(--muted)}
+.spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--blue);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* footer */
+footer{margin-top:64px;background:var(--dark);color:#9AA3B5;text-align:center;padding-block:40px 48px}
+footer .lg{display:inline-block;background:#fff;border-radius:16px;padding:12px 18px;margin-bottom:18px}
+footer .lg img{height:56px;width:auto}
+footer h2{margin:0;color:#E6E9F0;font-family:var(--head);font-weight:800;font-size:22px;text-transform:uppercase}
+footer .line{margin-top:12px;font-size:14px;color:#B9C0CE}
+footer .line a{text-decoration:none}
+footer .rn{margin-top:18px;font-size:13px;color:#6E7890;letter-spacing:.08em}
+footer .rn b{color:var(--yellow)}
+
+@media print{
+  .top,.band .acts,.toc,footer{display:none!important}
+  .band{background:none;color:var(--ink);padding-block:0 12px}
+  .band .eyebrow,.band p{color:var(--muted)}
+  .layout{display:block;margin-top:0}
+  .pol{break-inside:avoid;border:0;padding:12px 0;border-top:1px solid var(--line);border-radius:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="print" viewBox="0 0 24 24"><path fill="currentColor" d="M7 3h10v4H7V3Zm-2 6h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2Zm4 7v3h6v-3H9Zm8-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></symbol>
+</svg>
+
+<header class="top"><div class="wrap">
+  <img class="logo" src="/logo-travel-club/logo-horizontal.png" alt="Travel Club, agencia de viajes">
+  <div class="rnt" id="rnt" hidden><span>REGISTRO NACIONAL DE TURISMO</span><b></b></div>
+</div></header>
+
+<section class="band"><div class="wrap">
+  <div class="eyebrow">Travel Club · Agencia de viajes</div>
+  <h1>Políticas de la empresa</h1>
+  <p>Términos, condiciones y políticas operativas que aplican a los servicios turísticos de Travel Club.</p>
+  <div class="acts">
+    <a class="btn btn-ghost" id="volver" href="#" hidden><svg aria-hidden="true"><use href="#back"/></svg>Volver a mi cotización</a>
+    <button class="btn btn-ghost" type="button" id="imprimir"><svg aria-hidden="true"><use href="#print"/></svg>Imprimir</button>
+  </div>
+</div></section>
+
+<main class="wrap" id="app">
+  <div class="state"><div class="spin" role="status" aria-label="Cargando políticas"></div></div>
+</main>
+
+<footer id="footer" hidden><div class="wrap">
+  <span class="lg"><img src="/logo-travel-club/logo-horizontal.png" alt="Travel Club"></span>
+  <h2 id="f-nombre">Travel Club</h2>
+  <div class="line" id="f-contacto"></div>
+  <div class="rn" id="f-rnt" hidden>REGISTRO NACIONAL DE TURISMO · <b></b></div>
+</div></footer>
+
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+  // "• Etiqueta: texto" → viñeta con la etiqueta en negrita
+  function parrafos(texto) {
+    return String(texto || '').trim().split(/\n\s*\n/).map(p => {
+      p = p.trim();
+      const bul = /^[•\-*]\s*/.test(p);
+      if (bul) p = p.replace(/^[•\-*]\s*/, '');
+      let html = esc(p).replace(/\n/g, '<br>');
+      const m = bul && html.match(/^([^:<]{2,60}):\s*/);
+      if (m) html = `<b>${m[1]}:</b> ${html.slice(m[0].length)}`;
+      return `<p${bul ? ' class="bul"' : ''}>${html}</p>`;
+    }).join('');
+  }
+
+  // "Volver a mi cotización" solo si se llegó desde una cotización de este sitio
+  try {
+    const ref = new URL(document.referrer);
+    if (ref.origin === location.origin && ref.pathname.startsWith('/cotizacion/')) {
+      const v = document.getElementById('volver');
+      v.href = ref.pathname; v.hidden = false;
+    }
+  } catch {}
+  document.getElementById('imprimir').addEventListener('click', () => window.print());
+
+  async function load() {
+    const app = document.getElementById('app');
+    let emp = {};
+    try {
+      const r = await fetch('/v1/info-empresa/publica');
+      if (!r.ok) throw 0;
+      const arr = await r.json();
+      emp = (Array.isArray(arr) ? arr[0] : arr) || {};
+    } catch {
+      app.innerHTML = `<div class="state"><div class="box"><h2>No pudimos cargar las políticas</h2><p>Intenta de nuevo en unos minutos o comunícate con tu asesor de Travel Club.</p></div></div>`;
+      return;
+    }
+
+    const rnt = String(emp.rnt || '').replace(/^\s*RNT[\s.:#-]*/i, '').trim();
+    if (rnt) {
+      const h = document.getElementById('rnt'); h.querySelector('b').textContent = `RNT ${rnt}`; h.hidden = false;
+      const f = document.getElementById('f-rnt'); f.querySelector('b').textContent = `RNT ${rnt}`; f.hidden = false;
+    }
+    document.getElementById('f-nombre').textContent = emp.nombre || 'Travel Club';
+    const tel = String(emp.telefono || '').replace(/\D/g, '');
+    document.getElementById('f-contacto').innerHTML = [
+      emp.direccion_sede_principal ? esc(emp.direccion_sede_principal) : '',
+      emp.telefono ? `<a href="tel:+${tel}">${esc(emp.telefono)}</a>` : '',
+      emp.correo ? `<a href="mailto:${esc(emp.correo)}">${esc(emp.correo)}</a>` : '',
+    ].filter(Boolean).join(' · ');
+    document.getElementById('footer').hidden = false;
+
+    const pols = (Array.isArray(emp.politicas) ? emp.politicas : []).filter(p => p?.titulo?.trim() || p?.contenido?.trim());
+    if (!pols.length) {
+      app.innerHTML = `<div class="state"><div class="box"><h2>Aún no hay políticas publicadas</h2><p>Comunícate con tu asesor de Travel Club si tienes preguntas sobre reservas, pagos o cancelaciones.</p></div></div>`;
+      return;
+    }
+
+    app.innerHTML = `
+      <div class="layout">
+        <nav class="toc" aria-label="Índice de políticas">
+          <h2>Contenido</h2>
+          <ol>${pols.map((p, i) => `<li><a href="#p${i + 1}"><span>${i + 1}</span>${esc(p.titulo?.trim() || 'Política')}</a></li>`).join('')}</ol>
+        </nav>
+        <div class="col">
+          ${pols.map((p, i) => `
+            <article class="pol" id="p${i + 1}">
+              <header><span class="n">${i + 1}</span><h2>${esc(p.titulo?.trim() || 'Política')}</h2></header>
+              ${parrafos(p.contenido)}
+            </article>`).join('')}
+        </div>
+      </div>`;
+
+    // Resaltar en el índice la política visible
+    const links = [...document.querySelectorAll('.toc a')];
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`));
+        });
+      }, { rootMargin: '-90px 0px -60% 0px' });
+      document.querySelectorAll('.pol').forEach(el => io.observe(el));
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

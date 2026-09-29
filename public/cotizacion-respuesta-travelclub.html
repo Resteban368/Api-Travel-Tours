@@ -195,17 +195,10 @@ svg.i{width:1em;height:1em;flex:none}
 .svc .p{white-space:nowrap;font-weight:800;font-family:var(--head);color:var(--navy)}
 .svc .tgl,.svc .fixed{margin-left:0;padding:4px 10px;font-size:12px}
 .cond{margin:0;white-space:pre-line;color:var(--ink)}
-.pol{border-top:1px solid var(--line)}
-.pol:first-of-type{border-top:0}
-.pol summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-weight:800;color:var(--navy)}
-.pol summary::-webkit-details-marker{display:none}
-.pol summary::after{content:"+";font-family:var(--head);font-size:20px;font-weight:700;color:var(--sky);line-height:1;transition:transform .2s}
-.pol[open] summary::after{transform:rotate(45deg)}
-.pol p{margin:0 0 14px;white-space:pre-line;color:var(--muted);font-size:15px}
 
 /* resumen */
 .side{position:sticky;top:90px;display:grid;gap:14px}
-@media (max-width:920px){.side{position:static}}
+@media (max-width:920px),(max-height:820px){.side{position:static}}
 .for{color:var(--muted);font-size:14px;margin:-6px 0 14px}
 .for b{color:var(--ink)}
 .bl{display:grid;gap:10px;font-size:14px}
@@ -224,6 +217,10 @@ svg.i{width:1em;height:1em;flex:none}
 .help:hover{border-color:var(--sky)}
 .help .ic{width:40px;height:40px;border-radius:50%;background:#E8F7EE;color:var(--wa);display:grid;place-items:center;flex:none}
 .help .ic svg{width:20px;height:20px}
+.pol-card{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);text-decoration:none;font-size:14px;font-weight:800;color:var(--navy)}
+.pol-card svg{width:16px;height:16px;flex:none;color:var(--sky)}
+.pol-card span{margin-left:auto;font-size:20px;line-height:1;color:var(--sky)}
+.pol-card:hover{color:var(--blue)}
 .help b{display:block;color:var(--navy);font-size:14px}
 .help span{font-size:13px;color:var(--muted)}
 
@@ -250,6 +247,8 @@ footer ul small{display:block;font-size:12px;letter-spacing:.14em;text-transform
 footer .socs{margin-top:28px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 footer .soc{background:#161A24;color:#E6E9F0;border:1px solid #2A3040;border-radius:999px;padding:10px 22px;font-weight:700;font-size:15px;text-decoration:none}
 footer .soc:hover{border-color:var(--yellow)}
+footer .pol-link{margin:22px 0 0}
+footer .pol-link a{color:#E6E9F0;font-weight:700;text-decoration:underline;text-underline-offset:3px}
 footer .rn{margin-top:26px;font-size:13px;color:#6E7890;letter-spacing:.08em}
 footer .rn b{color:var(--yellow)}
 footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
@@ -283,6 +282,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
   <symbol id="plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
   <symbol id="dl" viewBox="0 0 24 24"><path fill="currentColor" d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16 6.3 10.3l1.4-1.4 3.3 3.3V3ZM4 18h16v2H4v-2Z"/></symbol>
   <symbol id="grid" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path fill="currentColor" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V9h5.5L13 3.5ZM8 13h8v2H8v-2Zm0 4h8v2H8v-2Zm0-8h3v2H8V9Z"/></symbol>
   <symbol id="hotel" viewBox="0 0 24 24"><path fill="currentColor" d="M3 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6h5a1 1 0 0 1 1 1v10h-2v-2H5v2H3Zm2-4h14v-5h-4v3h-2V5H5v12Zm2-9h2v2H7V8Zm4 0h2v2h-2V8Zm-4 4h2v2H7v-2Zm4 0h2v2h-2v-2Z"/></symbol>
 </svg>
 
@@ -525,20 +525,9 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
       </section>`;
   }
 
-  /* ── Políticas de la empresa ────────────────────────── */
-  function politicasHtml(pols) {
-    pols = (Array.isArray(pols) ? pols : []).filter(p => p?.titulo?.trim() || p?.contenido?.trim());
-    if (!pols.length) return '';
-    return `
-      <section class="card">
-        <h2>Políticas de la empresa</h2>
-        ${pols.map(p => `
-          <details class="pol">
-            <summary>${esc(p.titulo?.trim() || 'Política')}</summary>
-            ${p.contenido?.trim() ? `<p>${esc(p.contenido.trim())}</p>` : ''}
-          </details>`).join('')}
-      </section>`;
-  }
+  /* ── Políticas: se muestran en /politicas, aquí solo el enlace ── */
+  const tienePoliticas = emp => (Array.isArray(emp.politicas) ? emp.politicas : [])
+    .some(p => p?.titulo?.trim() || p?.contenido?.trim());
 
   /* ── Footer ──────────────────────────────────────────── */
   function footerHtml(emp) {
@@ -559,6 +548,7 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
         <h2>${esc(emp.nombre || 'Travel Club')}</h2>
         ${emp.detalles_empresa ? `<p class="about">${esc(emp.detalles_empresa)}</p>` : ''}
         ${items ? `<ul>${items}</ul>` : ''}
+        ${tienePoliticas(emp) ? `<p class="pol-link"><a href="/politicas">Políticas de la empresa</a></p>` : ''}
         ${redes.length ? `<div class="socs">${redes.map(r => `<a class="soc" href="${esc(r.link || r.url)}" target="_blank" rel="noopener">${esc(r.name || r.nombre || 'Red social')}</a>`).join('')}</div>` : ''}
         ${_rnt ? `<div class="rn">REGISTRO NACIONAL DE TURISMO · <b>RNT ${esc(_rnt)}</b></div>` : ''}
         <div class="copy">© ${new Date().getFullYear()} ${esc(emp.nombre || 'Travel Club')}. Todos los derechos reservados.</div>
@@ -643,8 +633,6 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
               <h2>Condiciones</h2>
               <p class="cond">${esc(d.condiciones_generales)}</p>
             </section>` : ''}
-
-            ${politicasHtml(emp.politicas)}
           </div>
 
           <aside class="side" id="resumen">
@@ -659,11 +647,13 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
                 ${d._preview ? '' : `<a class="btn btn-line" href="/v1/p/${encodeURIComponent(token)}/pdf">${ico('dl')}Descargar PDF</a>`}
               </div>
               <div class="ref">REF. ${REF}</div>
+              ${tienePoliticas(emp) ? `<a class="pol-card" href="/politicas">${ico('doc')}Políticas de la empresa<span aria-hidden="true">›</span></a>` : ''}
             </section>
             <a class="help" id="btn-wa-help" href="#" target="_blank" rel="noopener noreferrer">
               <span class="ic">${ico('wa')}</span>
               <span><b>¿Tienes dudas?</b><span>Tu asesor de Travel Club te responde por WhatsApp.</span></span>
             </a>
+
           </aside>
         </div>
       </main>
