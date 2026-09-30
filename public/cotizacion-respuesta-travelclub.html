@@ -429,7 +429,14 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
     return '';
   }
 
-  function vueloHtml(v, idx) {
+  // Tramos con precio del mismo tipo (ida / vuelta) son alternativas: se elige uno.
+  const tipoVuelo = v => v.tipo === 'vuelta' ? 'vuelta' : 'ida';
+  const grupoVuelo = (vuelos, v) => vuelos
+    .map((x, i) => ({ x, i }))
+    .filter(({ x }) => num(x.costo) > 0 && tipoVuelo(x) === tipoVuelo(v))
+    .map(({ i }) => i);
+
+  function vueloHtml(v, idx, vuelos) {
     const a = v.aerolinea;
     const logo = a?.logo_url || (a?.codigo_iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.codigo_iata}.png` : null);
     const iata = esc(a?.codigo_iata || (a?.nombre || '').substring(0,2).toUpperCase());
@@ -437,11 +444,13 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
     const conexiones = v.escalas?.length || (v.tiene_escala ? 1 : 0);
     const pax = num(v.numero_pasajeros);
     const seleccionable = num(v.costo) > 0;
+    const grupo = seleccionable ? grupoVuelo(vuelos, v) : [];
 
     return `
       <article class="opt flight-card" data-flight-idx="${idx}">
         <div class="opt-head">
           <span class="tag${ida ? '' : ' r'}">${ida ? 'Ida' : 'Regreso'}</span>
+          ${grupo.length > 1 ? `<span class="tag soft">Opción ${grupo.indexOf(idx) + 1}</span>` : ''}
           <div class="air">
             <span class="lg">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(document.createTextNode('${iata}'))">` : (iata || ico('plane'))}</span>
             <b>${esc(a?.nombre || 'Aerolínea')}</b>${v.numero_vuelo ? `<span>${esc(v.numero_vuelo)}</span>` : ''}
@@ -464,6 +473,14 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
         ${escalasHtml(v)}
         ${seleccionable ? `<div class="row-price"><span>Precio del tramo</span><b class="num">${COP(v.costo)}</b></div>` : ''}
       </article>`;
+  }
+
+  function hintVuelos(vuelos) {
+    const conOpciones = ['ida', 'vuelta'].filter(t => vuelos.filter(v => num(v.costo) > 0 && tipoVuelo(v) === t).length > 1);
+    if (conOpciones.length === 2) return '<p class="hint">Elige una opción de ida y una de regreso; el total se actualiza.</p>';
+    if (conOpciones.length === 1) return `<p class="hint">Elige una opción de ${conOpciones[0] === 'ida' ? 'ida' : 'regreso'}; el total se actualiza.</p>`;
+    if (vuelos.some(v => num(v.costo) > 0) && vuelos.length > 1) return '<p class="hint">Puedes incluir o quitar tramos; el total se actualiza.</p>';
+    return '';
   }
 
   /* ── Hoteles ─────────────────────────────────────────── */
@@ -615,8 +632,8 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
             ${vuelos.length ? `
             <section class="card">
               <h2>Vuelos <span class="count">${plural(vuelos.length, 'tramo')}</span></h2>
-              ${vuelos.some(v => num(v.costo) > 0) && vuelos.length > 1 ? '<p class="hint">Puedes incluir o quitar tramos; el total se actualiza.</p>' : ''}
-              <div class="stack">${vuelos.map(vueloHtml).join('')}</div>
+              ${hintVuelos(vuelos)}
+              <div class="stack">${vuelos.map((v, i) => vueloHtml(v, i, vuelos)).join('')}</div>
             </section>` : ''}
 
             ${hoteles.length ? `
@@ -774,8 +791,11 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
     };
     document.querySelectorAll('.flight-toggle').forEach(btn => {
       const i = +btn.dataset.flightIdx, on = _selFlights.has(i);
-      paint(btn, on, 'Incluido', 'Incluir');
+      const conOpciones = grupoVuelo(_flights, _flights[i]).length > 1;
+      if (conOpciones) paint(btn, on, 'Seleccionado', 'Seleccionar');
+      else paint(btn, on, 'Incluido', 'Incluir');
       const card = document.querySelector(`.flight-card[data-flight-idx="${i}"]`);
+      card?.classList.toggle('sel', on && conOpciones);
       card?.classList.toggle('off', !on);
     });
     document.querySelectorAll('.hotel-toggle').forEach(btn => {
@@ -794,13 +814,24 @@ footer .copy{margin-top:10px;font-size:12px;color:#4E566A}
 
   function initSelections(d) {
     _cotData = d; _flights = d.vuelos || []; _hotels = d.opciones_hotel || []; _adicionales = d.adicionales || [];
-    _selFlights = new Set(_flights.map((_, i) => i));            // todos incluidos por defecto
-    _selHotels = _hotels.length ? new Set([0]) : new Set();      // primera opción por defecto
+    // Vuelos: los sin precio siempre; de los que tienen precio, la primera opción de cada tipo
+    _selFlights = new Set(_flights
+      .map((v, i) => i)
+      .filter(i => num(_flights[i].costo) <= 0 || grupoVuelo(_flights, _flights[i])[0] === i));
+    _selHotels = _hotels.length ? new Set([0]) : new Set();      // una sola opción de hotel
     _selAdc = new Set(_adicionales.map((_, i) => i));
 
-    const toggle = (set, i) => { set.has(i) ? set.delete(i) : set.add(i); paintToggles(); updateSidebar(); };
-    document.querySelectorAll('.flight-toggle').forEach(b => b.addEventListener('click', () => toggle(_selFlights, +b.dataset.flightIdx)));
-    document.querySelectorAll('.hotel-toggle').forEach(b => b.addEventListener('click', () => toggle(_selHotels, +b.dataset.hotelIdx)));
+    const refresh = () => { paintToggles(); updateSidebar(); };
+    const toggle = (set, i) => { set.has(i) ? set.delete(i) : set.add(i); refresh(); };
+    // Elegir una opción desmarca las demás del grupo; volver a tocarla no la quita
+    const elegir = (set, grupo, i) => { grupo.forEach(j => set.delete(j)); set.add(i); refresh(); };
+
+    document.querySelectorAll('.flight-toggle').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.flightIdx, grupo = grupoVuelo(_flights, _flights[i]);
+      grupo.length > 1 ? elegir(_selFlights, grupo, i) : toggle(_selFlights, i);
+    }));
+    document.querySelectorAll('.hotel-toggle').forEach(b => b.addEventListener('click', () =>
+      elegir(_selHotels, _hotels.map((_, j) => j), +b.dataset.hotelIdx)));
     document.querySelectorAll('.adc-toggle').forEach(b => b.addEventListener('click', () => toggle(_selAdc, +b.dataset.adcIdx)));
 
     paintToggles();
