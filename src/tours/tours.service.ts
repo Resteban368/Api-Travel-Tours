@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { toSql } from 'pgvector/utils';
 import { ToursMaestro } from './entities/tours-maestro.entity';
@@ -301,7 +301,9 @@ export class ToursService {
     if (dto.is_active !== undefined) {
       track('is_active', tour.is_active, dto.is_active);
       tour.is_active = dto.is_active;
-      tour.deleted_at = dto.is_active ? null : new Date();
+      // Desactivar no estampa deleted_at; reactivar sí limpia el valor que
+      // hubieran dejado eliminaciones anteriores
+      if (dto.is_active) tour.deleted_at = null;
     }
     track('cupos', tour.cupos, dto.cupos);
     if (dto.cupos !== undefined) tour.cupos = dto.cupos ?? null;
@@ -590,12 +592,16 @@ export class ToursService {
     return tours.map((t) => this.normalize(t));
   }
 
-  async findAll(soloActivos = true) {
-    const cacheKey = soloActivos ? CACHE_KEY_ACTIVOS : CACHE_KEY_TODOS;
+  async findAll(excluirEliminados = true) {
+    const cacheKey = excluirEliminados ? CACHE_KEY_ACTIVOS : CACHE_KEY_TODOS;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     if (cached) return cached;
 
-    const where = soloActivos ? { is_active: true, es_finalizado: false } : {};
+    // Se devuelven activos y desactivados por igual; solo quedan fuera los
+    // eliminados (deleted_at con valor) y los finalizados, que van a /historico
+    const where = excluirEliminados
+      ? { deleted_at: IsNull(), es_finalizado: false }
+      : {};
     const tours = await this.toursMaestroRepository.find({ where, order: { id: 'DESC' } });
 
     if (tours.length === 0) {
@@ -1450,6 +1456,8 @@ export class ToursService {
       );
     }
 
+    // deleted_at distingue el borrado de la simple desactivación: solo lo
+    // estampa el DELETE, nunca un cambio de is_active
     tour.is_active = false;
     tour.deleted_at = new Date();
     await this.toursMaestroRepository.save(tour);

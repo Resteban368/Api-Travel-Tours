@@ -2,7 +2,23 @@ import { IsString, IsNotEmpty, IsOptional, IsIn, IsEmail } from 'class-validator
 import { PartialType } from '@nestjs/mapped-types';
 import { TipoProveedor } from '../entities/proveedor.entity';
 
-const TIPOS_PROVEEDOR: TipoProveedor[] = ['hotel', 'aerolinea', 'transporte', 'seguro', 'otro'];
+const TIPOS_PROVEEDOR: TipoProveedor[] = [
+  'hotel',
+  'aerolinea',
+  'transporte',
+  'seguro',
+  'restaurante',
+  'agencia',
+  'crucero',
+  'tours_operador',
+  'visa',
+  'pasaporte',
+  'transfer',
+  'guia_turismo',
+  'parque_atraccion',
+  'alquiler_vehiculo',
+  'otro',
+];
 
 export class CreateProveedorDto {
   @IsString()

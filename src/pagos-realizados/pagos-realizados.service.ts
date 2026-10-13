@@ -114,12 +114,16 @@ export class PagosRealizadosService {
 
   // ─── READ ─────────────────────────────────────────────────────────────────
 
-  async findAll(startDate?: string, endDate?: string, page = 1, limit = 50, search?: string, fechaDocDesde?: string, fechaDocHasta?: string) {
+  async findAll(startDate?: string, endDate?: string, page = 1, limit = 50, search?: string, fechaDocDesde?: string, fechaDocHasta?: string, reservaId?: number) {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.pagosRepository
       .createQueryBuilder('pago')
       .leftJoinAndSelect('pago.sede', 'sede');
+
+    if (reservaId !== undefined) {
+      queryBuilder.andWhere('pago.reserva_id = :reservaId', { reservaId });
+    }
 
     if (startDate && endDate) {
       queryBuilder.andWhere('pago.fecha_creacion BETWEEN :start AND :end', {
