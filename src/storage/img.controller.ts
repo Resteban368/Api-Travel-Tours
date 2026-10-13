@@ -9,7 +9,7 @@ import {
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { NextcloudService } from './nextcloud.service';
+import { StorageService } from './storage.service';
 import { Public } from '../auth/decorators/public.decorator';
 
 function parsePath(rawPath: string): { folder: string; ownerKey: string | null; filename: string } {
@@ -25,7 +25,7 @@ function parsePath(rawPath: string): { folder: string; ownerKey: string | null; 
 
 @Controller({ path: 'i', version: VERSION_NEUTRAL })
 export class ImgController {
-  constructor(private readonly nextcloudService: NextcloudService) {}
+  constructor(private readonly storageService: StorageService) {}
 
   @Public()
   @Get('*')
@@ -33,9 +33,9 @@ export class ImgController {
     const rawPath = (req.path ?? '').replace(/^\/i\//, '');
     const { folder, ownerKey, filename } = parsePath(rawPath);
     if (ownerKey) {
-      await this.nextcloudService.streamImage(folder, ownerKey, filename, res);
+      await this.storageService.streamImage(folder, ownerKey, filename, res);
     } else {
-      await this.nextcloudService.streamImageFlat(folder, filename, res);
+      await this.storageService.streamImageFlat(folder, filename, res);
     }
   }
 
@@ -45,7 +45,7 @@ export class ImgController {
     const rawPath = (req.path ?? '').replace(/^\/i\//, '');
     const { folder, ownerKey, filename } = parsePath(rawPath);
     const userId = req.user.id_usuario;
-    await this.nextcloudService.deleteImage(
+    await this.storageService.deleteImage(
       folder,
       ownerKey ?? `u${userId}`,
       filename,
