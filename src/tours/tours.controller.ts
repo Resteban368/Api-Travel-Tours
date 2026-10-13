@@ -89,6 +89,12 @@ export class ToursController {
   }
 
   @Version('1')
+  @Get(':id/auditoria')
+  obtenerAuditoria(@Param('id', ParseIntPipe) id: number) {
+    return this.toursService.obtenerAuditoria(id);
+  }
+
+  @Version('1')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.toursService.findOne(id);
@@ -171,7 +177,7 @@ export class ToursController {
   @Version('1')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-    return this.toursService.remove(id, req.user?.nombre || req.user?.email);
+    return this.toursService.remove(id, req.user?.id_usuario, req.user?.nombre || req.user?.email);
   }
 
   // ─── SALIDAS (múltiples fechas) ───────────────────────────────────────────

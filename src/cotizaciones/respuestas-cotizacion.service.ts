@@ -102,6 +102,7 @@ export class RespuestasCotizacionService {
       vuelos: dto.vuelos,
       opciones_hotel: dto.opciones_hotel,
       adicionales: dto.adicionales ?? [],
+      itinerario: dto.itinerario ?? [],
       condiciones_generales: dto.condiciones_generales ?? null,
       es_publica: dto.es_publica ?? false,
       creado_por_id: usuarioId ?? null,
@@ -212,6 +213,7 @@ export class RespuestasCotizacionService {
     if (dto.vuelos !== undefined)              fields.vuelos              = dto.vuelos;
     if (dto.opciones_hotel !== undefined)      fields.opciones_hotel      = dto.opciones_hotel;
     if (dto.adicionales !== undefined)         fields.adicionales         = dto.adicionales;
+    if (dto.itinerario !== undefined)          fields.itinerario          = dto.itinerario;
     if (dto.condiciones_generales !== undefined) fields.condiciones_generales = dto.condiciones_generales;
 
     await this.respuestaRepo.update(id, fields);
@@ -283,6 +285,7 @@ export class RespuestasCotizacionService {
       vuelos: dto.vuelos ?? [],
       opciones_hotel: dto.opciones_hotel ?? [],
       adicionales: dto.adicionales ?? [],
+      itinerario: dto.itinerario ?? [],
       condiciones_generales: dto.condiciones_generales ?? null,
       precio_total: this.calcPrecioTotal(dto.vuelos ?? [], dto.opciones_hotel ?? [], dto.adicionales ?? []),
       created_at: new Date().toISOString(),

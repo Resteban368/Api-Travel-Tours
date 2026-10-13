@@ -33,10 +33,12 @@ export class PagosRealizadosController {
     @Query('page') page = '1',
     @Query('limit') limit = '50',
     @Query('search') search?: string,
+    @Query('reserva_id') reservaIdRaw?: string,
   ) {
     const safePage = Math.max(1, parseInt(page) || 1);
     const safeLimit = Math.min(Math.max(1, parseInt(limit) || 50), 100);
-    return this.pagosService.findAll(startDate, endDate, safePage, safeLimit, search, fechaDocDesde, fechaDocHasta);
+    const reservaId = reservaIdRaw ? parseInt(reservaIdRaw, 10) : undefined;
+    return this.pagosService.findAll(startDate, endDate, safePage, safeLimit, search, fechaDocDesde, fechaDocHasta, reservaId);
   }
 
   @Version('1')

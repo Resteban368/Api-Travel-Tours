@@ -118,6 +118,13 @@ export class ReservasService {
       if (!responsable) throw new NotFoundException(`Cliente con ID ${dto.id_responsable} no encontrado`);
     }
 
+    // 3.1 Un cliente no puede tener 2 reservas activas para la misma salida
+    // (o para el mismo tour, si este no maneja salidas). Sí puede reservar
+    // el mismo tour en salidas/fechas distintas.
+    if (responsable && tour) {
+      await this.validarReservaDuplicada(responsable.id, tour.id, tourSalida?.id ?? null);
+    }
+
     // 4. Servicios adicionales
     let serviciosAdicionales: Servicio[] = [];
     if (dto.servicios_ids && dto.servicios_ids.length > 0) {
@@ -386,7 +393,7 @@ export class ReservasService {
   }
 
   async update(id: number, dto: UpdateReservaDto, realizadoPor?: string) {
-    const reserva = await this.reservaRepository.findOne({ where: { id } });
+    const reserva = await this.reservaRepository.findOne({ where: { id }, relations: ['tour_salida'] });
     if (!reserva) throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
 
     let needsValortotalRecalc = false;
@@ -439,6 +446,22 @@ export class ReservasService {
 
     if (dto.correo !== undefined) reserva.correo = dto.correo;
     if (dto.estado !== undefined) reserva.estado = dto.estado;
+
+    // Revalidar duplicados si cambió el responsable, el tour, o si la reserva
+    // se está reactivando (estado deja de ser 'cancelado'/'cancelada').
+    if (
+      (dto.id_responsable !== undefined || dto.id_tour !== undefined || dto.estado !== undefined) &&
+      reserva.responsable &&
+      reserva.tour
+    ) {
+      await this.validarReservaDuplicada(
+        reserva.responsable.id,
+        reserva.tour.id,
+        reserva.tour_salida?.id ?? null,
+        reserva.id,
+      );
+    }
+
     if (dto.notas !== undefined) reserva.notas = dto.notas;
     if (dto.bus_layout_id !== undefined) reserva.bus_layout_id = dto.bus_layout_id ?? null;
     if (dto.descuento_por_persona !== undefined) {
@@ -787,6 +810,32 @@ export class ReservasService {
   }
 
   // --------------- helpers ---------------
+
+  private async validarReservaDuplicada(
+    responsableId: number,
+    tourId: number,
+    tourSalidaId: number | null,
+    excludeReservaId?: number,
+  ): Promise<void> {
+    const reservas = await this.reservaRepository.find({
+      where: { responsable: { id: responsableId }, tour: { id: tourId } },
+      relations: ['tour_salida'],
+    });
+
+    const duplicada = reservas.find((r) => {
+      if (excludeReservaId != null && r.id === excludeReservaId) return false;
+      if (['cancelado', 'cancelada'].includes(r.estado?.toLowerCase() ?? '')) return false;
+      return (r.tour_salida?.id ?? null) === tourSalidaId;
+    });
+
+    if (duplicada) {
+      throw new BadRequestException(
+        tourSalidaId != null
+          ? 'Este cliente ya tiene una reserva activa para esta salida del tour.'
+          : 'Este cliente ya tiene una reserva activa para este tour.',
+      );
+    }
+  }
 
   private async calcularCuposUsados(tourId: number): Promise<number> {
     const reservas = await this.reservaRepository.find({

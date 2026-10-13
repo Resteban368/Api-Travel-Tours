@@ -46,6 +46,14 @@ export class InfoEmpresa {
   @Column({ name: 'pagina_web', type: 'text', nullable: true })
   pagina_web: string;
 
+  /** Registro Nacional de Turismo, p. ej. "302421" */
+  @Column({ name: 'rnt', type: 'text', nullable: true })
+  rnt: string;
+
+  /** [{ titulo, contenido }] — políticas de la empresa (cancelación, pagos, etc.) */
+  @Column({ name: 'politicas', type: 'jsonb', default: '[]' })
+  politicas: { titulo: string; contenido: string }[];
+
   @UpdateDateColumn({ name: 'fecha_modificacion', type: 'timestamptz' })
   fecha_modificacion: Date;
 }

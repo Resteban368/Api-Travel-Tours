@@ -179,6 +179,16 @@ export class AdicionalDto {
   es_seleccionable?: boolean;
 }
 
+export class ItinerarioDiaDto {
+  @IsString()
+  @IsOptional()
+  titulo?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  descripciones: string[];
+}
+
 export class CreateRespuestaCotizacionDto {
   @IsInt()
   @IsOptional()
@@ -226,6 +236,13 @@ export class CreateRespuestaCotizacionDto {
   @Type(() => AdicionalDto)
   @IsOptional()
   adicionales?: AdicionalDto[];
+
+  // Día N = posición en el arreglo; la fecha se calcula al mostrarlo
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ItinerarioDiaDto)
+  @IsOptional()
+  itinerario?: ItinerarioDiaDto[];
 
   @IsString()
   @IsOptional()

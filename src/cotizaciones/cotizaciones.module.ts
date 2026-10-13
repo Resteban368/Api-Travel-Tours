@@ -7,6 +7,7 @@ import { RespuestaCotizacion } from './entities/respuesta-cotizacion.entity';
 import { RespuestasCotizacionController } from './respuestas-cotizacion.controller';
 import { RespuestasPublicController } from './respuestas-cotizacion.public.controller';
 import { CotizacionPageController } from './cotizacion-page.controller';
+import { PoliticasPageController } from './politicas-page.controller';
 import { CotizacionFormController } from './cotizacion-form.controller';
 import { RespuestasCotizacionService } from './respuestas-cotizacion.service';
 import { CotizacionPdfService } from './cotizacion-pdf.service';
@@ -28,6 +29,7 @@ import { InfoEmpresaModule } from '../info-empresa/info-empresa.module';
     RespuestasCotizacionController,
     RespuestasPublicController,
     CotizacionPageController,
+    PoliticasPageController,
     CotizacionFormController,
   ],
   providers: [CotizacionesService, RespuestasCotizacionService, CotizacionPdfService],

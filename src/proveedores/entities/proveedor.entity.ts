@@ -1,6 +1,21 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
-export type TipoProveedor = 'hotel' | 'aerolinea' | 'transporte' | 'seguro' | 'otro';
+export type TipoProveedor =
+  | 'hotel'
+  | 'aerolinea'
+  | 'transporte'
+  | 'seguro'
+  | 'restaurante'
+  | 'agencia'
+  | 'crucero'
+  | 'tours_operador'
+  | 'visa'
+  | 'pasaporte'
+  | 'transfer'
+  | 'guia_turismo'
+  | 'parque_atraccion'
+  | 'alquiler_vehiculo'
+  | 'otro';
 
 @Entity('proveedores')
 export class Proveedor {

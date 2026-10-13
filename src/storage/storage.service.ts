@@ -27,28 +27,78 @@ export interface ImageInfo {
   url: string;
 }
 
+export interface NcUploadResult {
+  filename: string;
+  ncPath: string;
+  url: string;
+  size: number;
+  mimetype: string;
+}
+
+export interface UploadError {
+  archivo: string;
+  motivo: string;
+}
+
+/**
+ * Resultado de una subida múltiple tolerante a fallos: un archivo que falla no
+ * cancela los demás, cada uno se reporta por separado.
+ */
+export interface UploadBatchResult<T> {
+  total: number;
+  exitosas: number;
+  fallidas: number;
+  subidas: T[];
+  errores: UploadError[];
+}
+
 // Clave de carpeta de usuario: "u5", "u12", etc.
 const userKey = (userId: number) => `u${userId}`;
 
+// Subidas simultáneas contra el almacenamiento dentro de un mismo request
+const CONCURRENCIA = 3;
+// Intentos totales por archivo (1 inicial + 2 reintentos) ante errores transitorios
+const INTENTOS = 3;
+
 @Injectable()
-export class NextcloudService {
-  private readonly logger = new Logger(NextcloudService.name);
+export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly baseUrl: string;
-  private readonly ncUser: string;
+  private readonly user: string;
   private readonly password: string;
   private readonly baseFolder: string;
   private readonly authHeader: string;
+  // Raíz WebDAV del proveedor: Koofr "/dav/Koofr", Nextcloud "/remote.php/dav/files/{user}"
+  private readonly davRoot: string;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly auditoria: AuditoriaGeneralService,
   ) {
-    this.baseUrl = this.configService.getOrThrow<string>('NEXTCLOUD_URL').replace(/\/$/, '');
-    this.ncUser = this.configService.getOrThrow<string>('NEXTCLOUD_USER');
-    this.password = this.configService.getOrThrow<string>('NEXTCLOUD_PASSWORD');
-    this.baseFolder = this.configService.get<string>('NEXTCLOUD_BASE_FOLDER') ?? 'uploads';
-    this.authHeader = `Basic ${Buffer.from(`${this.ncUser}:${this.password}`).toString('base64')}`;
+    this.baseUrl = this.config('DAV_URL', 'URL', true).replace(/\/$/, '');
+    this.user = this.config('USER', 'USER', true);
+    this.password = this.config('PASSWORD', 'PASSWORD', true);
+    this.baseFolder = this.config('BASE_FOLDER', 'BASE_FOLDER') || 'uploads';
+    this.davRoot = (
+      this.configService.get<string>('STORAGE_DAV_ROOT') ||
+      `/remote.php/dav/files/${this.user}`
+    ).replace(/\/$/, '');
+    this.authHeader = `Basic ${Buffer.from(`${this.user}:${this.password}`).toString('base64')}`;
+  }
+
+  /**
+   * Lee STORAGE_{key}; si no existe cae a NEXTCLOUD_{legacyKey} para no romper
+   * entornos que aún tienen la configuración vieja.
+   */
+  private config(key: string, legacyKey: string, required = false): string {
+    const value =
+      this.configService.get<string>(`STORAGE_${key}`) ??
+      this.configService.get<string>(`NEXTCLOUD_${legacyKey}`);
+    if (required && !value) {
+      throw new Error(`Falta la variable de entorno STORAGE_${key}`);
+    }
+    return value ?? '';
   }
 
   // ─── PATH HELPERS ─────────────────────────────────────────────────────────
@@ -56,16 +106,16 @@ export class NextcloudService {
   // Estructura: {baseFolder}/{folder}/u{userId}/filename.jpg  (folder vacío = raíz)
   private davPath(folder: string, userId: number, filename?: string): string {
     const base = folder
-      ? `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/${folder}/${userKey(userId)}`
-      : `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/${userKey(userId)}`;
+      ? `${this.davRoot}/${this.baseFolder}/${folder}/${userKey(userId)}`
+      : `${this.davRoot}/${this.baseFolder}/${userKey(userId)}`;
     return filename ? `${base}/${filename}` : base;
   }
 
   // Path de la carpeta raíz de un folder (sin scope de usuario)
   private davFolderPath(folder: string): string {
     return folder
-      ? `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/${folder}`
-      : `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}`;
+      ? `${this.davRoot}/${this.baseFolder}/${folder}`
+      : `${this.davRoot}/${this.baseFolder}`;
   }
 
   private davUrl(path: string): string {
@@ -88,6 +138,77 @@ export class NextcloudService {
     return `${uuidv4()}.${ext}`;
   }
 
+  // ─── TOLERANCIA A FALLOS ──────────────────────────────────────────────────
+
+  /**
+   * Un error es transitorio si vale la pena reintentarlo: caída de red, timeout,
+   * SSL, rate limit o 5xx del almacenamiento. Un 4xx (archivo inválido, sin permisos)
+   * fallaría igual en el reintento, así que se propaga de inmediato.
+   */
+  private esErrorTransitorio(err: unknown): boolean {
+    const status = (err as AxiosError)?.response?.status;
+    if (status === undefined) return true;
+    return status === 429 || status >= 500;
+  }
+
+  private async conReintentos<T>(fn: () => Promise<T>): Promise<T> {
+    let ultimoError: unknown;
+    for (let intento = 0; intento < INTENTOS; intento++) {
+      try {
+        return await fn();
+      } catch (err) {
+        ultimoError = err;
+        if (intento === INTENTOS - 1 || !this.esErrorTransitorio(err)) throw err;
+        // Backoff exponencial: 300ms, 600ms
+        await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** intento));
+      }
+    }
+    throw ultimoError;
+  }
+
+  /**
+   * Ejecuta `fn` sobre todos los items con como máximo `CONCURRENCIA` en vuelo.
+   * `fn` nunca debe rechazar: cada worker asume que el resultado ya trae el error.
+   */
+  private async enParalelo<T, R>(items: T[], fn: (item: T) => Promise<R>): Promise<R[]> {
+    const resultados = new Array<R>(items.length);
+    let cursor = 0;
+
+    const workers = Array.from({ length: Math.min(CONCURRENCIA, items.length) }, async () => {
+      for (let i = cursor++; i < items.length; i = cursor++) {
+        resultados[i] = await fn(items[i]);
+      }
+    });
+
+    await Promise.all(workers);
+    return resultados;
+  }
+
+  private motivoDeError(err: unknown): string {
+    const axiosErr = err as AxiosError;
+    if (axiosErr?.response) {
+      return `El almacenamiento respondió ${axiosErr.response.status}`;
+    }
+    return `Sin respuesta del almacenamiento: ${(err as Error)?.message ?? 'error desconocido'}`;
+  }
+
+  /** PUT de un archivo a una ruta DAV completa, con reintentos. */
+  private async putArchivo(davPath: string, file: Express.Multer.File): Promise<void> {
+    await this.conReintentos(() =>
+      firstValueFrom(
+        this.httpService.put(this.davUrl(davPath), file.buffer, {
+          headers: {
+            ...this.commonHeaders(),
+            'Content-Type': file.mimetype,
+            'Content-Length': file.size,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        }),
+      ),
+    );
+  }
+
   // ─── MKCOL (crea directorio si no existe) ─────────────────────────────────
 
   private async mkcol(path: string): Promise<void> {
@@ -104,7 +225,7 @@ export class NextcloudService {
       // Sin response = error de conexión (SSL, timeout, DNS) — propagar
       if (!axiosErr.response) {
         throw new InternalServerErrorException(
-          `No se pudo conectar a Nextcloud: ${axiosErr.message}`,
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
         );
       }
       // 405 = carpeta ya existe, es OK
@@ -115,12 +236,12 @@ export class NextcloudService {
   }
 
   private async ensureUserFolder(folder: string, userId: number): Promise<void> {
-    await this.mkcol(`/remote.php/dav/files/${this.ncUser}/${this.baseFolder}`);
+    await this.mkcol(`${this.davRoot}/${this.baseFolder}`);
     if (folder) {
       let accumulated = this.baseFolder;
       for (const segment of folder.split('/')) {
         accumulated += `/${segment}`;
-        await this.mkcol(`/remote.php/dav/files/${this.ncUser}/${accumulated}`);
+        await this.mkcol(`${this.davRoot}/${accumulated}`);
       }
     }
     await this.mkcol(this.davPath(folder, userId));
@@ -128,9 +249,17 @@ export class NextcloudService {
 
   // ─── PROPFIND helper ──────────────────────────────────────────────────────
 
+  /**
+   * Extrae los <href> de un PROPFIND como rutas absolutas del servidor. Algunos
+   * proveedores devuelven la URL completa (https://host/dav/...) y otros solo la
+   * ruta: se normaliza quitando el origen para que la comparación con davRoot funcione.
+   */
   private parseHrefs(xml: string): string[] {
     const matches = xml.match(/<[^:>]*:?href>([^<]+)<\/[^:>]*:?href>/gi) ?? [];
-    return matches.map((m) => m.replace(/<[^>]+>/g, '').trim());
+    return matches.map((m) => {
+      const href = m.replace(/<[^>]+>/g, '').trim();
+      return /^https?:\/\//i.test(href) ? new URL(href).pathname : href;
+    });
   }
 
   private async propfind(path: string, depth: string): Promise<string[]> {
@@ -148,11 +277,11 @@ export class NextcloudService {
       const axiosErr = err as AxiosError;
       if (!axiosErr.response) {
         throw new InternalServerErrorException(
-          `No se pudo conectar a Nextcloud: ${axiosErr.message}`,
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
         );
       }
       if (axiosErr.response.status === 404) return [];
-      throw new InternalServerErrorException('Error consultando Nextcloud');
+      throw new InternalServerErrorException('Error consultando el almacenamiento');
     }
   }
 
@@ -167,7 +296,7 @@ export class NextcloudService {
     const folderPath = this.davFolderPath(folder);
     const hrefs = await this.propfind(folderPath, '1');
     const imageExts = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
-    const baseFolderPrefix = `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/`;
+    const baseFolderPrefix = `${this.davRoot}/${this.baseFolder}/`;
 
     const subfolderNames: string[] = [];
     const userUids: number[] = [];
@@ -215,7 +344,7 @@ export class NextcloudService {
 
   private async collectSubfolders(parentFolder: string, acc: string[]): Promise<void> {
     const hrefs = await this.propfind(this.davFolderPath(parentFolder), '1');
-    const basePrefixPath = `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/`;
+    const basePrefixPath = `${this.davRoot}/${this.baseFolder}/`;
     const userFolderPattern = /^u\d+$/;
 
     for (const href of hrefs) {
@@ -237,12 +366,12 @@ export class NextcloudService {
   // ─── CREAR CARPETA ────────────────────────────────────────────────────────
 
   async createFolder(name: string): Promise<{ folder: string }> {
-    await this.mkcol(`/remote.php/dav/files/${this.ncUser}/${this.baseFolder}`);
+    await this.mkcol(`${this.davRoot}/${this.baseFolder}`);
     // Crea cada segmento del path en orden (WebDAV no crea intermedios automáticamente)
     let accumulated = this.baseFolder;
     for (const segment of name.split('/')) {
       accumulated += `/${segment}`;
-      await this.mkcol(`/remote.php/dav/files/${this.ncUser}/${accumulated}`);
+      await this.mkcol(`${this.davRoot}/${accumulated}`);
     }
     return { folder: name };
   }
@@ -261,21 +390,11 @@ export class NextcloudService {
     const path = this.davPath(folder, userId, filename);
 
     try {
-      await firstValueFrom(
-        this.httpService.put(this.davUrl(path), file.buffer, {
-          headers: {
-            ...this.commonHeaders(),
-            'Content-Type': file.mimetype,
-            'Content-Length': file.size,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-        }),
-      );
+      await this.putArchivo(path, file);
     } catch (err) {
       const msg = (err as AxiosError)?.response?.data ?? (err as Error).message;
-      this.logger.error(`Error subiendo a Nextcloud: ${JSON.stringify(msg)}`);
-      throw new InternalServerErrorException('Error al subir imagen a Nextcloud');
+      this.logger.error(`Error subiendo al almacenamiento: ${JSON.stringify(msg)}`);
+      throw new InternalServerErrorException('Error al subir imagen al almacenamiento');
     }
 
     return {
@@ -285,6 +404,77 @@ export class NextcloudService {
       size: file.size,
       mimetype: file.mimetype,
     };
+  }
+
+  // ─── UPLOAD MÚLTIPLE (tolerante a fallos) ────────────────────────────────
+
+  /**
+   * Sube N imágenes a {baseFolder}/{folder}/u{userId}/. Un archivo que falle no
+   * cancela los demás: el resultado reporta subidas y errores por separado.
+   * `rechazados` son los archivos que Multer descartó antes de llegar aquí
+   * (mimetype no permitido), que se arrastran al reporte para no perderlos.
+   */
+  async uploadImages(
+    files: Express.Multer.File[],
+    folder: string,
+    userId: number,
+    apiBase: string,
+    rechazados: UploadError[] = [],
+  ): Promise<UploadBatchResult<UploadResult>> {
+    const total = files.length + rechazados.length;
+
+    // La carpeta se crea una sola vez, no por archivo
+    try {
+      await this.ensureUserFolder(folder, userId);
+    } catch (err) {
+      const motivo = this.motivoDeError(err);
+      this.logger.error(`No se pudo preparar la carpeta "${folder}": ${motivo}`);
+      return {
+        total,
+        exitosas: 0,
+        fallidas: total,
+        subidas: [],
+        errores: [...rechazados, ...files.map((f) => ({ archivo: f.originalname, motivo }))],
+      };
+    }
+
+    const resultados = await this.enParalelo(files, async (file) => {
+      const filename = this.uniqueFilename(file.originalname);
+      try {
+        await this.putArchivo(this.davPath(folder, userId, filename), file);
+        return {
+          ok: true as const,
+          valor: {
+            filename,
+            folder,
+            url: this.buildUrl(folder, userId, filename, apiBase),
+            size: file.size,
+            mimetype: file.mimetype,
+          },
+        };
+      } catch (err) {
+        const motivo = this.motivoDeError(err);
+        this.logger.error(`Falló "${file.originalname}" en ${folder}: ${motivo}`);
+        return { ok: false as const, error: { archivo: file.originalname, motivo } };
+      }
+    });
+
+    return this.componerReporte(resultados, rechazados, total);
+  }
+
+  private componerReporte<T>(
+    resultados: ({ ok: true; valor: T } | { ok: false; error: UploadError })[],
+    rechazados: UploadError[],
+    total: number,
+  ): UploadBatchResult<T> {
+    const subidas = resultados
+      .filter((r): r is { ok: true; valor: T } => r.ok)
+      .map((r) => r.valor);
+    const errores = [
+      ...rechazados,
+      ...resultados.filter((r): r is { ok: false; error: UploadError } => !r.ok).map((r) => r.error),
+    ];
+    return { total, exitosas: subidas.length, fallidas: errores.length, subidas, errores };
   }
 
   // ─── LISTAR ───────────────────────────────────────────────────────────────
@@ -364,7 +554,7 @@ export class NextcloudService {
 
   // Formato plano (sin ownerKey): {baseFolder}/{folder}/{filename}
   async streamImageFlat(folder: string, filename: string, res: Response): Promise<void> {
-    const path = `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/${folder}/${filename}`;
+    const path = `${this.davRoot}/${this.baseFolder}/${folder}/${filename}`;
     await this.pipeImage(path, filename, res);
   }
 
@@ -384,7 +574,7 @@ export class NextcloudService {
       if (!axiosErr.response) {
         this.logger.error(`pipeImage sin respuesta: ${axiosErr.message}`);
         throw new InternalServerErrorException(
-          `No se pudo conectar a Nextcloud: ${axiosErr.message}`,
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
         );
       }
       this.logger.error(`pipeImage status=${axiosErr.response.status} url=${fullUrl}`);
@@ -392,7 +582,7 @@ export class NextcloudService {
         throw new NotFoundException(`Imagen "${filename}" no encontrada`);
       }
       throw new InternalServerErrorException(
-        `Error al obtener imagen de Nextcloud (${axiosErr.response.status})`,
+        `Error al obtener imagen del almacenamiento (${axiosErr.response.status})`,
       );
     }
 
@@ -415,7 +605,7 @@ export class NextcloudService {
     // Recopilar todo el contenido antes de eliminar (para auditoría)
     const hrefs = await this.propfind(davPath, 'infinity');
     const imageExts = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
-    const ncFilesPrefix = `/remote.php/dav/files/${this.ncUser}/`;
+    const ncFilesPrefix = `${this.davRoot}/`;
     const imagenes = hrefs
       .filter((h) => imageExts.test(h))
       .map((h) => decodeURIComponent(h).replace(ncFilesPrefix, ''));
@@ -428,19 +618,19 @@ export class NextcloudService {
       const axiosErr = err as AxiosError;
       if (!axiosErr.response) {
         throw new InternalServerErrorException(
-          `No se pudo conectar a Nextcloud: ${axiosErr.message}`,
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
         );
       }
       if (axiosErr.response.status === 404) {
         throw new NotFoundException(`Carpeta "${folderPath}" no encontrada`);
       }
-      throw new InternalServerErrorException('Error al eliminar carpeta en Nextcloud');
+      throw new InternalServerErrorException('Error al eliminar carpeta en el almacenamiento');
     }
 
     await this.auditoria.registrar({
       usuario_id: requesterId,
       usuario_nombre: requesterNombre,
-      modulo: 'nextcloud',
+      modulo: 'storage',
       operacion: 'ELIMINAR',
       documento_id: folderPath,
       detalle: {
@@ -463,7 +653,7 @@ export class NextcloudService {
     const folderPath = this.davFolderPath(folder);
     const hrefs = await this.propfind(folderPath, 'infinity');
 
-    const ncFilesPrefix = `/remote.php/dav/files/${this.ncUser}/`;
+    const ncFilesPrefix = `${this.davRoot}/`;
     const results: { filename: string; path: string; url: string }[] = [];
 
     for (const href of hrefs) {
@@ -484,7 +674,7 @@ export class NextcloudService {
     return results;
   }
 
-  // ─── LISTAR IMÁGENES DE RUTA DIRECTA EN NEXTCLOUD (sin baseFolder) ────────
+  // ─── LISTAR IMÁGENES DE RUTA DIRECTA (sin baseFolder) ────────────────────
 
   async listNcPathImages(
     ncPath: string,
@@ -492,11 +682,11 @@ export class NextcloudService {
     recursive = false,
   ): Promise<{ filename: string; ncPath: string; url: string }[]> {
     const imageExts = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
-    const davPath = `/remote.php/dav/files/${this.ncUser}/${ncPath}`;
+    const davPath = `${this.davRoot}/${ncPath}`;
     const depth = recursive ? 'infinity' : '1';
     const hrefs = await this.propfind(davPath, depth);
 
-    const ncPrefix = `/remote.php/dav/files/${this.ncUser}/`;
+    const ncPrefix = `${this.davRoot}/`;
     const results: { filename: string; ncPath: string; url: string }[] = [];
 
     for (const href of hrefs) {
@@ -508,22 +698,22 @@ export class NextcloudService {
       const filename = relativePath.split('/').pop() ?? '';
       // URL a través del proxy público /nc-photo/
       const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/');
-      results.push({ filename, ncPath: relativePath, url: `${apiBase}/v1/nextcloud/nc-photo/${encodedPath}` });
+      results.push({ filename, ncPath: relativePath, url: `${apiBase}/v1/storage/nc-photo/${encodedPath}` });
     }
 
     return results;
   }
 
-  // ─── BROWSE RUTA DIRECTA EN NEXTCLOUD (sin baseFolder) ──────────────────
+  // ─── BROWSE RUTA DIRECTA (sin baseFolder) ──────────────────────────────
 
   async browseNcPath(
     ncPath: string,
     apiBase: string,
   ): Promise<{ path: string; subfolders: { path: string; name: string }[]; images: { filename: string; ncPath: string; url: string }[] }> {
-    const davPath = `/remote.php/dav/files/${this.ncUser}/${ncPath}`;
+    const davPath = `${this.davRoot}/${ncPath}`;
     const hrefs = await this.propfind(davPath, '1');
     const imageExts = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
-    const ncPrefix = `/remote.php/dav/files/${this.ncUser}/`;
+    const ncPrefix = `${this.davRoot}/`;
 
     const subfolders: { path: string; name: string }[] = [];
     const images: { filename: string; ncPath: string; url: string }[] = [];
@@ -543,7 +733,7 @@ export class NextcloudService {
       } else if (imageExts.test(href)) {
         const filename = relativePath.split('/').pop() ?? '';
         const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/');
-        images.push({ filename, ncPath: relativePath, url: `${apiBase}/v1/nextcloud/nc-photo/${encodedPath}` });
+        images.push({ filename, ncPath: relativePath, url: `${apiBase}/v1/storage/nc-photo/${encodedPath}` });
       }
     }
 
@@ -556,51 +746,95 @@ export class NextcloudService {
     file: Express.Multer.File,
     ncPath: string,
     apiBase: string,
-  ): Promise<{ filename: string; ncPath: string; url: string; size: number; mimetype: string }> {
-    // Crear carpetas intermedias si no existen
-    const segments = ncPath.split('/');
-    let accumulated = '';
-    for (const segment of segments) {
-      accumulated += (accumulated ? '/' : '') + segment;
-      await this.mkcol(`/remote.php/dav/files/${this.ncUser}/${accumulated}`);
-    }
+  ): Promise<NcUploadResult> {
+    await this.ensureNcPath(ncPath);
 
     const filename = this.uniqueFilename(file.originalname);
-    const davPath = `/remote.php/dav/files/${this.ncUser}/${ncPath}/${filename}`;
+    const davPath = `${this.davRoot}/${ncPath}/${filename}`;
 
     try {
-      await firstValueFrom(
-        this.httpService.put(this.davUrl(davPath), file.buffer, {
-          headers: {
-            ...this.commonHeaders(),
-            'Content-Type': file.mimetype,
-            'Content-Length': file.size,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-        }),
-      );
+      await this.putArchivo(davPath, file);
     } catch (err) {
       const msg = (err as AxiosError)?.response?.data ?? (err as Error).message;
-      this.logger.error(`Error subiendo a Nextcloud: ${JSON.stringify(msg)}`);
-      throw new InternalServerErrorException('Error al subir imagen a Nextcloud');
+      this.logger.error(`Error subiendo al almacenamiento: ${JSON.stringify(msg)}`);
+      throw new InternalServerErrorException('Error al subir imagen al almacenamiento');
     }
 
+    return this.buildNcResult(ncPath, filename, file, apiBase);
+  }
+
+  /** Crea el path completo en el almacenamiento (WebDAV no crea intermedios solo). */
+  private async ensureNcPath(ncPath: string): Promise<void> {
+    let accumulated = '';
+    for (const segment of ncPath.split('/')) {
+      accumulated += (accumulated ? '/' : '') + segment;
+      await this.mkcol(`${this.davRoot}/${accumulated}`);
+    }
+  }
+
+  private buildNcResult(
+    ncPath: string,
+    filename: string,
+    file: Express.Multer.File,
+    apiBase: string,
+  ): NcUploadResult {
     const fullNcPath = `${ncPath}/${filename}`;
     const encodedPath = fullNcPath.split('/').map(encodeURIComponent).join('/');
     return {
       filename,
       ncPath: fullNcPath,
-      url: `${apiBase}/v1/nextcloud/nc-photo/${encodedPath}`,
+      url: `${apiBase}/v1/storage/nc-photo/${encodedPath}`,
       size: file.size,
       mimetype: file.mimetype,
     };
   }
 
+  /**
+   * Versión múltiple de uploadToNcPath: sube N imágenes al mismo path directo de
+   * almacenamiento sin abortar el lote cuando una falla.
+   */
+  async uploadManyToNcPath(
+    files: Express.Multer.File[],
+    ncPath: string,
+    apiBase: string,
+    rechazados: UploadError[] = [],
+  ): Promise<UploadBatchResult<NcUploadResult>> {
+    const total = files.length + rechazados.length;
+
+    try {
+      await this.ensureNcPath(ncPath);
+    } catch (err) {
+      const motivo = this.motivoDeError(err);
+      this.logger.error(`No se pudo preparar la ruta "${ncPath}": ${motivo}`);
+      return {
+        total,
+        exitosas: 0,
+        fallidas: total,
+        subidas: [],
+        errores: [...rechazados, ...files.map((f) => ({ archivo: f.originalname, motivo }))],
+      };
+    }
+
+    const resultados = await this.enParalelo(files, async (file) => {
+      const filename = this.uniqueFilename(file.originalname);
+      const davPath = `${this.davRoot}/${ncPath}/${filename}`;
+      try {
+        await this.putArchivo(davPath, file);
+        return { ok: true as const, valor: this.buildNcResult(ncPath, filename, file, apiBase) };
+      } catch (err) {
+        const motivo = this.motivoDeError(err);
+        this.logger.error(`Falló "${file.originalname}" en ${ncPath}: ${motivo}`);
+        return { ok: false as const, error: { archivo: file.originalname, motivo } };
+      }
+    });
+
+    return this.componerReporte(resultados, rechazados, total);
+  }
+
   // ─── PROXY IMAGEN POR RUTA DIRECTA NC ────────────────────────────────────
 
   async streamNcRawPath(ncRelativePath: string, res: Response): Promise<void> {
-    const path = `/remote.php/dav/files/${this.ncUser}/${ncRelativePath}`;
+    const path = `${this.davRoot}/${ncRelativePath}`;
     const filename = ncRelativePath.split('/').pop() ?? 'image';
     await this.pipeImage(path, filename, res);
   }
@@ -609,8 +843,8 @@ export class NextcloudService {
 
   async streamUniversal(ncRelativePath: string, res: Response): Promise<void> {
     const filename = ncRelativePath.split('/').pop() ?? 'image';
-    const directPath = `/remote.php/dav/files/${this.ncUser}/${ncRelativePath}`;
-    const basePath = `/remote.php/dav/files/${this.ncUser}/${this.baseFolder}/${ncRelativePath}`;
+    const directPath = `${this.davRoot}/${ncRelativePath}`;
+    const basePath = `${this.davRoot}/${this.baseFolder}/${ncRelativePath}`;
 
     try {
       await this.pipeImage(directPath, filename, res);
@@ -642,19 +876,19 @@ export class NextcloudService {
       const axiosErr = err as AxiosError;
       if (!axiosErr.response) {
         throw new InternalServerErrorException(
-          `No se pudo conectar a Nextcloud: ${axiosErr.message}`,
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
         );
       }
       if (axiosErr.response.status === 404) {
         throw new NotFoundException(`Imagen "${filename}" no encontrada`);
       }
-      throw new InternalServerErrorException('Error al eliminar imagen de Nextcloud');
+      throw new InternalServerErrorException('Error al eliminar imagen del almacenamiento');
     }
 
     await this.auditoria.registrar({
       usuario_id: requesterId,
       usuario_nombre: requesterNombre,
-      modulo: 'nextcloud',
+      modulo: 'storage',
       operacion: 'ELIMINAR',
       documento_id: filename,
       detalle: { carpeta: folder, propietario: ownerKey, filename },

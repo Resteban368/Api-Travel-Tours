@@ -56,12 +56,44 @@ function fmtCOP(n?: number | null): string {
   }).format(n);
 }
 
+const WEEKDAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+/** Fecha del día N (0 = primer día) a partir de 'YYYY-MM-DD'; '' si no hay fecha de inicio. */
+function fechaDelDia(inicio: string | null, offset: number): string {
+  if (!inicio) return '';
+  const [y, m, d] = inicio.substring(0, 10).split('-').map(Number);
+  const f = new Date(Date.UTC(y, m - 1, d + offset));
+  return `${WEEKDAYS[f.getUTCDay()]} ${f.getUTCDate()} ${MONTHS[f.getUTCMonth()]} ${f.getUTCFullYear()}`;
+}
+
+/** Normaliza horas escritas a mano: "11:AM" → "11:00 AM", "13:PM" → "13:00", "14:30" → "14:30". */
+function fmtHora(s?: string | null): string {
+  const raw = String(s ?? '').trim();
+  const m = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*:?\s*(AM|PM)?$/i);
+  if (!m) return raw;
+  const h = +m[1], min = m[2] || '00', ap = (m[3] || '').toUpperCase();
+  return h > 12 || !ap ? `${h}:${min}` : `${h}:${min} ${ap}`;
+}
+
 function city(s?: string | null): string {
   return s?.split('(')[0]?.trim() ?? s ?? '';
 }
 
 function iataCode(s?: string | null): string {
   return s?.match(/\(([A-Z]{3})\)/)?.[1] ?? s?.substring(0, 3).toUpperCase() ?? '—';
+}
+
+// ── Íconos vectoriales ─────────────────────────────────────────────────────
+// La fuente (Liberation Sans) no trae ✓ ✗ ✈, así que se dibujan como SVG.
+const ICON_SVG = {
+  check: (c: string) => `<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  x:     (c: string) => `<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/></svg>`,
+  plane: (c: string) => `<svg viewBox="0 0 24 24"><path fill="${c}" d="M21.5 11.2L14 9.6 10.6 2.8a1 1 0 0 0-.9-.5H8.5l1.8 7.1-5 .1-2-2.3H2l1.2 4.8L2 16.8h1.3l2-2.3 5 .1-1.8 7.1h1.2a1 1 0 0 0 .9-.5L14 14.4l7.5-1.6c.9-.2.9-1.4 0-1.6z"/></svg>`,
+  arrow: (c: string) => `<svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+function icon(name: keyof typeof ICON_SVG, color: string, size: number, extra: Record<string, any> = {}) {
+  return { svg: ICON_SVG[name](color), width: size, height: size, ...extra };
 }
 
 // ── Thin horizontal divider ────────────────────────────────────────────────
@@ -116,6 +148,12 @@ export class CotizacionPdfService {
     const adicionales: any[]  = (data.adicionales as any[]) ?? [];
     const incluidos: string[] = (data.items_incluidos as string[]) ?? [];
     const excluidos: string[] = (data.items_no_incluidos as string[]) ?? [];
+    const itinerario: any[]   = ((data.itinerario as any[]) ?? []).filter(
+      (d) => d?.titulo?.trim() || (d?.descripciones ?? []).some((x: string) => x?.trim()),
+    );
+    // Día 1 = fecha del vuelo de ida, o del primer check-in
+    const inicioViaje: string | null =
+      vuelos.find((v) => v.tipo === 'ida')?.fecha ?? hoteles[0]?.fecha_entrada ?? null;
 
     const totalVuelos    = vuelos.reduce((s, v) => s + (Number(v.costo) || 0), 0);
     const totalHoteles   = hoteles.reduce((s, h) => s + (Number(h.precio_total) || 0), 0);
@@ -168,6 +206,53 @@ export class CotizacionPdfService {
       margin: [0, 0, 0, 14],
     });
 
+    // ══ ITINERARIO ═══════════════════════════════════════════════════════════
+    if (itinerario.length > 0) {
+      content.push(sectionHeader(`Itinerario  (${itinerario.length} día${itinerario.length > 1 ? 's' : ''})`));
+
+      itinerario.forEach((dia: any, i: number) => {
+        const fecha = fechaDelDia(inicioViaje, i);
+        const descripciones = ((dia.descripciones as string[]) ?? []).filter((x) => x?.trim());
+        content.push({
+          columns: [
+            {
+              width: 44,
+              table: {
+                widths: [36],
+                body: [[{
+                  stack: [
+                    { text: 'DÍA', fontSize: 6.5, bold: true, color: '#F7B928', alignment: 'center' },
+                    { text: String(i + 1), fontSize: 13, bold: true, color: '#FFFFFF', alignment: 'center' },
+                  ],
+                  fillColor: '#0B2A6B',
+                  margin: [0, 3, 0, 3],
+                }]],
+              },
+              layout: 'noBorders',
+            },
+            {
+              width: '*',
+              stack: [
+                ...(fecha ? [{ text: fecha.toUpperCase(), fontSize: 7, bold: true, color: BLUE, letterSpacing: 0.5, margin: [0, 0, 0, 2] }] : []),
+                ...(dia.titulo?.trim() ? [{ text: dia.titulo.trim(), fontSize: 10, bold: true, color: DARK, margin: [0, 0, 0, 3] }] : []),
+                ...descripciones.map((x) => ({
+                  columns: [
+                    { text: '•', color: BLUE, fontSize: 9, width: 8 },
+                    { text: x.trim(), fontSize: 8.5, color: MUTED, width: '*' },
+                  ],
+                  columnGap: 2,
+                  margin: [0, 1, 0, 1],
+                })),
+              ],
+            },
+          ],
+          columnGap: 10,
+          margin: [0, 0, 0, 10],
+          unbreakable: true,
+        });
+      });
+    }
+
     // ══ VUELOS ════════════════════════════════════════════════════════════════
     if (vuelos.length > 0) {
       content.push(sectionHeader(`Vuelos  (${vuelos.length} tramo${vuelos.length > 1 ? 's' : ''})`));
@@ -197,7 +282,7 @@ export class CotizacionPdfService {
           if (e.aerolinea) detParts.push(e.aerolinea);
           if (e.numero_vuelo) detParts.push(e.numero_vuelo);
           if (e.origen && e.destino) detParts.push(`${e.origen} → ${e.destino}`);
-          if (e.hora_salida && e.hora_llegada) detParts.push(`${e.hora_salida} – ${e.hora_llegada}`);
+          if (e.hora_salida && e.hora_llegada) detParts.push(`${fmtHora(e.hora_salida)} – ${fmtHora(e.hora_llegada)}`);
           return [{
             stack: [
               { columns: parts, columnGap: 2, margin: [0, 0, 0, 3] },
@@ -234,8 +319,8 @@ export class CotizacionPdfService {
         });
 
         if (v.fecha)            footCols.push(footCell('FECHA',      fmtDate(v.fecha)));
-        if (v.hora_salida)      footCols.push(footCell('SALE',       v.hora_salida));
-        if (v.hora_llegada)     footCols.push(footCell('LLEGA',      v.hora_llegada));
+        if (v.hora_salida)      footCols.push(footCell('SALE',       fmtHora(v.hora_salida)));
+        if (v.hora_llegada)     footCols.push(footCell('LLEGA',      fmtHora(v.hora_llegada)));
         if (v.numero_vuelo)     footCols.push(footCell('VUELO',      v.numero_vuelo));
         if (v.numero_pasajeros) footCols.push(footCell('PASAJEROS',  `${v.numero_pasajeros}`));
 
@@ -254,9 +339,9 @@ export class CotizacionPdfService {
           // ── Row 1: Header oscuro ───────────────────────────────────────────
           [{
             columns: [
-              { text: tipoLabel, fontSize: 8, bold: true, color: 'rgba(255,255,255,0.70)', letterSpacing: 1, width: '*' },
+              { text: tipoLabel, fontSize: 8, bold: true, color: '#C9D3EE', letterSpacing: 1, width: '*' },
               aerolinea
-                ? { text: `${aerolinea}${iata ? '  ·  ' + iata : ''}`, fontSize: 8, bold: true, color: 'rgba(255,255,255,0.85)', alignment: 'right' }
+                ? { text: `${aerolinea}${iata ? '  ·  ' + iata : ''}`, fontSize: 8, bold: true, color: '#FFFFFF', alignment: 'right' }
                 : {},
             ],
             fillColor: headerBg,
@@ -273,7 +358,7 @@ export class CotizacionPdfService {
                 // Izquierda: origen
                 {
                   stack: [
-                    { text: v.hora_salida ?? '', bold: true, fontSize: 26, color: DARK, lineHeight: 1 },
+                    { text: fmtHora(v.hora_salida), bold: true, fontSize: 26, color: DARK, lineHeight: 1 },
                     { text: origCode, fontSize: 10, bold: true, color: BLUE, margin: [0, 5, 0, 3] },
                     { text: origCity, fontSize: 8, color: MUTED },
                   ],
@@ -283,7 +368,7 @@ export class CotizacionPdfService {
                 // Centro: avión + línea (centrado verticalmente con margin)
                 {
                   stack: [
-                    { text: '✈', fontSize: 13, color: MUTED, alignment: 'center', margin: [0, 0, 0, 5] },
+                    icon('plane', MUTED, 14, { alignment: 'center', margin: [0, 0, 0, 5] }),
                     { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 90, y2: 0, lineWidth: 0.5, lineColor: BORDER }] },
                   ],
                   border: [false, false, false, false],
@@ -293,7 +378,7 @@ export class CotizacionPdfService {
                 // Derecha: destino (alineado a la derecha)
                 {
                   stack: [
-                    { text: v.hora_llegada ?? '', bold: true, fontSize: 26, color: DARK, lineHeight: 1, alignment: 'right' },
+                    { text: fmtHora(v.hora_llegada), bold: true, fontSize: 26, color: DARK, lineHeight: 1, alignment: 'right' },
                     { text: destCode, fontSize: 10, bold: true, color: BLUE, margin: [0, 5, 0, 3], alignment: 'right' },
                     { text: destCity, fontSize: 8, color: MUTED, alignment: 'right' },
                   ],
@@ -404,7 +489,7 @@ export class CotizacionPdfService {
             while (group.length < colsPerRow) group.push('');
             tagRows.push(group.map(t => ({
               stack: t ? [
-                { text: '✓', fontSize: 7, bold: true, color: GREEN },
+                icon('check', GREEN, 8),
                 { text: t, fontSize: 8, color: DARK, margin: [0, 2, 0, 0] },
               ] : [{ text: '' }],
               border: [false, false, false, false],
@@ -443,21 +528,21 @@ export class CotizacionPdfService {
                 stack: [
                   { text: 'CHECK-IN', fontSize: 7, bold: true, color: MUTED },
                   { text: fmtDate(h.fecha_entrada), bold: true, fontSize: 11, color: DARK, margin: [0, 4, 0, 2] },
-                  { text: h.hora_entrada ?? '', fontSize: 9, color: BLUE, bold: true },
+                  { text: fmtHora(h.hora_entrada), fontSize: 9, color: BLUE, bold: true },
                 ],
                 border: [false, false, false, false],
               },
               {
-                text: '→',
-                fontSize: 16, color: MUTED, alignment: 'center',
+                ...icon('arrow', MUTED, 16),
+                alignment: 'center',
                 border: [false, false, false, false],
-                margin: [0, 14, 0, 0],
+                margin: [0, 16, 0, 0],
               },
               {
                 stack: [
                   { text: 'CHECK-OUT', fontSize: 7, bold: true, color: MUTED, alignment: 'right' },
                   { text: fmtDate(h.fecha_salida), bold: true, fontSize: 11, color: DARK, margin: [0, 4, 0, 2], alignment: 'right' },
-                  { text: h.hora_salida ?? '', fontSize: 9, color: BLUE, bold: true, alignment: 'right' },
+                  { text: fmtHora(h.hora_salida), fontSize: 9, color: BLUE, bold: true, alignment: 'right' },
                 ],
                 border: [false, false, false, false],
               },
@@ -570,9 +655,10 @@ export class CotizacionPdfService {
                 { text: 'INCLUYE', bold: true, fontSize: 8, color: GREEN, margin: [0, 0, 0, 5] },
                 ...incluidos.map(i => ({
                   columns: [
-                    { text: '✓', color: GREEN, fontSize: 9, width: 12, margin: [0, 1, 0, 0] },
+                    { width: 12, stack: [icon('check', GREEN, 9, { margin: [0, 2, 0, 0] })] },
                     { text: i, fontSize: 8.5, color: DARK },
                   ],
+                  columnGap: 2,
                   margin: [0, 2, 0, 2],
                 })),
               ],
@@ -585,9 +671,10 @@ export class CotizacionPdfService {
                 { text: 'NO INCLUYE', bold: true, fontSize: 8, color: RED, margin: [0, 0, 0, 5] },
                 ...excluidos.map(i => ({
                   columns: [
-                    { text: '✗', color: RED, fontSize: 9, width: 12, margin: [0, 1, 0, 0] },
+                    { width: 12, stack: [icon('x', RED, 9, { margin: [0, 2, 0, 0] })] },
                     { text: i, fontSize: 8.5, color: MUTED },
                   ],
+                  columnGap: 2,
                   margin: [0, 2, 0, 2],
                 })),
               ],
@@ -635,7 +722,7 @@ export class CotizacionPdfService {
         rows.push([{
           columns: [
             { text: `OPCIÓN ${idx + 1}`, fontSize: 7.5, bold: true, color: '#fff', width: 'auto' },
-            { text: h?.nombre ?? '', fontSize: 7.5, color: 'rgba(255,255,255,0.75)', margin: [8, 0, 0, 0] },
+            { text: h?.nombre ?? '', fontSize: 7.5, color: '#E5E7EB', margin: [8, 0, 0, 0] },
           ],
           fillColor: accentColor,
           colSpan: 2,
@@ -711,6 +798,23 @@ export class CotizacionPdfService {
         },
         margin: [0, 0, 0, 4],
       });
+    }
+
+    // ══ POLÍTICAS DE LA EMPRESA ══════════════════════════════════════════════
+    const politicas: any[] = (Array.isArray(empresa?.politicas) ? empresa.politicas : []).filter(
+      (p: any) => p?.titulo?.trim() || p?.contenido?.trim(),
+    );
+    if (politicas.length > 0) {
+      content.push(sectionHeader('Políticas de la empresa'));
+      for (const p of politicas) {
+        content.push({
+          stack: [
+            ...(p.titulo?.trim() ? [{ text: p.titulo.trim(), fontSize: 9, bold: true, color: DARK, margin: [0, 0, 0, 2] }] : []),
+            ...(p.contenido?.trim() ? [{ text: p.contenido.trim(), fontSize: 8, color: MUTED, lineHeight: 1.5 }] : []),
+          ],
+          margin: [0, 0, 0, 8],
+        });
+      }
     }
 
     // ══ DOC DEFINITION ═══════════════════════════════════════════════════════

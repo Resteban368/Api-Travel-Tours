@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as https from 'https';
-import { NextcloudService } from './nextcloud.service';
-import { NextcloudController } from './nextcloud.controller';
+import { StorageService } from './storage.service';
+import { StorageController } from './storage.controller';
 import { ImgController } from './img.controller';
 import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.module';
 
@@ -14,9 +14,11 @@ import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.m
     HttpModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        // NEXTCLOUD_REJECT_UNAUTHORIZED=false → acepta certificados auto-firmados
+        // STORAGE_REJECT_UNAUTHORIZED=false → acepta certificados auto-firmados (fallback NEXTCLOUD_*)
         const rejectUnauthorized =
-          configService.get<string>('NEXTCLOUD_REJECT_UNAUTHORIZED') !== 'false';
+          (configService.get<string>('STORAGE_REJECT_UNAUTHORIZED') ??
+            configService.get<string>('NEXTCLOUD_REJECT_UNAUTHORIZED')) !==
+          'false';
         return {
           timeout: 30000,
           httpsAgent: new https.Agent({ rejectUnauthorized }),
@@ -25,8 +27,8 @@ import { AuditoriaGeneralModule } from '../auditoria-general/auditoria-general.m
       inject: [ConfigService],
     }),
   ],
-  controllers: [NextcloudController, ImgController],
-  providers: [NextcloudService],
-  exports: [NextcloudService],
+  controllers: [StorageController, ImgController],
+  providers: [StorageService],
+  exports: [StorageService],
 })
-export class NextcloudModule {}
+export class StorageModule {}

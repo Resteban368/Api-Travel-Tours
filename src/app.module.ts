@@ -41,7 +41,7 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
 import { PagosProveedoresModule } from './pagos-proveedores/pagos-proveedores.module';
 import { IntegracionModule } from './integracion/integracion.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
-import { NextcloudModule } from './nextcloud/nextcloud.module';
+import { StorageModule } from './storage/storage.module';
 import { N8nModule } from './n8n/n8n.module';
 
 @Module({
@@ -115,7 +115,7 @@ import { N8nModule } from './n8n/n8n.module';
     PagosProveedoresModule,
     IntegracionModule,
     NotificacionesModule,
-    NextcloudModule,
+    StorageModule,
     N8nModule,
   ],
   controllers: [AppController],

@@ -8,7 +8,6 @@ import {
   IsIn,
   MaxLength,
   IsArray,
-  IsNotEmpty,
   ArrayMinSize,
   IsISO8601,
   ValidateNested,
@@ -18,8 +17,8 @@ import { CreateTourSalidaDto, ItineraryDayDto, TourPrecioDto, TourPrecioGrupalDt
 
 export class UpdateTourDto {
   @IsNumber({}, { message: 'El ID del tour debe ser un número' })
-  @IsNotEmpty({ message: 'El ID del tour es obligatorio' })
-  id_tour: number;
+  @IsOptional()
+  id_tour?: number;
 
   @IsString({ message: 'El nombre del tour debe ser un texto' })
   @IsOptional()
