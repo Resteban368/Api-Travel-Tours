@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
@@ -606,8 +607,56 @@ export class StorageService {
     requesterId: number,
     requesterNombre: string,
   ): Promise<{ folder: string; imagenes_eliminadas: number }> {
-    const davPath = this.davFolderPath(folderPath);
+    return this.removeDavFolder(this.davFolderPath(folderPath), folderPath, requesterId, requesterNombre);
+  }
 
+  /**
+   * Elimina una carpeta por ruta directa del almacenamiento (la misma que usa nc-browse,
+   * ej: "Photos/PLANES/2026"). Solo se permiten subcarpetas dentro de baseFolder.
+   */
+  async deleteNcFolder(
+    ncPath: string,
+    requesterId: number,
+    requesterNombre: string,
+  ): Promise<{ folder: string; imagenes_eliminadas: number }> {
+    const clean = this.assertNcFolderPath(ncPath);
+    if (!clean.startsWith(`${this.baseFolder}/`)) {
+      throw new BadRequestException(`Solo se pueden eliminar subcarpetas de "${this.baseFolder}"`);
+    }
+    return this.removeDavFolder(`${this.davRoot}/${clean}`, clean, requesterId, requesterNombre);
+  }
+
+  /** Crea una carpeta por ruta directa del almacenamiento (ej: "Photos/PLANES/2026"). */
+  async createNcFolder(ncPath: string): Promise<{ folder: string }> {
+    const clean = this.assertNcFolderPath(ncPath);
+    if (!clean.startsWith(`${this.baseFolder}/`)) {
+      throw new BadRequestException(`Las carpetas deben crearse dentro de "${this.baseFolder}"`);
+    }
+    // WebDAV no crea intermedios automáticamente
+    let accumulated = this.davRoot;
+    for (const segment of clean.split('/')) {
+      accumulated += `/${segment}`;
+      await this.mkcol(accumulated);
+    }
+    return { folder: clean };
+  }
+
+  /** Normaliza la ruta y rechaza segmentos vacíos o que permitan salir de davRoot. */
+  private assertNcFolderPath(ncPath: string): string {
+    const clean = (ncPath ?? '').trim().replace(/^\/+|\/+$/g, '');
+    const segments = clean.split('/');
+    if (!clean || segments.some((seg) => !seg.trim() || seg === '.' || seg === '..')) {
+      throw new BadRequestException('Ruta de carpeta inválida');
+    }
+    return clean;
+  }
+
+  private async removeDavFolder(
+    davPath: string,
+    folderPath: string,
+    requesterId: number,
+    requesterNombre: string,
+  ): Promise<{ folder: string; imagenes_eliminadas: number }> {
     // Recopilar todo el contenido antes de eliminar (para auditoría)
     const hrefs = await this.propfind(davPath, 'infinity');
     const imageExts = /\.(jpe?g|png|webp|gif|avif|svg)$/i;

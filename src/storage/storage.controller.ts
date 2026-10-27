@@ -25,6 +25,13 @@ import { MulterExceptionFilter } from './filters/multer-exception.filter';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 
+class CreateNcFolderDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  path: string;
+}
+
 class CreateFolderDto {
   @IsString()
   @IsNotEmpty()
@@ -146,6 +153,29 @@ export class StorageController {
     const match = (req.path ?? '').match(/\/folder\/(.+)$/);
     const folder: string = match ? decodeURIComponent(match[1]) : '';
     return this.storageService.deleteFolder(folder, req.user.id_usuario, req.user.nombre);
+  }
+
+  /**
+   * POST /v1/storage/nc-folder  { "path": "Photos/PLANES/2026" }
+   * Crea una carpeta por ruta directa del almacenamiento (la misma que usa nc-browse).
+   */
+  @Post('nc-folder')
+  @HttpCode(HttpStatus.CREATED)
+  async createNcFolder(@Body() dto: CreateNcFolderDto) {
+    return this.storageService.createNcFolder(dto.path);
+  }
+
+  /**
+   * DELETE /v1/storage/nc-folder/Photos/PLANES/2026
+   * Elimina una carpeta (y su contenido) por ruta directa del almacenamiento.
+   */
+  @Delete('nc-folder/*')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  async deleteNcFolder(@Req() req: any) {
+    const match = (req.path ?? '').match(/\/nc-folder\/(.+)$/);
+    const ncPath: string = match ? decodeURIComponent(match[1]) : '';
+    return this.storageService.deleteNcFolder(ncPath, req.user.id_usuario, req.user.nombre);
   }
 
   // ─── UPLOAD ───────────────────────────────────────────────────────────────
