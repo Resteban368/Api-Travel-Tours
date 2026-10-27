@@ -90,6 +90,30 @@ describe('StorageService', () => {
       );
     });
 
+    it('detecta carpetas de Koofr sin "/" final por <collection/>', async () => {
+      const respuesta = (href: string, carpeta: boolean) =>
+        `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype>${carpeta ? '<D:collection/>' : ''}</D:resourcetype></D:prop></D:propstat></D:response>`;
+      const { service } = crearServicio(
+        ENV_KOOFR,
+        `<D:multistatus>${[
+          respuesta('/dav/Koofr', true),
+          respuesta('/dav/Koofr/Photos', true),
+          respuesta('/dav/Koofr/portada.jpg', false),
+        ].join('')}</D:multistatus>`,
+      );
+      await expect(service.browseNcPath('', API)).resolves.toEqual({
+        path: '',
+        subfolders: [{ path: 'Photos', name: 'Photos' }],
+        images: [
+          {
+            filename: 'portada.jpg',
+            ncPath: 'portada.jpg',
+            url: `${API}/v1/storage/nc-photo/portada.jpg`,
+          },
+        ],
+      });
+    });
+
     it('entiende hrefs con ruta relativa (Nextcloud)', async () => {
       const { service } = crearServicio(
         ENV_NEXTCLOUD_LEGACY,

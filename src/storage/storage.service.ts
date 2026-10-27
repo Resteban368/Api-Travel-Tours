@@ -253,12 +253,18 @@ export class StorageService {
    * Extrae los <href> de un PROPFIND como rutas absolutas del servidor. Algunos
    * proveedores devuelven la URL completa (https://host/dav/...) y otros solo la
    * ruta: se normaliza quitando el origen para que la comparación con davRoot funcione.
+   * Las carpetas se devuelven siempre terminadas en '/': Koofr no la incluye en el
+   * href, así que se detectan por <resourcetype><collection/>.
    */
   private parseHrefs(xml: string): string[] {
-    const matches = xml.match(/<[^:>]*:?href>([^<]+)<\/[^:>]*:?href>/gi) ?? [];
-    return matches.map((m) => {
-      const href = m.replace(/<[^>]+>/g, '').trim();
-      return /^https?:\/\//i.test(href) ? new URL(href).pathname : href;
+    const responses = xml.match(/<(?:[^:>\s]*:)?response[\s>][\s\S]*?<\/(?:[^:>\s]*:)?response>/gi) ?? [];
+    return responses.flatMap((block) => {
+      const match = block.match(/<(?:[^:>\s]*:)?href>([^<]+)<\/(?:[^:>\s]*:)?href>/i);
+      if (!match) return [];
+      const raw = match[1].trim();
+      const href = /^https?:\/\//i.test(raw) ? new URL(raw).pathname : raw;
+      const isFolder = /<(?:[^:>\s]*:)?collection\s*\/?>/i.test(block);
+      return [isFolder && !href.endsWith('/') ? `${href}/` : href];
     });
   }
 
@@ -724,8 +730,8 @@ export class StorageService {
         ? decoded.slice(ncPrefix.length)
         : decoded;
 
-      // Saltar la carpeta raíz misma
-      if (relativePath === ncPath.replace(/\/$/, '')) continue;
+      // Saltar la carpeta raíz misma (con path vacío, el href es davRoot)
+      if (decoded === this.davRoot || relativePath === ncPath.replace(/\/$/, '')) continue;
 
       if (href.endsWith('/')) {
         const name = relativePath.split('/').pop() ?? '';
