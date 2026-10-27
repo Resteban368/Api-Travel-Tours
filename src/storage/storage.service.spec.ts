@@ -92,7 +92,7 @@ describe('StorageService', () => {
 
     it('detecta carpetas de Koofr sin "/" final por <collection/>', async () => {
       const respuesta = (href: string, carpeta: boolean) =>
-        `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype>${carpeta ? '<D:collection/>' : ''}</D:resourcetype></D:prop></D:propstat></D:response>`;
+        `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype>${carpeta ? '<D:collection xmlns:D="DAV:"/>' : ''}</D:resourcetype></D:prop></D:propstat></D:response>`;
       const { service } = crearServicio(
         ENV_KOOFR,
         `<D:multistatus>${[

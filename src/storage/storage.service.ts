@@ -263,7 +263,7 @@ export class StorageService {
       if (!match) return [];
       const raw = match[1].trim();
       const href = /^https?:\/\//i.test(raw) ? new URL(raw).pathname : raw;
-      const isFolder = /<(?:[^:>\s]*:)?collection\s*\/?>/i.test(block);
+      const isFolder = /<(?:[^:>\s]*:)?collection\b[^>]*>/i.test(block);
       return [isFolder && !href.endsWith('/') ? `${href}/` : href];
     });
   }
