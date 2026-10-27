@@ -1,13 +1,18 @@
-import { Controller, Get, Param, ParseIntPipe, Version } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseIntPipe, Version, HttpCode } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { IntegracionService } from './integracion.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { OpinionesService } from '../opiniones/opiniones.service';
+import { CreateOpinionPublicaDto } from '../opiniones/dto/opiniones.dto';
 
 @Controller('integracion')
 @Public()
 @Throttle({ default: { limit: 30, ttl: 60000 } })
 export class IntegracionController {
-  constructor(private readonly service: IntegracionService) {}
+  constructor(
+    private readonly service: IntegracionService,
+    private readonly opinionesService: OpinionesService,
+  ) {}
 
   // ── Tours ──────────────────────────────────────────────────────────────────
 
@@ -37,5 +42,22 @@ export class IntegracionController {
   @Get('faqs')
   findFaqs() {
     return this.service.findFaqs();
+  }
+
+  // ── Opiniones ──────────────────────────────────────────────────────────────
+
+  @Version('1')
+  @Get('opiniones')
+  findOpiniones() {
+    return this.opinionesService.findAprobadas();
+  }
+
+  // Se guardan sin aprobar; solo aparecen en el GET cuando un admin las aprueba
+  @Version('1')
+  @Post('opiniones')
+  @HttpCode(201)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  crearOpinion(@Body() dto: CreateOpinionPublicaDto) {
+    return this.opinionesService.crearDesdeWeb(dto);
   }
 }

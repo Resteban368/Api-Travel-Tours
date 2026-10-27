@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Modulo } from './entities/modulo.entity';
@@ -23,10 +23,13 @@ const MODULOS_SEED: { nombre: string; descripcion: string }[] = [
   { nombre: 'saldo_pendiente', descripcion: 'Saldos pendientes de cobro' },
   { nombre: 'proveedores', descripcion: 'Gestión de proveedores' },
   { nombre: 'historico_tours', descripcion: 'Histórico de tours' },
+  { nombre: 'opiniones', descripcion: 'Opiniones de clientes de la página web' },
 ];
 
 @Injectable()
 export class ModulosService implements OnModuleInit {
+  private readonly logger = new Logger(ModulosService.name);
+
   constructor(
     @InjectRepository(Modulo)
     private readonly moduloRepo: Repository<Modulo>,
@@ -36,9 +39,14 @@ export class ModulosService implements OnModuleInit {
     for (const m of MODULOS_SEED) {
       const exists = await this.moduloRepo.findOne({ where: { nombre: m.nombre } });
       if (!exists) {
-        await this.moduloRepo.save(
-          this.moduloRepo.create({ ...m, estado: true }),
-        );
+        // Un fallo aquí (p. ej. secuencia de ids desfasada) no debe tumbar el arranque
+        try {
+          await this.moduloRepo.save(
+            this.moduloRepo.create({ ...m, estado: true }),
+          );
+        } catch (error) {
+          this.logger.error(`No se pudo crear el módulo "${m.nombre}": ${(error as Error).message}`);
+        }
       }
     }
   }
