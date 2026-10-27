@@ -894,4 +894,49 @@ export class StorageService {
       detalle: { carpeta: folder, propietario: ownerKey, filename },
     });
   }
+
+  /** Elimina una imagen por ruta directa del almacenamiento (la que expone /nc-photo/). */
+  async deleteNcRawPath(
+    ncRelativePath: string,
+    requesterId: number,
+    requesterNombre: string,
+  ): Promise<void> {
+    const segments = ncRelativePath.split('/');
+    const filename = segments[segments.length - 1] ?? '';
+    // Solo archivos de imagen y sin segmentos que permitan salir de davRoot
+    if (
+      segments.some((s) => !s || s === '.' || s === '..') ||
+      !/\.(jpe?g|png|webp|gif|avif|svg)$/i.test(filename)
+    ) {
+      throw new NotFoundException('Imagen no encontrada');
+    }
+
+    const path = `${this.davRoot}/${ncRelativePath}`;
+
+    try {
+      await firstValueFrom(
+        this.httpService.delete(this.davUrl(path), { headers: this.commonHeaders() }),
+      );
+    } catch (err) {
+      const axiosErr = err as AxiosError;
+      if (!axiosErr.response) {
+        throw new InternalServerErrorException(
+          `No se pudo conectar al almacenamiento: ${axiosErr.message}`,
+        );
+      }
+      if (axiosErr.response.status === 404) {
+        throw new NotFoundException(`Imagen "${filename}" no encontrada`);
+      }
+      throw new InternalServerErrorException('Error al eliminar imagen del almacenamiento');
+    }
+
+    await this.auditoria.registrar({
+      usuario_id: requesterId,
+      usuario_nombre: requesterNombre,
+      modulo: 'storage',
+      operacion: 'ELIMINAR',
+      documento_id: filename,
+      detalle: { ncPath: ncRelativePath, filename },
+    });
+  }
 }

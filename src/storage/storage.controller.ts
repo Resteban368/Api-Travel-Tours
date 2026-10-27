@@ -384,4 +384,16 @@ export class StorageController {
     const userId = req.user.id_usuario;
     await this.storageService.deleteImage(folder, ownerKey ?? `u${userId}`, filename, userId, req.user.nombre);
   }
+
+  /**
+   * DELETE /v1/storage/nc-photo/Photos/filename.jpg
+   * Elimina una imagen por su ruta directa (la misma URL que sirve el GET nc-photo).
+   */
+  @Delete('nc-photo/*')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteNcPhoto(@Req() req: any) {
+    const match = (req.path ?? '').match(/\/nc-photo\/(.+)$/);
+    const ncRelativePath = match ? decodeURIComponent(match[1]) : '';
+    await this.storageService.deleteNcRawPath(ncRelativePath, req.user.id_usuario, req.user.nombre);
+  }
 }
