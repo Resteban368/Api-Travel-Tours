@@ -1,13 +1,12 @@
-import { Request } from 'express';
 import { existsSync } from 'fs';
 import { join, normalize, sep } from 'path';
 
-export interface MarcaCotizacion {
-  /** Plantilla HTML en public/ para /cotizacion/:token */
-  plantilla?: string;
-  /** Logo (PNG) en public/ para el PDF */
-  logo?: string;
-}
+/** Diseño fijo de Travel Club para la cotización pública, sus políticas y el PDF (archivos en public/). */
+export const MARCA_COTIZACION = {
+  plantilla: 'cotizacion-respuesta-travelclub.html',
+  politicas: 'politicas-travelclub.html',
+  logo: 'logo-travel-club/logo-256.png',
+};
 
 const PUBLIC_DIR = join(process.cwd(), 'public');
 
@@ -16,27 +15,4 @@ export function archivoPublico(relativo?: string): string | null {
   if (!relativo) return null;
   const ruta = normalize(join(PUBLIC_DIR, relativo));
   return ruta.startsWith(PUBLIC_DIR + sep) && existsSync(ruta) ? ruta : null;
-}
-
-/**
- * Parsea COTIZACION_TEMPLATES: "dominio:plantilla[:logo],dominio2:…"
- * Ej: cotizaciones.travelclubagencia.com:cotizacion-respuesta-travelclub.html:logo-travel-club/logo-256.png
- */
-export function parseMarcas(raw?: string): Map<string, MarcaCotizacion> {
-  return new Map(
-    (raw ?? '')
-      .split(',')
-      .map((entrada) => entrada.trim().split(':').map((p) => p.trim()))
-      .filter(([dominio]) => dominio)
-      .map(([dominio, plantilla, logo]) => [dominio.toLowerCase(), { plantilla: plantilla || undefined, logo: logo || undefined }]),
-  );
-}
-
-/** Dominio público desde el que se abrió el link (Vercel lo manda en x-forwarded-host). */
-export function hostDe(req: Request): string {
-  return String(req.headers['x-forwarded-host'] ?? req.hostname ?? '')
-    .split(',')[0]
-    .split(':')[0]
-    .trim()
-    .toLowerCase();
 }

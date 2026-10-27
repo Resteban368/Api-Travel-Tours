@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
-import { archivoPublico } from './marcas-cotizacion';
+import { MARCA_COTIZACION, archivoPublico } from './marcas-cotizacion';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PdfPrinter = require('pdfmake/src/printer');
@@ -28,16 +28,15 @@ const BG_BLUE = '#EEF2FF';
 const GOLD    = '#9D6E2F';
 const BG_GOLD = '#FBF3E0';
 
-// ── Logo (se lee una vez por archivo y queda en caché) ────────────────────
-const DEFAULT_LOGO = 'logo-empresa.png';
-const logoCache = new Map<string, string | null>();
+// ── Logo Travel Club (se lee una vez y queda en caché) ─────────────────────
+let logoCache: string | null | undefined;
 
-function loadLogoBase64(logo = DEFAULT_LOGO): string | null {
-  if (!logoCache.has(logo)) {
-    const logoPath = archivoPublico(logo);
-    logoCache.set(logo, logoPath ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}` : null);
+function loadLogoBase64(): string | null {
+  if (logoCache === undefined) {
+    const logoPath = archivoPublico(MARCA_COTIZACION.logo);
+    logoCache = logoPath ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}` : null;
   }
-  return logoCache.get(logo) ?? (logo !== DEFAULT_LOGO ? loadLogoBase64() : null);
+  return logoCache;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -140,9 +139,8 @@ function badge(text: string, bg = BG_GOLD, color = GOLD) {
 
 @Injectable()
 export class CotizacionPdfService {
-  /** @param logo PNG dentro de public/ (según el dominio del link); por defecto logo-empresa.png */
-  async generate(data: Record<string, any>, empresa: Record<string, any>, logo?: string): Promise<Buffer> {
-    const LOGO_B64 = loadLogoBase64(logo);
+  async generate(data: Record<string, any>, empresa: Record<string, any>): Promise<Buffer> {
+    const LOGO_B64 = loadLogoBase64();
     const vuelos: any[]       = (data.vuelos as any[]) ?? [];
     const hoteles: any[]      = (data.opciones_hotel as any[]) ?? [];
     const adicionales: any[]  = (data.adicionales as any[]) ?? [];
