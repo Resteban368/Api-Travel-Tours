@@ -26,6 +26,8 @@ async function bootstrap(): Promise<ReturnType<typeof express>> {
   );
 
   app.useLogger(app.get(Logger));
+  // Detrás del proxy (Vercel / EasyPanel): req.protocol y req.ip salen de X-Forwarded-*
+  app.set('trust proxy', 1);
 
   app.use(compression({ threshold: 1024 }));
 

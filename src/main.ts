@@ -18,6 +18,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  // Detrás del proxy (Vercel / EasyPanel): req.protocol y req.ip salen de X-Forwarded-*
+  app.set('trust proxy', 1);
   app.useStaticAssets(join(process.cwd(), 'public'));
   app.useStaticAssets(join(process.cwd(), 'assets'), { prefix: '/assets' });
 
